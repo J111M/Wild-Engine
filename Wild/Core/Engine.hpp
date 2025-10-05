@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Renderer/Window.hpp"
+
 #include <memory>
 #include <stdexcept>
 #include <vector>
@@ -20,6 +22,8 @@ namespace Wild {
 
 	private:
 		bool should_close = false;
+
+		Window m_window{ "Wild engine", 1200, 800 };
 	};
 
 	extern Engine engine;

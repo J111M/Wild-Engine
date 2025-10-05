@@ -10,8 +10,8 @@ namespace Wild {
 
 	void Engine::run()
 	{
-		while (!should_close) {
-
+		while (!m_window.should_close()) {
+			glfwPollEvents();
 		}
 	}
 
