@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer/Window.hpp"
+#include "Renderer/Device.hpp"
 
 #include <memory>
 #include <stdexcept>
@@ -24,6 +25,7 @@ namespace Wild {
 		bool should_close = false;
 
 		Window m_window{ "Wild engine", 1200, 800 };
+		std::shared_ptr<Device> m_device;
 	};
 
 	extern Engine engine;
