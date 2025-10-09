@@ -16,7 +16,11 @@ namespace Wild {
 		bool should_close() { return glfwWindowShouldClose(m_window); }
 
 		HWND get_handle() { return m_hwnd; }
+
+		int get_width() { return width; }
+		int get_height() { return height; }
 	private:
+		int width{}, height{};
 
 		GLFWwindow* m_window = nullptr;
 

@@ -1,0 +1,42 @@
+#pragma once
+
+#include "Renderer/Device.hpp"
+
+#include <d3d12.h>
+#include <dxgi1_6.h>
+
+namespace Wild {
+constexpr int BACK_BUFFER_COUNT = 2;
+
+	class Swapchain
+	{
+	public:
+		Swapchain(Window& p_window);
+		~Swapchain() {};
+
+	private:
+		void create_fence();
+		void recreate_swapchain();
+
+		UINT frame_index{};
+		HANDLE fence_event{};
+		ComPtr<ID3D12Fence> fence;
+		UINT64 fence_value{};
+
+		// Handles
+		UINT current_buffer;
+		ComPtr<ID3D12DescriptorHeap> render_target_view_heap;
+		ComPtr<ID3D12Resource> render_targets[BACK_BUFFER_COUNT];
+		UINT rtv_descriptor_size;
+
+		// Swapchain
+		ComPtr<IDXGISwapChain3> swapchain;
+		D3D12_VIEWPORT viewport;
+		D3D12_RECT surface_size;
+
+		// Command queue
+		ComPtr<ID3D12CommandQueue> command_queue;
+
+		Window& window;
+	};
+}

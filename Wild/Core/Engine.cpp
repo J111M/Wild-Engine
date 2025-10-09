@@ -7,7 +7,7 @@ namespace Wild {
 	{
 		WD_INFO("Wild engine initialized.");
 
-		m_device = std::make_shared<Device>(m_window);
+		device = std::make_shared<Device>(m_window);
 	}
 
 	void Engine::run()

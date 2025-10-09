@@ -58,3 +58,5 @@ protected:
 };
 
 #include "Core/Engine.hpp"
+
+//static const UINT BACK_BUFFER_COUNT = 2;

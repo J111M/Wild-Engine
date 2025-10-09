@@ -1,7 +1,8 @@
 #pragma once
 
-#include <d3d12.h>
+#include "Renderer/Swapchain.hpp"
 
+#include <d3d12.h>
 #include <dxgi1_6.h>
 
 namespace Wild {
@@ -11,23 +12,25 @@ namespace Wild {
 		Device(Window& window);
 		~Device() {};
 
-		ComPtr<ID3D12Device> get_device() { return m_device; }
+		ComPtr<ID3D12Device> get_device() { return device; }
+		ComPtr<IDXGIFactory4> get_factory() { return factory; }
 	private:
 		void setup_factory();
 		void create_adapter();
 		void create_device();
 
-		ComPtr<IDXGIFactory4> m_factory;
+		ComPtr<IDXGIFactory4> factory;
 
 		// factory flags
-		UINT m_dxgi_factory_flags = 0;
+		UINT dxgi_factory_flags = 0;
 
+		ComPtr<ID3D12Debug1> debug_controller;
 
-		ComPtr<ID3D12Debug1> m_debug_controller;
+		ComPtr<IDXGIAdapter1> adapter;
 
-		ComPtr<IDXGIAdapter1> m_adapter;
+		ComPtr<ID3D12Device> device;
+		ComPtr<ID3D12DebugDevice> debug_device;
 
-		ComPtr<ID3D12Device> m_device;
-		ComPtr<ID3D12DebugDevice> m_debugDevice;
+		std::unique_ptr<Swapchain> swapchain;
 	};
 }
