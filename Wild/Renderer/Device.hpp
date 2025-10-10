@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer/Swapchain.hpp"
+#include "Renderer/CommandQueue.hpp"
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -9,11 +10,13 @@ namespace Wild {
 	class Device
 	{
 	public:
-		Device(Window& window);
+		Device(std::shared_ptr<Window> window);
 		~Device() {};
 
 		ComPtr<ID3D12Device> get_device() { return device; }
 		ComPtr<IDXGIFactory4> get_factory() { return factory; }
+
+		std::shared_ptr<CommandQueue> get_command_queue() { return cmd_queue; }
 	private:
 		void setup_factory();
 		void create_adapter();
@@ -31,6 +34,7 @@ namespace Wild {
 		ComPtr<ID3D12Device> device;
 		ComPtr<ID3D12DebugDevice> debug_device;
 
+		std::shared_ptr<CommandQueue> cmd_queue;
 		std::unique_ptr<Swapchain> swapchain;
 	};
 }

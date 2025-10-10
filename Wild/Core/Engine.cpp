@@ -7,12 +7,13 @@ namespace Wild {
 	{
 		WD_INFO("Wild engine initialized.");
 
-		device = std::make_shared<Device>(m_window);
+		window = std::make_shared<Window>("Wild engine", 1200, 800);
+		device = std::make_shared<Device>(window);
 	}
 
 	void Engine::run()
 	{
-		while (!m_window.should_close()) {
+		while (!window->should_close()) {
 			glfwPollEvents();
 		}
 	}

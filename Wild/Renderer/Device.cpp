@@ -5,13 +5,14 @@
 #include <locale>
 
 namespace Wild {
-    Device::Device(Window& window)
+    Device::Device(std::shared_ptr<Window> window)
     {
         setup_factory();
         create_adapter();
         create_device();
 
-        swapchain = std::make_unique<Swapchain>(window);
+        cmd_queue = std::make_shared<CommandQueue>(device, D3D12_COMMAND_LIST_TYPE_DIRECT, "Direct queue");
+        swapchain = std::make_unique<Swapchain>(window, *this);
     }
 
     void Device::setup_factory()

@@ -6,23 +6,28 @@
 #include <wrl.h>
 
 namespace Wild {
-	Window::Window(std::string window_name, int width, int height)
+	Window::Window(std::string window_name, int widthIn, int heightIn)
 	{
+		width = widthIn;
+		height = heightIn;
+
 		if (!glfwInit()) {
 			WD_FATAL("Failed to initialize glfw!");
 			glfwTerminate();
 		}
 			
-		m_window_name = window_name;
+		window_name = window_name;
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-		m_window = glfwCreateWindow(width, height, m_window_name.c_str(), nullptr, nullptr);
+		window = glfwCreateWindow(width, height, window_name.c_str(), nullptr, nullptr);
+
+		hwnd = glfwGetWin32Window(window);
 	}
 
 	Window::~Window()
 	{
-		glfwDestroyWindow(m_window);
+		glfwDestroyWindow(window);
 		glfwTerminate();
 	}
 }

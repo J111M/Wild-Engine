@@ -1,8 +1,12 @@
 #include "Renderer/CommandList.hpp"
 
 namespace Wild {
-	CommandList::CommandList()
+	CommandList::CommandList(ComPtr<ID3D12Device4> device, D3D12_COMMAND_LIST_TYPE list_type)
 	{
+		type = list_type;
+
+		ThrowIfFailed(device->CreateCommandAllocator(type, IID_PPV_ARGS(&allocator)));
+		ThrowIfFailed(device->CreateCommandList(0, type, allocator.Get(), nullptr, IID_PPV_ARGS(&command_list)));
 	}
 
 	void CommandList::create_root_signature()

@@ -10,21 +10,21 @@ namespace Wild {
 	class Window
 	{
 	public:
-		Window(std::string window_name, int width, int height);
+		Window(std::string window_name, int widthIn, int heightIn);
 		~Window();
 
-		bool should_close() { return glfwWindowShouldClose(m_window); }
+		bool should_close() { return glfwWindowShouldClose(window); }
 
-		HWND get_handle() { return m_hwnd; }
+		HWND get_handle() { return hwnd; }
 
 		int get_width() { return width; }
 		int get_height() { return height; }
 	private:
 		int width{}, height{};
 
-		GLFWwindow* m_window = nullptr;
+		GLFWwindow* window = nullptr;
 
-		std::string m_window_name{};
-		HWND m_hwnd{};
+		std::string window_name{};
+		HWND hwnd{};
 	};
 }

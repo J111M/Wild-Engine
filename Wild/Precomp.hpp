@@ -18,7 +18,10 @@
 #endif
 
 #include <comdef.h> 
+
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
 #include <stdexcept>
 #include <string>
 #include <wrl.h>

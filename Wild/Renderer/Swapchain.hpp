@@ -1,22 +1,24 @@
 #pragma once
 
-#include "Renderer/Device.hpp"
-
 #include <d3d12.h>
 #include <dxgi1_6.h>
 
 namespace Wild {
 constexpr int BACK_BUFFER_COUNT = 2;
 
+class Device;
+
 	class Swapchain
 	{
 	public:
-		Swapchain(Window& p_window);
+		Swapchain(std::shared_ptr<Window> p_window, Device& device);
 		~Swapchain() {};
 
+		ComPtr<ID3D12Fence> get_fence() { return fence; }
+
 	private:
-		void create_fence();
-		void recreate_swapchain();
+		void create_fence(Device& device);
+		void recreate_swapchain(Device& device);
 
 		UINT frame_index{};
 		HANDLE fence_event{};
@@ -37,6 +39,6 @@ constexpr int BACK_BUFFER_COUNT = 2;
 		// Command queue
 		ComPtr<ID3D12CommandQueue> command_queue;
 
-		Window& window;
+		std::shared_ptr<Window> window;
 	};
 }
