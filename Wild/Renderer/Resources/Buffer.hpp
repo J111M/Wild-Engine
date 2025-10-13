@@ -25,37 +25,37 @@ namespace Wild {
         BufferDesc desc;
 
 		ComPtr<ID3D12Resource> buffer;
-    public;
+    public:
         // Vertex buffer view
-        constexpr D3D12_VERTEX_BUFFER_VIEW make_vbv() const
-        {
-            D3D12_VERTEX_BUFFER_VIEW vbv = {};
-            vbv.BufferLocation = (UINT64)m_bufferLocation;
-            vbv.SizeInBytes = (UINT)Size();
-            vbv.StrideInBytes = (UINT)STRIDE;
-            return vbv;
-        }
+        //constexpr D3D12_VERTEX_BUFFER_VIEW make_vbv() const
+        //{
+        //    D3D12_VERTEX_BUFFER_VIEW vbv = {};
+        //    vbv.BufferLocation = (UINT64)m_bufferLocation;
+        //    vbv.SizeInBytes = (UINT)Size();
+        //    vbv.StrideInBytes = (UINT)STRIDE;
+        //    return vbv;
+        //}
 
-        // Index buffer view
-        constexpr D3D12_INDEX_BUFFER_VIEW make_ibv() const
-        {
-            D3D12_INDEX_BUFFER_VIEW ibv = {};
-            ibv.BufferLocation = (UINT64)m_bufferLocation;
-            ibv.SizeInBytes = (UINT)Size();
+        //// Index buffer view
+        //constexpr D3D12_INDEX_BUFFER_VIEW make_ibv() const
+        //{
+        //    D3D12_INDEX_BUFFER_VIEW ibv = {};
+        //    ibv.BufferLocation = (UINT64)m_bufferLocation;
+        //    ibv.SizeInBytes = (UINT)Size();
 
-            switch (STRIDE)
-            {
-            case 2:
-                ibv.Format = DXGI_FORMAT_R16_UINT;
-                break;
-            case 4:
-                ibv.Format = DXGI_FORMAT_R32_UINT;
-                break;
-            default:
-                throw std::runtime_error("Invalid index buffer stride");
-            }
+        //    switch (STRIDE)
+        //    {
+        //    case 2:
+        //        ibv.Format = DXGI_FORMAT_R16_UINT;
+        //        break;
+        //    case 4:
+        //        ibv.Format = DXGI_FORMAT_R32_UINT;
+        //        break;
+        //    default:
+        //        throw std::runtime_error("Invalid index buffer stride");
+        //    }
 
-            return ibv;
-        }
+        //    return ibv;
+        //}
 	};
 }

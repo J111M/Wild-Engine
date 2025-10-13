@@ -3,6 +3,8 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 
+#include <chrono>
+
 namespace Wild {
 constexpr int BACK_BUFFER_COUNT = 2;
 
@@ -19,6 +21,8 @@ class Device;
 	private:
 		void create_fence(Device& device);
 		void recreate_swapchain(Device& device);
+
+		void wait_for_fence(std::chrono::milliseconds duration = std::chrono::milliseconds::max());
 
 		UINT frame_index{};
 		HANDLE fence_event{};

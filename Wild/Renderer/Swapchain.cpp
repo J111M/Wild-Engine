@@ -72,4 +72,13 @@ namespace Wild {
 			rtvHandle.ptr += (1 * rtv_descriptor_size);
 		}
 	}
+
+	void Swapchain::wait_for_fence(std::chrono::milliseconds duration)
+	{
+		if (fence->GetCompletedValue() < fence_value)
+		{
+			ThrowIfFailed(fence->SetEventOnCompletion(fence_value, fence_event));
+			::WaitForSingleObject(fence_event, static_cast<DWORD>(duration.count()));
+		}
+	}
 }
