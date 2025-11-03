@@ -12,6 +12,8 @@ namespace Wild {
 		ComPtr<ID3D12CommandQueue> get_queue() const { return command_queue; }
 
 		D3D12_COMMAND_LIST_TYPE get_type() const { return type; }
+
+		void wait_for_fence() const;
 	private:
 		ComPtr<ID3D12CommandQueue> command_queue;
 		D3D12_COMMAND_LIST_TYPE type{};

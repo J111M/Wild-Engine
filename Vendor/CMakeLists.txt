@@ -27,3 +27,9 @@ FetchContent_MakeAvailable(spdlog)
 target_link_libraries(Wild PRIVATE spdlog::spdlog)
 
 target_link_libraries(Wild PRIVATE d3d12 dxgi dxguid)
+
+set(CMAKE_SYSTEM_VERSION 10.0.26100.0 CACHE STRING "" FORCE)
+
+target_include_directories(Wild PRIVATE
+    "${CMAKE_SOURCE_DIR}/vendor/d3dx12"
+)

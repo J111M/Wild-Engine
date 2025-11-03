@@ -3,7 +3,7 @@
 #include "Renderer/Device.hpp"
 
 namespace Wild {
-	Swapchain::Swapchain(std::shared_ptr<Window> p_window, Device& device)
+	Swapchain::Swapchain(std::shared_ptr<Window> p_window)
 	{
 		window = p_window;
 
@@ -17,20 +17,21 @@ namespace Wild {
 		viewport.TopLeftY = 0.0f;
 		viewport.Width = static_cast<float>(window->get_width());
 		viewport.Height = static_cast<float>(window->get_height());
-		viewport.MinDepth = .1f;
-		viewport.MaxDepth = 1000.f;
+		viewport.MinDepth = 0.0f;
+		viewport.MaxDepth = 1.0f;
 
-		create_fence(device);
-		recreate_swapchain(device);
+		recreate_swapchain();
 	}
 
-	void Swapchain::create_fence(Device& device)
+	HRESULT Swapchain::present(uint32_t sync_interval, uint32_t present_flag)
 	{
-		ThrowIfFailed(device.get_device()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+		return swapchain->Present(sync_interval, present_flag);
 	}
 
-	void Swapchain::recreate_swapchain(Device& device)
+	void Swapchain::recreate_swapchain()
 	{
+		auto device = engine.get_device();
+
 		if (swapchain != nullptr)
 			swapchain->ResizeBuffers(BACK_BUFFER_COUNT, window->get_width(), window->get_height(),
 				DXGI_FORMAT_R8G8B8A8_UNORM, 0);
@@ -47,7 +48,7 @@ namespace Wild {
 
 			ComPtr<IDXGISwapChain1> new_swapchain;
 
-			ThrowIfFailed(device.get_factory()->CreateSwapChainForHwnd(device.get_command_queue()->get_queue().Get(), window->get_handle(), &swapchain_desc, nullptr, nullptr, &new_swapchain), "Swapchain creation failed");
+			ThrowIfFailed(device->get_factory()->CreateSwapChainForHwnd(device->get_command_queue()->get_queue().Get(), window->get_handle(), &swapchain_desc, nullptr, nullptr, &new_swapchain), "Swapchain creation failed");
 
 			ThrowIfFailed(new_swapchain.As(&swapchain));
 		}
@@ -59,26 +60,17 @@ namespace Wild {
 		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
-		ThrowIfFailed(device.get_device()->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&render_target_view_heap)));
+		ThrowIfFailed(device->get_device()->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtv_heap)));
 
-		rtv_descriptor_size = device.get_device()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		rtv_descriptor_size = device->get_device()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle(render_target_view_heap->GetCPUDescriptorHandleForHeapStart());
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtv_heap->GetCPUDescriptorHandleForHeapStart());
 
 		for (UINT n = 0; n < BACK_BUFFER_COUNT; n++)
 		{
 			ThrowIfFailed(swapchain->GetBuffer(n, IID_PPV_ARGS(&render_targets[n])));
-			device.get_device()->CreateRenderTargetView(render_targets[n].Get(), nullptr, rtvHandle);
+			device->get_device()->CreateRenderTargetView(render_targets[n].Get(), nullptr, rtvHandle);
 			rtvHandle.ptr += (1 * rtv_descriptor_size);
-		}
-	}
-
-	void Swapchain::wait_for_fence(std::chrono::milliseconds duration)
-	{
-		if (fence->GetCompletedValue() < fence_value)
-		{
-			ThrowIfFailed(fence->SetEventOnCompletion(fence_value, fence_event));
-			::WaitForSingleObject(fence_event, static_cast<DWORD>(duration.count()));
 		}
 	}
 }

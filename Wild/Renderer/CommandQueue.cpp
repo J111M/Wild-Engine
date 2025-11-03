@@ -11,4 +11,10 @@ namespace Wild {
 
         WD_INFO("Command queue create: {0}", resource_name.c_str());
 	}
+
+    void CommandQueue::wait_for_fence() const
+    {
+        Fence fence;
+        fence.signal_and_wait(*this);
+    }
 }

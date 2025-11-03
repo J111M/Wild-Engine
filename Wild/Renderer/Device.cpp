@@ -5,14 +5,81 @@
 #include <locale>
 
 namespace Wild {
-    Device::Device(std::shared_ptr<Window> window)
+    Device::Device(std::shared_ptr<Window> p_window)
     {
+        window = p_window;
+    }
+
+    void Device::initialize() {
         setup_factory();
         create_adapter();
         create_device();
 
-        cmd_queue = std::make_shared<CommandQueue>(device, D3D12_COMMAND_LIST_TYPE_DIRECT, "Direct queue");
-        swapchain = std::make_unique<Swapchain>(window, *this);
+        command_queue = std::make_shared<CommandQueue>(device, D3D12_COMMAND_LIST_TYPE_DIRECT, "Direct queue");
+        swapchain = std::make_unique<Swapchain>(window);
+
+        for (size_t i = 0; i < BACK_BUFFER_COUNT; i++)
+        {
+            command_list[i] = std::make_shared<CommandList>(device, D3D12_COMMAND_LIST_TYPE_DIRECT);
+        }
+    }
+
+    void Device::begin_frame()
+    {
+        current_frame = back_buffer_index;
+        back_buffer_index = get_back_buffer_index();
+
+        auto current_command_list = command_list[current_frame];
+        auto back_buffer = swapchain->get_render_target(back_buffer_index);
+
+        // Set the rt to the render target state for clearing
+        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+            back_buffer.Get(),
+            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+        current_command_list->get_list()->ResourceBarrier(1, &barrier);
+
+        FLOAT clear_color[] = { 0.4f, 0.6f, 0.9f, 1.0f };
+
+        CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(swapchain->get_rtv_heap()->GetCPUDescriptorHandleForHeapStart(),
+            back_buffer_index, swapchain->get_rtv_size());
+
+        current_command_list->get_list()->ClearRenderTargetView(rtv, clear_color, 0, nullptr);
+    }
+
+    void Device::end_frame()
+    {
+        auto current_command_list = command_list[current_frame];
+        auto back_buffer = swapchain->get_render_target(back_buffer_index);
+
+        // Present frame
+        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+            back_buffer.Get(),
+            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+
+        current_command_list->get_list()->ResourceBarrier(1, &barrier);
+
+        ThrowIfFailed(current_command_list->get_list()->Close());
+
+        ID3D12CommandList* const commandLists[] = {
+           current_command_list->get_list().Get()
+        };
+
+        command_queue->get_queue()->ExecuteCommandLists(_countof(commandLists), commandLists);
+        command_queue->wait_for_fence();
+
+        uint32_t flags = DXGI_PRESENT_ALLOW_TEARING;
+        UINT sync_interval = 0;
+
+        if (is_vsync_enabled) {
+            flags = 0;
+            sync_interval = 1;
+        }
+
+        ThrowIfFailed(swapchain->present(sync_interval, flags));
+
+        // Reset allocator and list
+        current_command_list->reset();
     }
 
     void Device::setup_factory()

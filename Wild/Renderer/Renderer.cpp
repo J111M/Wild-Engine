@@ -7,4 +7,8 @@ namespace Wild {
 
 
 	}
+
+	void Renderer::render() {
+
+	}
 }
