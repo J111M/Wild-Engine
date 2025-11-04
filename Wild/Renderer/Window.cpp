@@ -23,11 +23,23 @@ namespace Wild {
 		window = glfwCreateWindow(width, height, window_name.c_str(), nullptr, nullptr);
 
 		hwnd = glfwGetWin32Window(window);
+
+		glfwSetWindowUserPointer(window, this);
+		glfwSetFramebufferSizeCallback(window, FrameBufferResizeCallback);
 	}
 
 	Window::~Window()
 	{
 		glfwDestroyWindow(window);
 		glfwTerminate();
+	}
+
+	void Window::FrameBufferResizeCallback(GLFWwindow* window, int width, int height)
+	{
+		auto userWindow = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+
+		userWindow->m_frameBufferResized = true;
+		userWindow->width = width;
+		userWindow->height = height;
 	}
 }

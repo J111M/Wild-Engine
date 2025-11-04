@@ -8,6 +8,9 @@ namespace Wild {
     Device::Device(std::shared_ptr<Window> p_window)
     {
         window = p_window;
+
+        client_width = window->get_width();
+        client_height = window->get_height();
     }
 
     void Device::initialize() {
@@ -26,6 +29,8 @@ namespace Wild {
 
     void Device::begin_frame()
     {
+        resize_window();
+
         current_frame = back_buffer_index;
         back_buffer_index = get_back_buffer_index();
 
@@ -80,6 +85,33 @@ namespace Wild {
 
         // Reset allocator and list
         current_command_list->reset();
+    }
+
+    void Device::resize_window()
+    {
+        int window_width = window->get_width();
+        int window_height = window->get_height();
+
+        if (client_width != window_width  || client_height != window_height) {
+
+            // We don't want the back buffer to be smaller than 1
+            client_width = std::max(1, window_width);
+            client_height = std::max(1, window_height);
+
+            // Wait till all commands are flushed
+            command_queue->wait_for_fence();
+
+            swapchain->resize();
+
+            WD_INFO("Window is resized succsesfully!");
+
+            client_width = window->get_width();
+            client_height = window->get_height();
+        }
+    }
+
+    void Device::flush() {
+        command_queue->wait_for_fence();
     }
 
     void Device::setup_factory()

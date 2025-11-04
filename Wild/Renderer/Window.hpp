@@ -19,8 +19,11 @@ namespace Wild {
 
 		int get_width() { return width; }
 		int get_height() { return height; }
+
+		static void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
 	private:
 		int width{}, height{};
+		bool m_frameBufferResized = false;
 
 		GLFWwindow* window = nullptr;
 

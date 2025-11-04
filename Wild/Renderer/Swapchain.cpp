@@ -28,10 +28,22 @@ namespace Wild {
 		return swapchain->Present(sync_interval, present_flag);
 	}
 
+	void Swapchain::resize()
+	{
+		for (int i = 0; i < BACK_BUFFER_COUNT; ++i)
+		{
+			// Clear references so the swap chain can be resized
+			render_targets[i].Reset();
+		}
+
+		recreate_swapchain();
+	}
+
 	void Swapchain::recreate_swapchain()
 	{
 		auto device = engine.get_device();
 
+		// TODO make swapchain description
 		if (swapchain != nullptr)
 			swapchain->ResizeBuffers(BACK_BUFFER_COUNT, window->get_width(), window->get_height(),
 				DXGI_FORMAT_R8G8B8A8_UNORM, 0);

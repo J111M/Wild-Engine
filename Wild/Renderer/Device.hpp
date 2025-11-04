@@ -25,6 +25,10 @@ namespace Wild {
 
 		void begin_frame();
 		void end_frame();
+
+		void resize_window();
+
+		void flush();
 	private:
 		void setup_factory();
 		void create_adapter();
@@ -55,5 +59,7 @@ namespace Wild {
 
 		bool is_vsync_enabled = true;
 		bool is_hdr_enabled = false;
+
+		int client_width{}, client_height{};
 	};
 }

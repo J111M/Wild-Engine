@@ -26,6 +26,7 @@ class Device;
 		ComPtr<ID3D12DescriptorHeap> get_rtv_heap() { return rtv_heap; }
 		UINT get_rtv_size() { return rtv_descriptor_size; }
 
+		void resize();
 	private:
 		void recreate_swapchain();
 

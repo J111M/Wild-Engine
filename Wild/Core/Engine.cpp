@@ -21,6 +21,8 @@ namespace Wild {
 
 			glfwPollEvents();
 		}
+
+		device->flush();
 	}
 
 	void Engine::shutdown()
