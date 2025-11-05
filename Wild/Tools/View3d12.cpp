@@ -1,20 +1,36 @@
 #include "Tools/View3d12.hpp"
 
 namespace Wild {
-	D3D12_GPU_VIRTUAL_ADDRESS D3D12View::get_gpu_virtual_adress() const
-	{
-		return resource->GetGPUVirtualAddress();
-	}
-
-	D3D12View::D3D12View(ComPtr<ID3D12Resource2> p_resource) : resource(p_resource) {}
+	ViewBase::ViewBase(ComPtr<ID3D12Resource2> resource) : m_resource(resource) {}
 
 	///
-	/// D3D12RenderTargetView
+	/// RenderTargetView
 	///
 
-	D3D12RenderTargetView::D3D12RenderTargetView(ComPtr<ID3D12Resource2> p_resource, const D3D12_RENDER_TARGET_VIEW_DESC& desc) : m_desc(desc), D3D12View(resource)
+	RenderTargetView::RenderTargetView(ComPtr<ID3D12Resource2> resource, const D3D12_RENDER_TARGET_VIEW_DESC& desc) : m_desc(desc), ViewBase(resource)
 	{
-	/*	view_index = engine.get_device().DescriptorAllocatorRtv()->CreateRtv(resource, &desc);
-		cpu_handle = engine.get_device().DescriptorAllocatorRtv()->CpuHandle(view_index);*/
+		m_viewIndex = engine.get_device()->GetRtvAllocator()->CreateRtv(resource, &desc);
+		m_cpuHandle = engine.get_device()->GetRtvAllocator()->CpuHandle(m_viewIndex);
 	}
+
+	RenderTargetView::~RenderTargetView()
+	{
+		engine.get_device()->GetRtvAllocator()->FreeHandle(m_viewIndex);
+	}
+
+	///
+	/// DepthStencilView
+	///
+
+	DepthStencilView::DepthStencilView(ComPtr<ID3D12Resource2> resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& desc) : m_desc(desc), ViewBase(resource)
+	{
+		m_viewIndex = engine.get_device()->GetDsvAllocator()->CreateDsv(resource, &desc);
+		m_cpuHandle = engine.get_device()->GetDsvAllocator()->CpuHandle(m_viewIndex);
+	}
+
+	DepthStencilView::~DepthStencilView()
+	{
+		engine.get_device()->GetDsvAllocator()->FreeHandle(m_viewIndex);
+	}
+
 }

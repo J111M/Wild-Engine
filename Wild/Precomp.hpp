@@ -62,6 +62,5 @@ protected:
     NonCopyable& operator=(NonCopyable&&) = delete;
 };
 
+// TODO only include into engine files
 #include "Core/Engine.hpp"
-
-//static const UINT BACK_BUFFER_COUNT = 2;

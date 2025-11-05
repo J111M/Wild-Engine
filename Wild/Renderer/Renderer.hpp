@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer/Resources/Buffer.hpp"
+#include "Renderer/ShaderPipeline.hpp"
 
 namespace Wild {
 	class Renderer
@@ -13,5 +14,7 @@ namespace Wild {
 		void render();
 	private:
 
+
+		
 	};
 }

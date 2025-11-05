@@ -1,6 +1,9 @@
 #pragma once
 
+#include "Renderer/CommandList.hpp"
+
 #include "Tools/Common3d12.hpp"
+
 
 namespace Wild {
 	class CommandQueue
@@ -12,6 +15,8 @@ namespace Wild {
 		ComPtr<ID3D12CommandQueue> get_queue() const { return command_queue; }
 
 		D3D12_COMMAND_LIST_TYPE get_type() const { return type; }
+
+		void execute_list(CommandList& list);
 
 		void wait_for_fence() const;
 	private:

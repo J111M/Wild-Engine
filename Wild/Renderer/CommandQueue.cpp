@@ -1,5 +1,7 @@
 #include "Renderer/CommandQueue.hpp"
 
+#include "Renderer/Fence.hpp"
+
 namespace Wild {
     CommandQueue::CommandQueue(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE list_type, const std::string& resource_name) : type{ list_type }
 	{
@@ -11,6 +13,17 @@ namespace Wild {
 
         WD_INFO("Command queue create: {0}", resource_name.c_str());
 	}
+
+    void CommandQueue::execute_list(CommandList& list)
+    {
+        if (list.is_ready()) {
+            ID3D12CommandList* l[] = { list.get_list().Get() };
+            command_queue->ExecuteCommandLists(1, l);
+        }
+        else
+            WD_ERROR("Command list is not ready for execution but is still called!");
+
+    }
 
     void CommandQueue::wait_for_fence() const
     {

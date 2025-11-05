@@ -11,6 +11,18 @@ namespace Wild {
 
         client_width = window->get_width();
         client_height = window->get_height();
+
+        m_surfaceSize.left = 0;
+        m_surfaceSize.top = 0;
+        m_surfaceSize.right = static_cast<LONG>(window->get_width());
+        m_surfaceSize.bottom = static_cast<LONG>(window->get_height());
+
+        m_viewport.TopLeftX = 0.0f;
+        m_viewport.TopLeftY = 0.0f;
+        m_viewport.Width = static_cast<float>(window->get_width());
+        m_viewport.Height = static_cast<float>(window->get_height());
+        m_viewport.MinDepth = 0.0f;
+        m_viewport.MaxDepth = 1.0f;
     }
 
     void Device::initialize() {
@@ -18,12 +30,17 @@ namespace Wild {
         create_adapter();
         create_device();
 
+        m_descriptorAllocatorsRtv = std::make_shared<DescriptorAllocatorRtv>(device, 64);
+        m_descriptorAllocatorsDsv = std::make_shared<DescriptorAllocatorDsv>(device, 64);
+
         command_queue = std::make_shared<CommandQueue>(device, D3D12_COMMAND_LIST_TYPE_DIRECT, "Direct queue");
-        swapchain = std::make_unique<Swapchain>(window);
+
+        CreateSwapchain();
 
         for (size_t i = 0; i < BACK_BUFFER_COUNT; i++)
         {
-            command_list[i] = std::make_shared<CommandList>(device, D3D12_COMMAND_LIST_TYPE_DIRECT);
+            command_list[i] = std::make_shared<CommandList>(D3D12_COMMAND_LIST_TYPE_DIRECT);
+            CreateTextureFromSwapchain(i);
         }
     }
 
@@ -35,31 +52,28 @@ namespace Wild {
         back_buffer_index = get_back_buffer_index();
 
         auto current_command_list = command_list[current_frame];
-        auto back_buffer = swapchain->get_render_target(back_buffer_index);
+        auto back_buffer = m_renderTargets[back_buffer_index];
 
         // Set the rt to the render target state for clearing
         CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            back_buffer.Get(),
+            back_buffer->GetResource().Get(),
             D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         current_command_list->get_list()->ResourceBarrier(1, &barrier);
 
         FLOAT clear_color[] = { 0.4f, 0.6f, 0.9f, 1.0f };
 
-        CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(swapchain->get_rtv_heap()->GetCPUDescriptorHandleForHeapStart(),
-            back_buffer_index, swapchain->get_rtv_size());
-
-        current_command_list->get_list()->ClearRenderTargetView(rtv, clear_color, 0, nullptr);
+        current_command_list->get_list()->ClearRenderTargetView(back_buffer->GetRtv()->get_cpu_handle(), clear_color, 0, nullptr);
     }
 
     void Device::end_frame()
     {
         auto current_command_list = command_list[current_frame];
-        auto back_buffer = swapchain->get_render_target(back_buffer_index);
+        auto back_buffer = m_renderTargets[back_buffer_index];
 
         // Present frame
         CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            back_buffer.Get(),
+            back_buffer->GetResource().Get(),
             D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
         current_command_list->get_list()->ResourceBarrier(1, &barrier);
@@ -81,7 +95,7 @@ namespace Wild {
             sync_interval = 1;
         }
 
-        ThrowIfFailed(swapchain->present(sync_interval, flags));
+        ThrowIfFailed(m_swapchain->Present(sync_interval, flags));
 
         // Reset allocator and list
         current_command_list->reset();
@@ -101,7 +115,17 @@ namespace Wild {
             // Wait till all commands are flushed
             command_queue->wait_for_fence();
 
-            swapchain->resize();
+            for (size_t i = 0; i < back_buffer_index; i++)
+            {
+                m_renderTargets[i].reset();
+            }
+
+            CreateSwapchain();
+
+            for (size_t i = 0; i < back_buffer_index; i++)
+            {
+                CreateTextureFromSwapchain(i);
+            }
 
             WD_INFO("Window is resized succsesfully!");
 
@@ -159,7 +183,7 @@ namespace Wild {
                 break;
             }
 
-            // If the adapter doesn't support Direct x12 than we release it
+            // If the adapter doesn't support DirectX 12 than we release it
             adapter->Release();
         }
     }
@@ -172,5 +196,46 @@ namespace Wild {
 #if defined(_DEBUG)
         ThrowIfFailed(device->QueryInterface(IID_PPV_ARGS(&debug_device)));
 #endif
+    }
+
+    void Device::CreateSwapchain()
+    {
+        if (m_swapchain != nullptr)
+            m_swapchain->ResizeBuffers(BACK_BUFFER_COUNT, window->get_width(), window->get_height(),
+                DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+        else {
+            // If there is no swapchain create one
+            DXGI_SWAP_CHAIN_DESC1 swapchain_desc = {};
+            swapchain_desc.BufferCount = BACK_BUFFER_COUNT;
+            swapchain_desc.Width = window->get_width();
+            swapchain_desc.Height = window->get_height();
+            swapchain_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            swapchain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+            swapchain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+            swapchain_desc.SampleDesc.Count = 1;
+
+            ComPtr<IDXGISwapChain1> new_swapchain;
+
+            ThrowIfFailed(factory->CreateSwapChainForHwnd(command_queue->get_queue().Get(), window->get_handle(), &swapchain_desc, nullptr, nullptr, &new_swapchain), "Swapchain creation failed");
+
+            ThrowIfFailed(new_swapchain.As(&m_swapchain));
+        }
+    }
+
+    void Device::CreateTextureFromSwapchain(UINT index)
+    {
+        TextureDesc desc;
+        DXGI_SWAP_CHAIN_DESC1 scDesc;
+        m_swapchain->GetDesc1(&scDesc);
+        desc.width = scDesc.Width;
+        desc.height = scDesc.Height;
+
+        desc.usage = TextureDesc::gpuOnly;
+        desc.flag = TextureDesc::renderTarget;
+
+        ID3D12Resource2* scBuffer = nullptr;
+        m_swapchain->GetBuffer(index, IID_PPV_ARGS(&scBuffer));
+
+        m_renderTargets[index] = std::make_shared<Texture>(desc, scBuffer);
     }
 }

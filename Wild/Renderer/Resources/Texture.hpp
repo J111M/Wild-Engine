@@ -1,31 +1,35 @@
 #pragma once
 
 #include "Tools/Types3d12.hpp"
+#include "Tools/View3d12.hpp"
 
 #include <string>
 
 namespace Wild {
-	enum UsageFlag : uint32_t
-	{
-		cpu_write = 1 << 1,
-		gpu_only = 1 << 2,
-	};
-
-	enum ViewFlag : uint32_t
-	{
-		default = 1 << 0,
-		shader_resource = 1 << 1,
-		render_target = 1 << 2,
-		depth_stencil = 1 << 3,
-	};
-
 	struct TextureDesc
 	{
+		enum UsageFlag : uint32_t
+		{
+			cpuWrite = 1 << 1,
+			gpuOnly = 1 << 2,
+		};
+
+		enum ViewFlag : uint32_t
+		{
+			default = 1 << 0,
+			shaderResource = 1 << 1,
+			renderTarget = 1 << 2,
+			depthStencil = 1 << 3,
+		};
+
 		TextureType type = TextureType::TEXTURE_2D;
+		UsageFlag usage = cpuWrite;
 		uint32_t width{ 0 };
 		uint32_t height{ 0 };
 		uint32_t slices{ 0 };
 		uint32_t mips{ 0 };
+
+		ViewFlag flag = default;
 
 		// Data type is unkown at this point
 		void* data = nullptr;
@@ -39,17 +43,24 @@ namespace Wild {
 	{
 	public:
 		Texture(const TextureDesc& desc);
-		~Texture();
+		Texture(const TextureDesc& desc, ComPtr<ID3D12Resource2> resource);
+		~Texture() {};
 
-		TextureDesc get_desc() { return desc; }
+		ComPtr<ID3D12Resource2> GetResource() { return m_resource; }
+		TextureDesc get_desc() { return m_desc; }
 
-		uint32_t width() const { return desc.width; }
-		uint32_t height() const { return desc.height; }
+		uint32_t width() const { return m_desc.width; }
+		uint32_t height() const { return m_desc.height; }
+
+		std::shared_ptr<RenderTargetView> GetRtv() const;
+		std::shared_ptr<DepthStencilView> GetDsv() const;
 
 	private:
-		/*ComPtr<D3D12DepthStencilView> m_dsv = nullptr;
-		ComPtr<D3D12RenderTargetView> m_rtv = nullptr;*/
+		ComPtr<ID3D12Resource2> m_resource;
 
-		TextureDesc desc;
+		std::shared_ptr<RenderTargetView> m_rtv;
+		std::shared_ptr<DepthStencilView> m_dsv;
+
+		TextureDesc m_desc;
 	};
 }

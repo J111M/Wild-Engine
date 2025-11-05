@@ -1,14 +1,16 @@
 #include "Renderer/CommandList.hpp"
 
 namespace Wild {
-	CommandList::CommandList(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE list_type)
+	CommandList::CommandList(D3D12_COMMAND_LIST_TYPE list_type)
 	{
+		auto device = engine.get_device();
+
 		type = list_type;
 
-		ThrowIfFailed(device->CreateCommandAllocator(type, IID_PPV_ARGS(&allocator)));
-		ThrowIfFailed(device->CreateCommandList(0, type, allocator.Get(), nullptr, IID_PPV_ARGS(&command_list)));
+		ThrowIfFailed(device->get_device()->CreateCommandAllocator(type, IID_PPV_ARGS(&allocator)));
+		ThrowIfFailed(device->get_device()->CreateCommandList(0, type, allocator.Get(), nullptr, IID_PPV_ARGS(&command_list)));
 
-		create_root_signature();
+		CreateRootSignature();
 	}
 
 	void CommandList::reset() {
@@ -16,7 +18,71 @@ namespace Wild {
 		command_list->Reset(allocator.Get(), nullptr);
 	}
 
-	void CommandList::create_root_signature()
+	void CommandList::close() {
+		if (!command_list_closed) {
+			command_list->Close();
+			command_list_closed = true;
+		}
+	}
+
+	void CommandList::BeginRender()
+	{
+		auto device = engine.get_device();
+
+		root_signature_and_pso = false;
+		m_frameInFlight = true;
+
+
+		D3D12_VIEWPORT viewPort{};
+		viewPort.TopLeftX = 0.0f;
+		viewPort.TopLeftY = 0.0f;
+		viewPort.Width = static_cast<FLOAT>(device->GetWidth());
+		viewPort.Height = static_cast<FLOAT>(device->GetHeight());
+		viewPort.MinDepth = 0.0f;
+		viewPort.MaxDepth = 1.0f;
+
+		D3D12_RECT scissorRect = { 0u, 0u, static_cast<LONG>(viewPort.Width), static_cast<LONG>(viewPort.Height) };
+		command_list->RSSetScissorRects(1, &scissorRect);
+		command_list->RSSetViewports(1, &viewPort);
+		command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		//command_list->OMSetRenderTargets(1, handles.data(), false, dsvHandle);
+
+		m_vertShader = std::make_shared<Shader>("Shaders/path");
+		m_fragShader = std::make_shared<Shader>("Shaders/path");
+
+		D3D12_INPUT_ELEMENT_DESC inputLayout[] =
+		{
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		};
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+		psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
+		psoDesc.pRootSignature = root_signature.Get();
+		psoDesc.VS = m_vertShader->GetByteCode();
+		psoDesc.PS = m_fragShader->GetByteCode();;
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		//psoDesc.SampleDesc = sampleDesc;
+		psoDesc.SampleMask = 0xffffffff;
+		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		psoDesc.NumRenderTargets = 1;
+
+		/*D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
+			sizeof(psoDesc), &psoDesc
+		};
+		ThrowIfFailed(device->get_device()->CreateGraphicsPipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_pso)));*/
+
+	/*	device->get_command_queue()->execute_list(*this);
+		device->get_command_queue()->wait_for_fence();*/
+	}
+
+	void CommandList::EndRender()
+	{
+	}
+
+	void CommandList::CreateRootSignature()
 	{
 		auto device = engine.get_device();
 

@@ -2,10 +2,8 @@
 
 namespace Wild {
 	Renderer::Renderer() {
-		BufferDesc des = {
-		};
-
-
+		
+		
 	}
 
 	void Renderer::render() {

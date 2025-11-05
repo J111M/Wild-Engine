@@ -26,7 +26,7 @@ FetchContent_MakeAvailable(spdlog)
 
 target_link_libraries(Wild PRIVATE spdlog::spdlog)
 
-target_link_libraries(Wild PRIVATE d3d12 dxgi dxguid)
+target_link_libraries(Wild PRIVATE d3d12 dxgi dxguid d3dcompiler)
 
 set(CMAKE_SYSTEM_VERSION 10.0.26100.0 CACHE STRING "" FORCE)
 
