@@ -19,6 +19,7 @@ namespace Wild {
 		~Device() {};
 
 		void initialize();
+		void Shutdown();
 
 		ComPtr<ID3D12Device> get_device() { return device; }
 		ComPtr<IDXGIFactory4> get_factory() { return factory; }
@@ -27,6 +28,8 @@ namespace Wild {
 
 		UINT get_back_buffer_index() { return m_swapchain->GetCurrentBackBufferIndex(); }
 		
+		std::shared_ptr<Texture> GetRenderTarget() { return m_renderTargets[back_buffer_index]; }
+		std::shared_ptr<CommandList> GetCommandList() { return command_list[back_buffer_index]; }
 
 		void begin_frame();
 		void end_frame();

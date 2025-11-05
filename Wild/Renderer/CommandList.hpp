@@ -1,9 +1,19 @@
 #pragma once
 
 #include "Tools/Common3d12.hpp"
+
 #include "Renderer/ShaderPipeline.hpp"
+#include "Renderer/Resources/Buffer.hpp"
+
+#include <unordered_map>
+
+#include <glm/glm.hpp>
 
 namespace Wild {
+	struct Vertex {
+		glm::vec3 position{};
+	};
+
 	class CommandList : private NonCopyable
 	{
 	public:
@@ -20,15 +30,11 @@ namespace Wild {
 
 		void BeginRender();
 		void EndRender();
-		//void SetPipelineSettings(const PipelineSettings& settings);
+
+		//void SetPipelineSettings(const PipelineStateSettings& settings);
 
 	private:
-		void CreateRootSignature();
-
-		ComPtr<ID3D12PipelineState> m_pso;
-
 		ComPtr<ID3D12GraphicsCommandList> command_list;
-		ComPtr<ID3D12RootSignature> root_signature;
 		ComPtr<ID3D12CommandAllocator> allocator;
 
 		D3D12_COMMAND_LIST_TYPE type;
@@ -36,8 +42,6 @@ namespace Wild {
 		bool command_list_closed = false;
 		bool root_signature_and_pso = false;
 		bool m_frameInFlight = false;
-
-		std::shared_ptr<Shader> m_vertShader;
-		std::shared_ptr<Shader> m_fragShader;
+		//std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> m_psoCache{};
 	};
 }

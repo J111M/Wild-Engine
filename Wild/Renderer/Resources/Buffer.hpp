@@ -20,8 +20,6 @@ namespace Wild {
         UINT stride{};
 
         std::string name = "default";
-
-        void* data = nullptr;
 	};
 
     
@@ -32,17 +30,21 @@ namespace Wild {
 		Buffer(BufferDesc desc);
 		~Buffer();
 
-	private:
         void create_cpu_resource(BufferDesc desc);
-        void create_gpu_resource(BufferDesc desc);
-       
-        BufferDesc desc;
+        void create_gpu_resource();
+
+        void WriteData(void* data, size_t size);
+
+        D3D12_VERTEX_BUFFER_VIEW GetVBView() { return vb_view; }
+	private:
+        BufferDesc m_desc;
 
 		ComPtr<ID3D12Resource> buffer;
-    public:
 
         // Vertex buffer view
-        D3D12_VERTEX_BUFFER_VIEW vb_view;
+        D3D12_VERTEX_BUFFER_VIEW vb_view{};
+
+        void* m_data = nullptr;
 
         // Vertex buffer view
         //constexpr D3D12_VERTEX_BUFFER_VIEW make_vbv() const

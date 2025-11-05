@@ -25,6 +25,16 @@ namespace Wild {
         m_viewport.MaxDepth = 1.0f;
     }
 
+    void Device::Shutdown(){
+        for (int i = 0; i < BACK_BUFFER_COUNT; i++)
+        {
+            m_renderTargets[i].reset();
+        }
+
+        m_descriptorAllocatorsDsv.reset();
+        m_descriptorAllocatorsRtv.reset();
+    }
+
     void Device::initialize() {
         setup_factory();
         create_adapter();
@@ -37,10 +47,9 @@ namespace Wild {
 
         CreateSwapchain();
 
-        for (size_t i = 0; i < BACK_BUFFER_COUNT; i++)
+        for (int i = 0; i < BACK_BUFFER_COUNT; i++)
         {
             command_list[i] = std::make_shared<CommandList>(D3D12_COMMAND_LIST_TYPE_DIRECT);
-            CreateTextureFromSwapchain(i);
         }
     }
 
@@ -51,7 +60,7 @@ namespace Wild {
         current_frame = back_buffer_index;
         back_buffer_index = get_back_buffer_index();
 
-        auto current_command_list = command_list[current_frame];
+        auto current_command_list = command_list[back_buffer_index];
         auto back_buffer = m_renderTargets[back_buffer_index];
 
         // Set the rt to the render target state for clearing
@@ -61,14 +70,16 @@ namespace Wild {
 
         current_command_list->get_list()->ResourceBarrier(1, &barrier);
 
-        FLOAT clear_color[] = { 0.4f, 0.6f, 0.9f, 1.0f };
+        FLOAT clear_color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
         current_command_list->get_list()->ClearRenderTargetView(back_buffer->GetRtv()->get_cpu_handle(), clear_color, 0, nullptr);
+
+        current_command_list->BeginRender();
     }
 
     void Device::end_frame()
     {
-        auto current_command_list = command_list[current_frame];
+        auto current_command_list = command_list[back_buffer_index];
         auto back_buffer = m_renderTargets[back_buffer_index];
 
         // Present frame
@@ -115,17 +126,13 @@ namespace Wild {
             // Wait till all commands are flushed
             command_queue->wait_for_fence();
 
-            for (size_t i = 0; i < back_buffer_index; i++)
+            for (int i = 0; i < BACK_BUFFER_COUNT; i++)
             {
                 m_renderTargets[i].reset();
+                m_renderTargets[i] = nullptr;
             }
 
             CreateSwapchain();
-
-            for (size_t i = 0; i < back_buffer_index; i++)
-            {
-                CreateTextureFromSwapchain(i);
-            }
 
             WD_INFO("Window is resized succsesfully!");
 
@@ -200,9 +207,10 @@ namespace Wild {
 
     void Device::CreateSwapchain()
     {
-        if (m_swapchain != nullptr)
+        if (m_swapchain) {
             m_swapchain->ResizeBuffers(BACK_BUFFER_COUNT, window->get_width(), window->get_height(),
                 DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+        }
         else {
             // If there is no swapchain create one
             DXGI_SWAP_CHAIN_DESC1 swapchain_desc = {};
@@ -214,11 +222,16 @@ namespace Wild {
             swapchain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
             swapchain_desc.SampleDesc.Count = 1;
 
-            ComPtr<IDXGISwapChain1> new_swapchain;
+            IDXGISwapChain1* new_swapchain;
 
             ThrowIfFailed(factory->CreateSwapChainForHwnd(command_queue->get_queue().Get(), window->get_handle(), &swapchain_desc, nullptr, nullptr, &new_swapchain), "Swapchain creation failed");
 
-            ThrowIfFailed(new_swapchain.As(&m_swapchain));
+            m_swapchain = reinterpret_cast<IDXGISwapChain4*>(new_swapchain);
+        }
+
+        for (int i = 0; i < BACK_BUFFER_COUNT; i++)
+        {
+            CreateTextureFromSwapchain(i);
         }
     }
 

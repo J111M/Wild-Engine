@@ -2,6 +2,7 @@
 
 #include "Renderer/Window.hpp"
 #include "Renderer/Device.hpp"
+#include "Renderer/Renderer.hpp"
 
 #include <memory>
 #include <stdexcept>
@@ -28,6 +29,7 @@ namespace Wild {
 
 		std::shared_ptr <Window> window;
 		std::shared_ptr<Device> device;
+		std::shared_ptr<Renderer> m_renderer;
 	};
 
 	extern Engine engine;

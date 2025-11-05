@@ -65,3 +65,9 @@ add_custom_command(
     ${TEXTURE_DIR} ${OUTPUT_DIR}
     COMMENT "Copying texture folder to output directory"
 )
+
+add_custom_command(TARGET Wild POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/Shaders $<TARGET_FILE_DIR:Wild>/Shaders
+    COMMENT "Copying shader folder to output directory"
+)

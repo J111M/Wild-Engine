@@ -13,6 +13,17 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(fastgltf)
 target_link_libraries(Wild PRIVATE fastgltf)
 
+# GLM
+FetchContent_Declare(
+  glm
+  GIT_REPOSITORY https://github.com/g-truc/glm.git
+  GIT_TAG        1.0.1
+)
+
+FetchContent_MakeAvailable(glm)
+
+target_link_libraries(Wild PRIVATE glm::glm)
+
 # EnTT ECS
 add_subdirectory("entt")
 target_link_libraries(Wild PUBLIC EnTT)
@@ -20,6 +31,7 @@ target_link_libraries(Wild PUBLIC EnTT)
 # stb
 target_include_directories(Wild PRIVATE "./stb/")
 
+# spdlog
 FetchContent_Declare(spdlog GIT_REPOSITORY https://github.com/gabime/spdlog.git GIT_TAG v1.11.0)
 
 FetchContent_MakeAvailable(spdlog)

@@ -8,13 +8,20 @@ namespace Wild {
 	{
 	public:
 		Renderer();
-		~Renderer();
+		~Renderer() {};
 		
 		void update();
-		void render();
+		void render(CommandList& command_list);
 	private:
+		void CreateRootSignature();
 
+		std::shared_ptr<Shader> m_vertShader;
+		std::shared_ptr<Shader> m_fragShader;
 
-		
+		std::shared_ptr<Buffer> m_vertBuffer;
+
+		ComPtr<ID3D12RootSignature> root_signature;
+
+		ComPtr<ID3D12PipelineState> m_pso;
 	};
 }
