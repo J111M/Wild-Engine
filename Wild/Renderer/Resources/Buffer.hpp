@@ -37,7 +37,7 @@ namespace Wild {
         void CreateConstantBuffer();
         void CreateIndexBuffer(std::vector<uint32_t> indices);
 
-        void Map();
+        void Map(ComPtr<ID3D12Resource2> rs);
         void Unmap();
 
         void WriteData(void* dataSrc, size_t size);

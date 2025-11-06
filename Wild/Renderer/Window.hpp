@@ -17,8 +17,14 @@ namespace Wild {
 
 		HWND get_handle() { return hwnd; }
 
+		GLFWwindow* GetWindow() { return window; }
+
 		int get_width() { return width; }
 		int get_height() { return height; }
+
+		float AspectRatio() {
+			return  static_cast<float>(width) / static_cast<float>(height);
+		}
 
 		static void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
 	private:

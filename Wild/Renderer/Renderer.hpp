@@ -3,15 +3,13 @@
 #include "Renderer/Resources/Buffer.hpp"
 #include "Renderer/ShaderPipeline.hpp"
 
+#include "Core/Transform.hpp"
+
 #include "Tools/Common3d12.hpp"
 
 namespace Wild {
-	struct Vertex {
-		glm::vec3 position{};
-	};
-
 	struct RootConstant {
-		glm::mat4 matrix;
+		glm::mat4 matrix{};
 	};
 
 	class Renderer
@@ -35,5 +33,7 @@ namespace Wild {
 		ComPtr<ID3D12RootSignature> root_signature;
 
 		ComPtr<ID3D12PipelineState> m_pso;
+
+		Entity trans;
 	};
 }

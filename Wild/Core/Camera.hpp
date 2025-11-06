@@ -15,10 +15,10 @@ namespace Wild {
     class Camera
     {
     public:
-        Camera(glm::vec3 pos = { 0, 0, 4 });
+        Camera(glm::vec3 pos = { 0, 0, -10 });
         ~Camera() {};
 
-        void UpdateMatrix(float fov, float aspect, float near, float far);
+        void UpdateMatrix(float fov, float aspect, float nearF, float farF);
         void Input(Window& window, uint32_t width, uint32_t height, float dt);
 
         const glm::mat4& GetProjection() const { return m_projectionMatrix; }
