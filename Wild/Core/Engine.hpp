@@ -4,6 +4,10 @@
 #include "Renderer/Device.hpp"
 #include "Renderer/Renderer.hpp"
 
+#include "Core/ECS.hpp"
+#include "Core/Transform.hpp"
+#include "Core/Camera.hpp"
+
 #include <memory>
 #include <stdexcept>
 #include <vector>
@@ -23,13 +27,14 @@ namespace Wild {
 		void shutdown();
 
 		std::shared_ptr<Device> get_device() { return device; }
-
+		std::shared_ptr<EntityComponentSystem> GetECS() { return m_ecs; }
 	private:
 		bool should_close = false;
 
 		std::shared_ptr<Window> window;
 		std::shared_ptr<Device> device;
 		std::shared_ptr<Renderer> m_renderer;
+		std::shared_ptr<EntityComponentSystem> m_ecs;
 	};
 
 	extern Engine engine;

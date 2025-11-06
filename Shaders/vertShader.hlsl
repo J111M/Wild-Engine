@@ -10,7 +10,7 @@ struct VSOutput
 
 cbuffer Constants : register(b0)
 {
-    float4x4 model;
+    matrix model;
 };
 
 VSOutput main(VSInput input)

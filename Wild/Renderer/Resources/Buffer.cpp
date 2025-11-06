@@ -33,8 +33,6 @@ namespace Wild {
 		m_desc.stride = sizeof(Vertex);
 		m_desc.buffer_size = vertices.size() * sizeof(Vertex);
 
-		WriteData((void*)vertices.data(), m_desc.buffer_size);
-
 		if (m_desc.stride == 0) {
 			WD_ERROR("No valid stride supplied at resource creation for vertex buffer!");
 			return;
@@ -53,7 +51,7 @@ namespace Wild {
 		buffer->SetName(std::wstring(m_desc.name.begin(), m_desc.name.end()).c_str());
 
 		// Upload heap for GPU resources
-		ComPtr<ID3D12Resource> upload_heap;
+		ComPtr<ID3D12Resource2> upload_heap;
 
 		device->get_device()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), // upload heap
@@ -66,6 +64,8 @@ namespace Wild {
 		std::string upload_resource_name = "Upload resource: " + m_desc.name;
 
 		upload_heap->SetName(std::wstring(upload_resource_name.begin(), upload_resource_name.end()).c_str());
+
+		WriteData((void*)vertices.data(), m_desc.buffer_size);
 
 		// Buffer type to upload heap
 		D3D12_SUBRESOURCE_DATA data = {};
@@ -153,7 +153,7 @@ namespace Wild {
 		m_ibView = std::make_shared<IndexBufferView>(buffer, m_desc.buffer_size, DXGI_FORMAT_R32_UINT);
 	}
 
-	void Buffer::Map()
+	void Buffer::Map(ComPtr<ID3D12Resource2> rs)
 	{
 		m_dataIsMapped = true;
 		buffer->Map(0, nullptr, &m_data);

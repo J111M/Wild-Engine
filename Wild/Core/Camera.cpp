@@ -13,8 +13,8 @@ namespace Wild {
 
 		m_cameraMatrix = m_projectionMatrix * m_viewMatrix;
 
-        m_nearFar.x = near;
-        m_nearFar.y = far;
+        m_nearFar.x = nearF;
+        m_nearFar.y = farF;
         m_fov = fov;
         m_aspect = aspect;
 

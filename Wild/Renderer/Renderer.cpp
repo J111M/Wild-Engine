@@ -1,5 +1,7 @@
 #include "Renderer/Renderer.hpp"
 
+#include "Core/Camera.hpp"
+
 namespace Wild {
 	Renderer::Renderer() {
 		auto device = engine.get_device();
@@ -39,13 +41,22 @@ namespace Wild {
 		m_vertBuffer = std::make_shared<Buffer>(desc);
 
 		std::vector<Vertex> triangle = {
-		{ glm::vec3(0.0f,  0.5f, 0.5f) },
-		{ glm::vec3(0.5f, -0.5f, 0.5f) },
-		{ glm::vec3(-0.5f, -0.5f, 0.5f) }
+		{ glm::vec3(0.5f,  1.5f, 0.0f) },
+		{ glm::vec3(0.5f, -0.5f, 0.0f) },
+		{ glm::vec3(-0.5f, -0.5f, 0.0f) },
+		{ glm::vec3(-0.5f, 1.5f, 0.0f) },
+		{ glm::vec3(-0.5f, -0.5f, 0.0f) },
+		{ glm::vec3(0.5f, -0.5f, 0.0f) },
+		{ glm::vec3(-0.5f, -2.5f, -0.5f) },
+		{ glm::vec3(-1.5f, 1.0f, 1.5f) },
+		{ glm::vec3(0.4f, 8.5f, 7.5f) }
 		};
 
-		m_vertBuffer->WriteData((void*)triangle.data(), triangle.size() * sizeof(Vertex));
+		//m_vertBuffer->WriteData((void*)triangle.data(), triangle.size() * sizeof(Vertex));
 		m_vertBuffer->create_vertex_buffer(triangle);
+
+		trans = engine.GetECS()->CreateEntity();
+		engine.GetECS()->AddComponent<Transform>(trans, glm::vec3(0, 0, -2), trans);
 	}
 
 	void Renderer::render(CommandList& command_list) {
@@ -65,11 +76,24 @@ namespace Wild {
 
 		command_list.get_list()->SetGraphicsRootSignature(root_signature.Get());
 
-		m_rc.matrix = glm::mat4();
+		auto ecs = engine.GetECS();
+		auto& cameras = ecs->View<Camera>();
 
+		Camera* camera = nullptr;
+		for (auto entity : cameras) {
+			camera = &ecs->GetComponent<Camera>(entity);
+			break;
+		}
+
+		auto& transform = engine.GetECS()->GetComponent<Transform>(trans);
+
+		if (camera) {
+			m_rc.matrix = camera->GetProjection() * camera->GetView() * transform.GetWorldMatrix();
+		}
+		
 		command_list.get_list()->SetGraphicsRoot32BitConstants(
 			0,
-			4,
+			sizeof(glm::mat4) / 4,
 			&m_rc.matrix,
 			0
 		);
@@ -81,7 +105,7 @@ namespace Wild {
 		command_list.get_list()->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->get_cpu_handle(), false, nullptr);
 
 		command_list.get_list()->IASetVertexBuffers(0, 1, &m_vertBuffer->GetVBView()->View()); // set the vertex buffer (using the vertex buffer view)
-		command_list.get_list()->DrawInstanced(3, 1, 0, 0);
+		command_list.get_list()->DrawInstanced(9, 1, 0, 0);
 	}
 
 	void Renderer::CreateRootSignature()
@@ -94,16 +118,16 @@ namespace Wild {
 		if (FAILED(device->get_device()->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &feature_data, sizeof(feature_data))))
 			feature_data.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 
-		// GPU resources
-		D3D12_DESCRIPTOR_RANGE1 ranges[1];
-		ranges[0].BaseShaderRegister = 0;
-		ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		ranges[0].NumDescriptors = 1;
-		ranges[0].RegisterSpace = 0;
-		ranges[0].OffsetInDescriptorsFromTableStart = 0;
-		ranges[0].Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
+		//// GPU resources
+		//D3D12_DESCRIPTOR_RANGE1 ranges[1];
+		//ranges[0].BaseShaderRegister = 0;
+		//ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		//ranges[0].NumDescriptors = 1;
+		//ranges[0].RegisterSpace = 0;
+		//ranges[0].OffsetInDescriptorsFromTableStart = 0;
+		//ranges[0].Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
 
-		CD3DX12_ROOT_PARAMETER  root_parameters[1];
+		CD3DX12_ROOT_PARAMETER1 root_parameters[1];
 		root_parameters[0].InitAsConstants(
 			4,
 			0,
