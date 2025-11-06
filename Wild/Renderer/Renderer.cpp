@@ -36,7 +36,6 @@ namespace Wild {
 		ThrowIfFailed(device->get_device()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
 
 		BufferDesc desc{};
-		desc.stride = sizeof(Vertex);
 		m_vertBuffer = std::make_shared<Buffer>(desc);
 
 		std::vector<Vertex> triangle = {
@@ -46,7 +45,7 @@ namespace Wild {
 		};
 
 		m_vertBuffer->WriteData((void*)triangle.data(), triangle.size() * sizeof(Vertex));
-		m_vertBuffer->create_gpu_resource();
+		m_vertBuffer->create_vertex_buffer(triangle);
 	}
 
 	void Renderer::render(CommandList& command_list) {
@@ -65,13 +64,23 @@ namespace Wild {
 		command_list.get_list()->SetPipelineState(m_pso.Get());
 
 		command_list.get_list()->SetGraphicsRootSignature(root_signature.Get());
+
+		m_rc.matrix = glm::mat4();
+
+		command_list.get_list()->SetGraphicsRoot32BitConstants(
+			0,
+			4,
+			&m_rc.matrix,
+			0
+		);
+
 		command_list.get_list()->RSSetScissorRects(1, &scissorRect);
 		command_list.get_list()->RSSetViewports(1, &viewPort);
 		command_list.get_list()->RSSetViewports(1, &viewPort);
 		command_list.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		command_list.get_list()->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->get_cpu_handle(), false, nullptr);
 
-		command_list.get_list()->IASetVertexBuffers(0, 1, &m_vertBuffer->GetVBView()); // set the vertex buffer (using the vertex buffer view)
+		command_list.get_list()->IASetVertexBuffers(0, 1, &m_vertBuffer->GetVBView()->View()); // set the vertex buffer (using the vertex buffer view)
 		command_list.get_list()->DrawInstanced(3, 1, 0, 0);
 	}
 
@@ -94,11 +103,12 @@ namespace Wild {
 		ranges[0].OffsetInDescriptorsFromTableStart = 0;
 		ranges[0].Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
 
-		D3D12_ROOT_PARAMETER1 root_parameters[1];
-		root_parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		root_parameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-		root_parameters[0].DescriptorTable.NumDescriptorRanges = 1;
-		root_parameters[0].DescriptorTable.pDescriptorRanges = ranges;
+		CD3DX12_ROOT_PARAMETER  root_parameters[1];
+		root_parameters[0].InitAsConstants(
+			4,
+			0,
+			0
+		);
 
 		// Root signature layout
 		D3D12_VERSIONED_ROOT_SIGNATURE_DESC root_signature_desc;

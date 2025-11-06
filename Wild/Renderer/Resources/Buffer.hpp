@@ -1,12 +1,13 @@
 #pragma once
 
 #include "Tools/Common3d12.hpp"
+#include "Tools/View3d12.hpp"
 
 #include <string>
 #include <vector>
 
 namespace Wild {
-    
+    struct Vertex;
 
 	struct BufferDesc {
         UINT64 width{ 1 };
@@ -31,18 +32,30 @@ namespace Wild {
 		~Buffer();
 
         void create_cpu_resource(BufferDesc desc);
-        void create_gpu_resource();
 
-        void WriteData(void* data, size_t size);
+        void create_vertex_buffer(std::vector<Vertex> vertices);
+        void CreateConstantBuffer();
+        void CreateIndexBuffer(std::vector<uint32_t> indices);
 
-        D3D12_VERTEX_BUFFER_VIEW GetVBView() { return vb_view; }
+        void Map();
+        void Unmap();
+
+        void WriteData(void* dataSrc, size_t size);
+
+        std::shared_ptr<VertexBufferView> GetVBView() const;
+        std::shared_ptr<IndexBufferView> GetIBView() const;
+        std::shared_ptr<ConstantBufferView> GetCBView() const;
 	private:
         BufferDesc m_desc;
 
-		ComPtr<ID3D12Resource> buffer;
+		ComPtr<ID3D12Resource2> buffer;
+
+        bool m_dataIsMapped = false;
 
         // Vertex buffer view
-        D3D12_VERTEX_BUFFER_VIEW vb_view{};
+        std::shared_ptr<VertexBufferView> m_vbView;
+        std::shared_ptr<IndexBufferView> m_ibView;
+        std::shared_ptr<ConstantBufferView> m_cbView;
 
         void* m_data = nullptr;
 

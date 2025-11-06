@@ -4,7 +4,7 @@
 
 #include <vector>
 
-// View abstraction code inspired by https://github.com/t-Boons
+// View abstraction code from https://github.com/t-Boons
 namespace Wild {
 	class DescriptorAllocator : private NonCopyable
 	{
@@ -44,5 +44,16 @@ namespace Wild {
 		DescriptorAllocatorDsv(ComPtr<ID3D12Device> device, const uint32_t numDescriptors);
 
 		uint32_t CreateDsv(const ComPtr<ID3D12Resource2> resource, const D3D12_DEPTH_STENCIL_VIEW_DESC* desc);
+	};
+
+	class DescriptorAllocatorCbvSrvUav : public DescriptorAllocator
+	{
+	public:
+		DescriptorAllocatorCbvSrvUav(ComPtr<ID3D12Device> device, const uint32_t numDescriptors);
+		~DescriptorAllocatorCbvSrvUav() {};
+
+		uint32_t CreateCBV(uint32_t numBytes, const ComPtr<ID3D12Resource2> resource);
+		uint32_t CreateSRV(const ComPtr<ID3D12Resource2> resource, const D3D12_SHADER_RESOURCE_VIEW_DESC* desc);
+		uint32_t CreateUAV(const ComPtr<ID3D12Resource2> resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* desc);
 	};
 }

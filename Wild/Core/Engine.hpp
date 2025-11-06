@@ -27,7 +27,7 @@ namespace Wild {
 	private:
 		bool should_close = false;
 
-		std::shared_ptr <Window> window;
+		std::shared_ptr<Window> window;
 		std::shared_ptr<Device> device;
 		std::shared_ptr<Renderer> m_renderer;
 	};

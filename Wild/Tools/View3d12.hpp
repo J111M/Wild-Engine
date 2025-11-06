@@ -44,44 +44,44 @@ namespace Wild {
         uint32_t m_viewIndex;
     };
 
-    //class ShaderResourceView : public ViewBase
-    //{
-    //public:
-    //    ShaderResourceView(ComPtr<ID3D12Resource2> resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& desc);
-    //    ~ShaderResourceView();
+    class ShaderResourceView : public ViewBase
+    {
+    public:
+        ShaderResourceView(ComPtr<ID3D12Resource2> resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& desc);
+        ~ShaderResourceView();
 
-    //    uint32_t View() const { return m_viewIndex; }
+        uint32_t View() const { return m_viewIndex; }
 
-    //private:
-    //    D3D12_SHADER_RESOURCE_VIEW_DESC m_desc;
-    //    uint32_t m_viewIndex;
-    //};
+    private:
+        D3D12_SHADER_RESOURCE_VIEW_DESC m_desc;
+        uint32_t m_viewIndex;
+    };
 
-    //class UniformBufferView : public ViewBase
-    //{
-    //public:
-    //    UniformBufferView(ComPtr<ID3D12Resource2> resource, uint32_t sizeInBytes);
-    //    ~UniformBufferView();
+    class ConstantBufferView : public ViewBase
+    {
+    public:
+        ConstantBufferView(ComPtr<ID3D12Resource2> resource, uint32_t sizeInBytes);
+        ~ConstantBufferView();
 
-    //    uint32_t View() const { return m_viewIndex; }
+        uint32_t View() const { return m_viewIndex; }
 
-    //private:
-    //    uint32_t m_viewIndex;
-    //    uint32_t m_sizeInBytes;
-    //};
+    private:
+        uint32_t m_viewIndex;
+        uint32_t m_sizeInBytes;
+    };
 
-    //class UnorderedAccessView : public ViewBase
-    //{
-    //public:
-    //    UnorderedAccessView(ComPtr<ID3D12Resource2> resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc);
-    //    ~UnorderedAccessView();
+    class UnorderedAccessView : public ViewBase
+    {
+    public:
+        UnorderedAccessView(ComPtr<ID3D12Resource2> resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc);
+        ~UnorderedAccessView();
 
-    //    uint32_t View() const { return m_viewIndex; }
+        uint32_t View() const { return m_viewIndex; }
 
-    //private:
-    //    D3D12_UNORDERED_ACCESS_VIEW_DESC m_desc;
-    //    uint32_t m_viewIndex;
-    //};
+    private:
+        D3D12_UNORDERED_ACCESS_VIEW_DESC m_desc;
+        uint32_t m_viewIndex;
+    };
 
     //class SamplerView
     //{
@@ -98,27 +98,27 @@ namespace Wild {
     //    uint32_t m_viewIndex;
     //};
 
-    //// Index buffer view
-    //class IndexBufferView : public ViewBase
-    //{
-    //public:
-    //    IndexBufferView(ComPtr<ID3D12Resource2>, uint32_t sizeInBytes, DXGI_FORMAT format);
+    // Index buffer view
+    class IndexBufferView : public ViewBase
+    {
+    public:
+        IndexBufferView(ComPtr<ID3D12Resource2> resource, uint32_t sizeInBytes, DXGI_FORMAT format);
 
-    //    D3D12_INDEX_BUFFER_VIEW View() const { return m_view; }
+        D3D12_INDEX_BUFFER_VIEW View() const { return m_view; }
 
-    //private:
-    //    D3D12_INDEX_BUFFER_VIEW m_view;
-    //};
+    private:
+        D3D12_INDEX_BUFFER_VIEW m_view;
+    };
 
-    //// Vertex buffer view
-    //class VertexBufferView : public ViewBase
-    //{
-    //public:
-    //    VertexBufferView(ComPtr<ID3D12Resource2>, uint32_t sizeInBytes, uint32_t stride);
+    // Vertex buffer view
+    class VertexBufferView : public ViewBase
+    {
+    public:
+        VertexBufferView(ComPtr<ID3D12Resource2> resource, uint32_t sizeInBytes, uint32_t stride);
 
-    //    D3D12_VERTEX_BUFFER_VIEW View() const { return m_view; }
+        D3D12_VERTEX_BUFFER_VIEW View() const { return m_view; }
 
-    //private:
-    //    D3D12_VERTEX_BUFFER_VIEW m_view;
-    //};
+    private:
+        D3D12_VERTEX_BUFFER_VIEW m_view;
+    };
 }

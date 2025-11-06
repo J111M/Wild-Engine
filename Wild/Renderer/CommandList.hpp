@@ -10,10 +10,6 @@
 #include <glm/glm.hpp>
 
 namespace Wild {
-	struct Vertex {
-		glm::vec3 position{};
-	};
-
 	class CommandList : private NonCopyable
 	{
 	public:

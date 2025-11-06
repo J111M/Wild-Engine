@@ -1,5 +1,7 @@
 #include "Renderer/Resources/Buffer.hpp"
 
+#include "Renderer/Renderer.hpp"
+
 namespace Wild {
 	Buffer::Buffer(BufferDesc desc)
 	{
@@ -20,15 +22,21 @@ namespace Wild {
 		WD_ERROR("CPU resources creation not unimplemented!");
 	}
 
-	void Buffer::create_gpu_resource()
+	void Buffer::create_vertex_buffer(std::vector<Vertex> vertices)
 	{
-		if (!m_data) {
+		if (vertices.size() <= 0)
+		{
 			WD_ERROR("No buffer data supplied at resource creation!");
 			return;
 		}
 
+		m_desc.stride = sizeof(Vertex);
+		m_desc.buffer_size = vertices.size() * sizeof(Vertex);
+
+		WriteData((void*)vertices.data(), m_desc.buffer_size);
+
 		if (m_desc.stride == 0) {
-			WD_ERROR("No stride supplied at resource creation for vertex buffer!");
+			WD_ERROR("No valid stride supplied at resource creation for vertex buffer!");
 			return;
 		}
 
@@ -76,15 +84,121 @@ namespace Wild {
 		device->get_command_queue()->execute_list(list);
 		device->get_command_queue()->wait_for_fence();
 
-		vb_view.BufferLocation = buffer->GetGPUVirtualAddress();
-		vb_view.StrideInBytes = m_desc.stride;
-		vb_view.SizeInBytes = m_desc.buffer_size;
+		m_vbView = std::make_shared<VertexBufferView>(buffer, m_desc.buffer_size, m_desc.stride);
 	}
 
-	void Buffer::WriteData(void* data, size_t size)
+	void Buffer::CreateConstantBuffer()
 	{
+		auto device = engine.get_device();
+
+		if (m_desc.buffer_size <= 0) {
+			WD_ERROR("Constant buffer invalid data size.");
+			return;
+		}
+			
+		device->get_device()->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer((m_desc.buffer_size + 255) & ~255),
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&buffer));
+
+		m_cbView = std::make_shared<ConstantBufferView>(buffer, m_desc.buffer_size);
+	}
+
+	void Buffer::CreateIndexBuffer(std::vector<uint32_t> indices)
+	{
+		auto device = engine.get_device();
+
+		m_desc.buffer_size = indices.size() * sizeof(uint32_t);
+
+		WriteData((void*)indices.data(), m_desc.buffer_size);
+
+		device->get_device()->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.buffer_size),
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS(&buffer));
+
+		// Upload buffer
+		ComPtr<ID3D12Resource> uploadHeap;
+		device->get_device()->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.buffer_size),
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&uploadHeap));
+
+		D3D12_SUBRESOURCE_DATA indexData = {};
+		indexData.pData = m_data;
+		indexData.RowPitch = m_desc.buffer_size;
+		indexData.SlicePitch = indexData.RowPitch;
+
+		auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+
+		UpdateSubresources(list.get_list().Get(), buffer.Get(), uploadHeap.Get(),
+			0, 0, 1, &indexData);
+
+		list.get_list()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
+
+		// Execute the command list
+		list.close();
+		device->get_command_queue()->execute_list(list);
+		device->get_command_queue()->wait_for_fence();
+
+		m_ibView = std::make_shared<IndexBufferView>(buffer, m_desc.buffer_size, DXGI_FORMAT_R32_UINT);
+	}
+
+	void Buffer::Map()
+	{
+		m_dataIsMapped = true;
+		buffer->Map(0, nullptr, &m_data);
+	}
+
+	void Buffer::Unmap()
+	{
+		if (m_dataIsMapped) {
+			buffer->Unmap(0, nullptr);
+			m_dataIsMapped = false;
+		}
+	}
+
+	void Buffer::WriteData(void* dataSrc, size_t size)
+	{
+		// Make sure the pointed has allocated data
 		m_data = malloc(size);
 		m_desc.buffer_size = size;
-		memcpy(m_data, data, size);
+
+		if (m_data) {
+			memcpy(m_data, dataSrc, size);
+		}
+	}
+
+	std::shared_ptr<VertexBufferView> Buffer::GetVBView() const
+	{
+		if (m_vbView) { return m_vbView; }
+
+		WD_WARN("Trying to access invalid vertex buffer view.");
+		return nullptr;
+	}
+
+	std::shared_ptr<IndexBufferView> Buffer::GetIBView() const
+	{
+		if (m_ibView) { return m_ibView; }
+
+		WD_WARN("Trying to access invalid index buffer view.");
+		return nullptr;
+	}
+
+	std::shared_ptr<ConstantBufferView> Buffer::GetCBView() const
+	{
+		if (m_cbView) { return m_cbView; }
+
+		WD_WARN("Trying to access invalid constant buffer view.");
+		return nullptr;
 	}
 }

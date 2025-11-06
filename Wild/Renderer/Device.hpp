@@ -43,6 +43,7 @@ namespace Wild {
 
 		std::shared_ptr<DescriptorAllocatorRtv> GetRtvAllocator() { return m_descriptorAllocatorsRtv; }
 		std::shared_ptr<DescriptorAllocatorDsv> GetDsvAllocator() { return m_descriptorAllocatorsDsv; }
+		std::shared_ptr<DescriptorAllocatorCbvSrvUav> GetCbvSrvUavAllocator() { return m_desciptorAllocatorCbvSrvUav; }
 	private:
 		void setup_factory();
 		void create_adapter();
@@ -78,6 +79,7 @@ namespace Wild {
 
 		std::shared_ptr<DescriptorAllocatorRtv> m_descriptorAllocatorsRtv;
 		std::shared_ptr<DescriptorAllocatorDsv> m_descriptorAllocatorsDsv;
+		std::shared_ptr<DescriptorAllocatorCbvSrvUav> m_desciptorAllocatorCbvSrvUav;
 
 		UINT back_buffer_index{};
 		UINT current_frame{};

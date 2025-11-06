@@ -31,6 +31,7 @@ namespace Wild {
             m_renderTargets[i].reset();
         }
 
+        m_desciptorAllocatorCbvSrvUav.reset();
         m_descriptorAllocatorsDsv.reset();
         m_descriptorAllocatorsRtv.reset();
     }
@@ -42,6 +43,7 @@ namespace Wild {
 
         m_descriptorAllocatorsRtv = std::make_shared<DescriptorAllocatorRtv>(device, 64);
         m_descriptorAllocatorsDsv = std::make_shared<DescriptorAllocatorDsv>(device, 64);
+        m_desciptorAllocatorCbvSrvUav = std::make_shared<DescriptorAllocatorCbvSrvUav>(device, 8192);
 
         command_queue = std::make_shared<CommandQueue>(device, D3D12_COMMAND_LIST_TYPE_DIRECT, "Direct queue");
 

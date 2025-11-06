@@ -91,4 +91,61 @@ namespace Wild {
 	}
 
 
+	DescriptorAllocatorCbvSrvUav::DescriptorAllocatorCbvSrvUav(ComPtr<ID3D12Device> device, const uint32_t numDescriptors) : DescriptorAllocator(device,
+		D3D12_DESCRIPTOR_HEAP_DESC{ D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+								   numDescriptors,
+								   D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+								   0 },
+		L"CbvSrvUav allocator Heap")
+	{
+	}
+
+	uint32_t DescriptorAllocatorCbvSrvUav::CreateCBV(uint32_t numBytes, const ComPtr<ID3D12Resource2> resource)
+	{
+		if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors))
+			WD_FATAL("Heap has overflown.");
+		IFCHECK(numBytes % 256 == 0, "Constant buffer views should always have a 256 byte alignment.");
+
+		D3D12_CONSTANT_BUFFER_VIEW_DESC desc;
+		desc.SizeInBytes = numBytes;
+		desc.BufferLocation	= resource->GetGPUVirtualAddress();
+
+		const uint32_t nextFreeHandle = NextFreeHandle();
+
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
+		cpuHandle.ptr += m_incrementSize * nextFreeHandle;
+		engine.get_device()->get_device()->CreateConstantBufferView(&desc, cpuHandle);
+
+		return nextFreeHandle;
+	}
+
+	uint32_t DescriptorAllocatorCbvSrvUav::CreateSRV(const ComPtr<ID3D12Resource2> resource, const D3D12_SHADER_RESOURCE_VIEW_DESC* desc)
+	{
+		if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors))
+			WD_FATAL("Heap has overflown.");
+
+		const uint32_t nextFreeHandle = NextFreeHandle();
+
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
+		cpuHandle.ptr += m_incrementSize * nextFreeHandle;
+		engine.get_device()->get_device()->CreateShaderResourceView(resource.Get(), desc, cpuHandle);
+
+
+		return nextFreeHandle;
+	}
+
+	uint32_t DescriptorAllocatorCbvSrvUav::CreateUAV(const ComPtr<ID3D12Resource2> resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* desc)
+	{
+		if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors))
+			WD_FATAL("Heap has overflown.");
+
+		const uint32_t nextFreeHandle = NextFreeHandle();
+
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
+		cpuHandle.ptr += m_incrementSize * nextFreeHandle;
+		engine.get_device()->get_device()->CreateUnorderedAccessView(resource.Get(), nullptr, desc, cpuHandle);
+
+		return nextFreeHandle;
+	}
+
 }
