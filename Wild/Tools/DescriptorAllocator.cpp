@@ -62,7 +62,7 @@ namespace Wild {
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
 		cpuHandle.ptr += m_incrementSize * nextFreeValue;
-		engine.get_device()->get_device()->CreateRenderTargetView(resource.Get(), desc, cpuHandle);
+		engine.GetDevice()->GetDevice()->CreateRenderTargetView(resource.Get(), desc, cpuHandle);
 
 		return nextFreeValue;
 	}
@@ -85,7 +85,7 @@ namespace Wild {
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
 		cpuHandle.ptr += m_incrementSize * nextFreeValue;
-		engine.get_device()->get_device()->CreateDepthStencilView(resource.Get(), desc, cpuHandle);
+		engine.GetDevice()->GetDevice()->CreateDepthStencilView(resource.Get(), desc, cpuHandle);
 
 		return nextFreeValue;
 	}
@@ -114,7 +114,7 @@ namespace Wild {
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
 		cpuHandle.ptr += m_incrementSize * nextFreeHandle;
-		engine.get_device()->get_device()->CreateConstantBufferView(&desc, cpuHandle);
+		engine.GetDevice()->GetDevice()->CreateConstantBufferView(&desc, cpuHandle);
 
 		return nextFreeHandle;
 	}
@@ -128,7 +128,7 @@ namespace Wild {
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
 		cpuHandle.ptr += m_incrementSize * nextFreeHandle;
-		engine.get_device()->get_device()->CreateShaderResourceView(resource.Get(), desc, cpuHandle);
+		engine.GetDevice()->GetDevice()->CreateShaderResourceView(resource.Get(), desc, cpuHandle);
 
 
 		return nextFreeHandle;
@@ -143,7 +143,7 @@ namespace Wild {
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
 		cpuHandle.ptr += m_incrementSize * nextFreeHandle;
-		engine.get_device()->get_device()->CreateUnorderedAccessView(resource.Get(), nullptr, desc, cpuHandle);
+		engine.GetDevice()->GetDevice()->CreateUnorderedAccessView(resource.Get(), nullptr, desc, cpuHandle);
 
 		return nextFreeHandle;
 	}

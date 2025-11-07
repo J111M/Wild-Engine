@@ -3,20 +3,20 @@
 #include "Tools/Log.hpp"
 
 namespace Wild {
-	void Engine::initialize()
+	void Engine::Initialize()
 	{
 		WD_INFO("Wild engine initialized.");
 
-		window = std::make_shared<Window>("Wild engine", 1200, 800);
-		device = std::make_shared<Device>(window);
-		device->initialize();
+		m_window = std::make_shared<Window>("Wild engine", 1200, 800);
+		m_device = std::make_shared<Device>(m_window);
+		m_device->Initialize();
 
 		m_ecs = std::make_shared<EntityComponentSystem>();
 
 		m_renderer = std::make_shared<Renderer>();
 	}
 
-	void Engine::run()
+	void Engine::Run()
 	{
 		auto previousTime = std::chrono::high_resolution_clock::now();
 		auto endTime = previousTime;
@@ -25,19 +25,19 @@ namespace Wild {
 		engine.GetECS()->AddComponent<Transform>(CameraEntity, glm::vec3(0, 0, 0), CameraEntity);
 		auto& camera = engine.GetECS()->AddComponent<Camera>(CameraEntity);
 
-		while (!window->should_close()) {
+		while (!m_window->ShouldClose()) {
 			auto currentTime = std::chrono::high_resolution_clock::now();
 			float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
 			previousTime = currentTime;
 
-			camera.Input(*window.get(), window->get_width(), window->get_height(), deltaTime);
-			camera.UpdateMatrix(glm::radians(70.0f), window->AspectRatio(), 0.1f, 100.0f);
+			camera.Input(*m_window.get(), m_window->GetWidth(), m_window->GetHeight(), deltaTime);
+			camera.UpdateMatrix(glm::radians(70.0f), m_window->AspectRatio(), 0.1f, 100.0f);
 
-			device->begin_frame();
+			m_device->BeginFrame();
 
-			m_renderer->render(*device->GetCommandList().get());
+			m_renderer->Render(*m_device->GetCommandList().get());
 
-			device->end_frame();
+			m_device->EndFrame();
 
 			glfwPollEvents();
 
@@ -45,12 +45,12 @@ namespace Wild {
 			float frameTime = std::chrono::duration<float, std::milli>(endTime - currentTime).count();
 		}
 
-		device->flush();
+		m_device->Flush();
 
-		device->Shutdown();
+		m_device->Shutdown();
 	}
 
-	void Engine::shutdown()
+	void Engine::Shutdown()
 	{
 	}
 

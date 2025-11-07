@@ -18,8 +18,8 @@ namespace Wild {
 		Renderer();
 		~Renderer() {};
 		
-		void update();
-		void render(CommandList& command_list);
+		void Update() {};
+		void Render(CommandList& commandList);
 	private:
 		void CreateRootSignature();
 
@@ -30,10 +30,8 @@ namespace Wild {
 
 		RootConstant m_rc;
 
-		ComPtr<ID3D12RootSignature> root_signature;
+		ComPtr<ID3D12RootSignature> m_rootSignature;
 
 		ComPtr<ID3D12PipelineState> m_pso;
-
-		Entity trans;
 	};
 }

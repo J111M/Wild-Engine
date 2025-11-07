@@ -2,10 +2,10 @@
 
 int main(int argc, char** argv)
 {
-	Wild::Log::initialize();
+	Wild::Log::Initialize();
 
-	Wild::engine.initialize();
-	Wild::engine.run();
-	Wild::engine.shutdown();
+	Wild::engine.Initialize();
+	Wild::engine.Run();
+	Wild::engine.Shutdown();
 	return 0;
 }

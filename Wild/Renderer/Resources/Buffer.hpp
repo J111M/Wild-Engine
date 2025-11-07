@@ -31,9 +31,9 @@ namespace Wild {
 		Buffer(BufferDesc desc);
 		~Buffer();
 
-        void create_cpu_resource(BufferDesc desc);
+        void CreateCpuResource(BufferDesc desc);
 
-        void create_vertex_buffer(std::vector<Vertex> vertices);
+        void CreateVertexBuffer(std::vector<Vertex> vertices);
         void CreateConstantBuffer();
         void CreateIndexBuffer(std::vector<uint32_t> indices);
 
@@ -48,7 +48,7 @@ namespace Wild {
 	private:
         BufferDesc m_desc;
 
-		ComPtr<ID3D12Resource2> buffer;
+		ComPtr<ID3D12Resource2> m_buffer;
 
         bool m_dataIsMapped = false;
 

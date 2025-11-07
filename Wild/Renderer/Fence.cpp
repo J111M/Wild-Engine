@@ -1,39 +1,39 @@
 #include "Renderer/Fence.hpp"
 
 namespace Wild {
-	Fence::Fence() : fence_value(0)
+	Fence::Fence() : m_fenceValue(0)
 	{
-		ThrowIfFailed(Wild::engine.get_device()->get_device()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+		ThrowIfFailed(Wild::engine.GetDevice()->GetDevice()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
 
 		// Create fence event
-		fence_event = ::CreateEvent(NULL, FALSE, FALSE, NULL);
-		assert(fence_event && "Failed to create fence event.");
+		m_fenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
+		assert(m_fenceEvent && "Failed to create fence event.");
 	}
 
 	Fence::~Fence()
 	{
-		CloseHandle(fence_event);
+		CloseHandle(m_fenceEvent);
 	}
 
-	void Fence::signal(const CommandQueue& command_queue)
+	void Fence::Signal(const CommandQueue& m_commandQueue)
 	{
-		fence_value++;
-		ThrowIfFailed(command_queue.get_queue()->Signal(fence.Get(), fence_value));
+		m_fenceValue++;
+		ThrowIfFailed(m_commandQueue.get_queue()->Signal(m_fence.Get(), m_fenceValue));
 	}
 
-	void Fence::signal_and_wait(const CommandQueue& command_queue)
+	void Fence::SignalAndWait(const CommandQueue& m_commandQueue)
 	{
-		signal(command_queue);
-		wait_for_fence_value();
+		Signal(m_commandQueue);
+		WaitForFenceValue();
 	}
 
-	void Fence::wait_for_fence_value(std::chrono::milliseconds duration)
+	void Fence::WaitForFenceValue(std::chrono::milliseconds duration)
 	{
 		// Check if fence is completed
-		if (fence->GetCompletedValue() < fence_value)
+		if (m_fence->GetCompletedValue() < m_fenceValue)
 		{
-			ThrowIfFailed(fence->SetEventOnCompletion(fence_value, fence_event));
-			::WaitForSingleObject(fence_event, static_cast<DWORD>(duration.count()));
+			ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent));
+			::WaitForSingleObject(m_fenceEvent, static_cast<DWORD>(duration.count()));
 		}
 	}
 }

@@ -22,17 +22,17 @@ namespace Wild {
 	class Engine
 	{
 	public:
-		void initialize();
-		void run();
-		void shutdown();
+		void Initialize();
+		void Run();
+		void Shutdown();
 
-		std::shared_ptr<Device> get_device() { return device; }
+		std::shared_ptr<Device> GetDevice() { return m_device; }
 		std::shared_ptr<EntityComponentSystem> GetECS() { return m_ecs; }
 	private:
 		bool should_close = false;
 
-		std::shared_ptr<Window> window;
-		std::shared_ptr<Device> device;
+		std::shared_ptr<Window> m_window;
+		std::shared_ptr<Device> m_device;
 		std::shared_ptr<Renderer> m_renderer;
 		std::shared_ptr<EntityComponentSystem> m_ecs;
 	};

@@ -5,7 +5,7 @@
 namespace Wild {
 	std::shared_ptr<spdlog::logger> Log::m_logger;
 
-	void Log::initialize() {
+	void Log::Initialize() {
 		//spdlog::set_pattern("%^[%T] %n: %v%$");
 		spdlog::set_pattern("%^[%T]%$ %n: %v");
 		m_logger = spdlog::stdout_color_mt("Wild");

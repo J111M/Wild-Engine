@@ -13,16 +13,16 @@ namespace Wild {
 	class CommandList : private NonCopyable
 	{
 	public:
-		CommandList(D3D12_COMMAND_LIST_TYPE list_type);
+		CommandList(D3D12_COMMAND_LIST_TYPE listType);
 		~CommandList() {};
 
-		ComPtr<ID3D12GraphicsCommandList> get_list() { return command_list; }
-		ComPtr<ID3D12CommandAllocator> get_allocator() { return allocator; }
+		ComPtr<ID3D12GraphicsCommandList> GetList() { return m_commandList; }
+		ComPtr<ID3D12CommandAllocator> GetAllocator() { return m_allocator; }
 
-		bool is_ready() { return command_list_closed; }
+		bool IsReady() { return command_list_closed; }
 
-		void reset();
-		void close();
+		void Reset();
+		void Close();
 
 		void BeginRender();
 		void EndRender();
@@ -30,10 +30,10 @@ namespace Wild {
 		//void SetPipelineSettings(const PipelineStateSettings& settings);
 
 	private:
-		ComPtr<ID3D12GraphicsCommandList> command_list;
-		ComPtr<ID3D12CommandAllocator> allocator;
+		ComPtr<ID3D12GraphicsCommandList> m_commandList;
+		ComPtr<ID3D12CommandAllocator> m_allocator;
 
-		D3D12_COMMAND_LIST_TYPE type;
+		D3D12_COMMAND_LIST_TYPE m_type;
 
 		bool command_list_closed = false;
 		bool root_signature_and_pso = false;

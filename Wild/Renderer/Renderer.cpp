@@ -5,7 +5,7 @@
 
 namespace Wild {
 	Renderer::Renderer() {
-		auto device = engine.get_device();
+		auto device = engine.GetDevice();
 
 		CreateRootSignature();
 
@@ -23,7 +23,7 @@ namespace Wild {
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 		psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
-		psoDesc.pRootSignature = root_signature.Get();
+		psoDesc.pRootSignature = m_rootSignature.Get();
 		psoDesc.VS = m_vertShader->GetByteCode();
 		psoDesc.PS = m_fragShader->GetByteCode();;
 		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -39,7 +39,7 @@ namespace Wild {
 		psoDesc.DepthStencilState.DepthEnable = FALSE;
 		psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
 
-		ThrowIfFailed(device->get_device()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
+		ThrowIfFailed(device->GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
 
 		auto ecs = engine.GetECS();
 
@@ -49,8 +49,8 @@ namespace Wild {
 		transform.SetPosition(glm::vec3(0, 0, -15));
 	}
 
-	void Renderer::render(CommandList& command_list) {
-		auto device = engine.get_device();
+	void Renderer::Render(CommandList& command_list) {
+		auto device = engine.GetDevice();
 
 		D3D12_VIEWPORT viewPort{};
 		viewPort.TopLeftX = 0.0f;
@@ -62,9 +62,9 @@ namespace Wild {
 
 		D3D12_RECT scissorRect = { 0u, 0u, static_cast<LONG>(viewPort.Width), static_cast<LONG>(viewPort.Height) };
 
-		command_list.get_list()->SetPipelineState(m_pso.Get());
+		command_list.GetList()->SetPipelineState(m_pso.Get());
 
-		command_list.get_list()->SetGraphicsRootSignature(root_signature.Get());
+		command_list.GetList()->SetGraphicsRootSignature(m_rootSignature.Get());
 
 		auto ecs = engine.GetECS();
 		auto& cameras = ecs->View<Camera>();
@@ -75,11 +75,11 @@ namespace Wild {
 			break;
 		}
 
-		command_list.get_list()->RSSetScissorRects(1, &scissorRect);
-		command_list.get_list()->RSSetViewports(1, &viewPort);
-		command_list.get_list()->RSSetViewports(1, &viewPort);
-		command_list.get_list()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		command_list.get_list()->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->get_cpu_handle(), false, nullptr);
+		command_list.GetList()->RSSetScissorRects(1, &scissorRect);
+		command_list.GetList()->RSSetViewports(1, &viewPort);
+		command_list.GetList()->RSSetViewports(1, &viewPort);
+		command_list.GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		command_list.GetList()->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->get_cpu_handle(), false, nullptr);
 
 		auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
 		for (auto&& [entity, trans, mesh] : meshes.each()) {
@@ -87,21 +87,21 @@ namespace Wild {
 				m_rc.matrix = camera->GetProjection() * camera->GetView() * trans.GetWorldMatrix();
 			}
 
-			command_list.get_list()->SetGraphicsRoot32BitConstants(
+			command_list.GetList()->SetGraphicsRoot32BitConstants(
 				0,
 				sizeof(glm::mat4) / 4,
 				&m_rc.matrix,
 				0
 			);
 
-			command_list.get_list()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
+			command_list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
 
 			if (mesh.HasIndexBuffer()) {
-				command_list.get_list()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
-				command_list.get_list()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
+				command_list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
+				command_list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
 			}
 			else {
-				command_list.get_list()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
+				command_list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
 			}
 			
 		}		
@@ -109,12 +109,12 @@ namespace Wild {
 
 	void Renderer::CreateRootSignature()
 	{
-		auto device = engine.get_device();
+		auto device = engine.GetDevice();
 
 		D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
 		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
 
-		if (FAILED(device->get_device()->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+		if (FAILED(device->GetDevice()->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
 			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 
 		//// GPU resources
@@ -134,20 +134,20 @@ namespace Wild {
 		);
 
 		// Root signature layout
-		D3D12_VERSIONED_ROOT_SIGNATURE_DESC root_signature_desc;
-		root_signature_desc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
-		root_signature_desc.Desc_1_1.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-		root_signature_desc.Desc_1_1.NumParameters = 1;
-		root_signature_desc.Desc_1_1.pParameters = rootParameters;
-		root_signature_desc.Desc_1_1.NumStaticSamplers = 0;
-		root_signature_desc.Desc_1_1.pStaticSamplers = nullptr;
+		D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
+		rootSignatureDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
+		rootSignatureDesc.Desc_1_1.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		rootSignatureDesc.Desc_1_1.NumParameters = 1;
+		rootSignatureDesc.Desc_1_1.pParameters = rootParameters;
+		rootSignatureDesc.Desc_1_1.NumStaticSamplers = 0;
+		rootSignatureDesc.Desc_1_1.pStaticSamplers = nullptr;
 
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
 
-		ThrowIfFailed(D3D12SerializeVersionedRootSignature(&root_signature_desc, &signature, &error));
-		ThrowIfFailed(device->get_device()->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&root_signature)));
-		root_signature->SetName(L"Wild Root Signature");
+		ThrowIfFailed(D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &signature, &error));
+		ThrowIfFailed(device->GetDevice()->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
+		m_rootSignature->SetName(L"Wild Root Signature");
 
 		if (error)
 		{

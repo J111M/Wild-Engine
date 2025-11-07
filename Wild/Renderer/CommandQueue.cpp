@@ -8,17 +8,17 @@ namespace Wild {
         D3D12_COMMAND_QUEUE_DESC queueDesc = {};
         queueDesc.Type = type;
         queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-        ThrowIfFailed(device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&command_queue)));
-        command_queue->SetName(StringToWString(resource_name).c_str());
+        ThrowIfFailed(device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue)));
+        m_commandQueue->SetName(StringToWString(resource_name).c_str());
 
         WD_INFO("Command queue create: {0}", resource_name.c_str());
 	}
 
     void CommandQueue::execute_list(CommandList& list)
     {
-        if (list.is_ready()) {
-            ID3D12CommandList* l[] = { list.get_list().Get() };
-            command_queue->ExecuteCommandLists(1, l);
+        if (list.IsReady()) {
+            ID3D12CommandList* l[] = { list.GetList().Get() };
+            m_commandQueue->ExecuteCommandLists(1, l);
         }
         else
             WD_ERROR("Command list is not ready for execution but is still called!");
@@ -28,6 +28,6 @@ namespace Wild {
     void CommandQueue::wait_for_fence() const
     {
         Fence fence;
-        fence.signal_and_wait(*this);
+        fence.SignalAndWait(*this);
     }
 }

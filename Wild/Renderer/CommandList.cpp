@@ -3,32 +3,32 @@
 namespace Wild {
 	CommandList::CommandList(D3D12_COMMAND_LIST_TYPE list_type)
 	{
-		auto device = engine.get_device();
+		auto device = engine.GetDevice();
 
-		type = list_type;
+		m_type = list_type;
 
-		ThrowIfFailed(device->get_device()->CreateCommandAllocator(type, IID_PPV_ARGS(&allocator)));
-		ThrowIfFailed(device->get_device()->CreateCommandList(0, type, allocator.Get(), nullptr, IID_PPV_ARGS(&command_list)));
+		ThrowIfFailed(device->GetDevice()->CreateCommandAllocator(m_type, IID_PPV_ARGS(&m_allocator)));
+		ThrowIfFailed(device->GetDevice()->CreateCommandList(0, m_type, m_allocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
 
 
 		
 	}
 
-	void CommandList::reset() {
-		allocator->Reset();
-		command_list->Reset(allocator.Get(), nullptr);
+	void CommandList::Reset() {
+		m_allocator->Reset();
+		m_commandList->Reset(m_allocator.Get(), nullptr);
 	}
 
-	void CommandList::close() {
+	void CommandList::Close() {
 		if (!command_list_closed) {
-			command_list->Close();
+			m_commandList->Close();
 			command_list_closed = true;
 		}
 	}
 
 	void CommandList::BeginRender()
 	{
-		auto device = engine.get_device();
+		auto device = engine.GetDevice();
 
 		root_signature_and_pso = false;
 		m_frameInFlight = true;

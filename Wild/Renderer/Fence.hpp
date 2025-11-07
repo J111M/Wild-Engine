@@ -11,13 +11,13 @@ namespace Wild {
 		Fence();
 		~Fence();
 
-		void signal(const CommandQueue& command_queue);
-		void signal_and_wait(const CommandQueue& command_queue);
+		void Signal(const CommandQueue& m_commandQueue);
+		void SignalAndWait(const CommandQueue& m_commandQueue);
 
-		void wait_for_fence_value(std::chrono::milliseconds duration = std::chrono::milliseconds::max());
+		void WaitForFenceValue(std::chrono::milliseconds duration = std::chrono::milliseconds::max());
 	private:
-		ComPtr<ID3D12Fence> fence;
-		uint64_t fence_value;
-		HANDLE fence_event;
+		ComPtr<ID3D12Fence> m_fence;
+		uint64_t m_fenceValue;
+		HANDLE m_fenceEvent;
 	};
 }

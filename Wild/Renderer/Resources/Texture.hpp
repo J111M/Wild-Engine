@@ -36,7 +36,7 @@ namespace Wild {
 
 		std::string name = "default";
 
-		bool should_generate_mips = false;
+		bool shouldGenerateMips = false;
 	};
 
 	class Texture
@@ -47,10 +47,10 @@ namespace Wild {
 		~Texture() {};
 
 		ComPtr<ID3D12Resource2> GetResource() { return m_resource; }
-		TextureDesc get_desc() { return m_desc; }
+		TextureDesc GetDesc() { return m_desc; }
 
-		uint32_t width() const { return m_desc.width; }
-		uint32_t height() const { return m_desc.height; }
+		uint32_t Width() const { return m_desc.width; }
+		uint32_t Height() const { return m_desc.height; }
 
 		std::shared_ptr<RenderTargetView> GetRtv() const;
 		std::shared_ptr<DepthStencilView> GetDsv() const;

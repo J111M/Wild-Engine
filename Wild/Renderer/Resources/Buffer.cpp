@@ -17,13 +17,13 @@ namespace Wild {
 		}
 	}
 
-	void Buffer::create_cpu_resource(BufferDesc desc)
+	void Buffer::CreateCpuResource(BufferDesc desc)
 	{
-		auto device = engine.get_device();
+		auto device = engine.GetDevice();
 		WD_ERROR("CPU resources creation not unimplemented!");
 	}
 
-	void Buffer::create_vertex_buffer(std::vector<Vertex> vertices)
+	void Buffer::CreateVertexBuffer(std::vector<Vertex> vertices)
 	{
 		if (vertices.size() <= 0)
 		{
@@ -39,22 +39,22 @@ namespace Wild {
 			return;
 		}
 
-		auto device = engine.get_device();
+		auto device = engine.GetDevice();
 
-		device->get_device()->CreateCommittedResource(
+		device->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 			D3D12_HEAP_FLAG_NONE,
 			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.buffer_size),
 			D3D12_RESOURCE_STATE_COMMON,
 			nullptr,
-			IID_PPV_ARGS(&buffer));
+			IID_PPV_ARGS(&m_buffer));
 
-		buffer->SetName(std::wstring(m_desc.name.begin(), m_desc.name.end()).c_str());
+		m_buffer->SetName(std::wstring(m_desc.name.begin(), m_desc.name.end()).c_str());
 
 		// Upload heap for GPU resources
 		ComPtr<ID3D12Resource2> upload_heap;
 
-		device->get_device()->CreateCommittedResource(
+		device->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), // upload heap
 			D3D12_HEAP_FLAG_NONE, // no flags
 			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.buffer_size), // resource description for a buffer
@@ -76,57 +76,57 @@ namespace Wild {
 
 		auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-		UpdateSubresources(list.get_list().Get(), buffer.Get(), upload_heap.Get(), 0, 0, 1, &data);
+		UpdateSubresources(list.GetList().Get(), m_buffer.Get(), upload_heap.Get(), 0, 0, 1, &data);
 
-		list.get_list()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
+		list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 
 		// Execute the command list
-		list.close();
-		device->get_command_queue()->execute_list(list);
-		device->get_command_queue()->wait_for_fence();
+		list.Close();
+		device->GetCommandQueue()->execute_list(list);
+		device->GetCommandQueue()->wait_for_fence();
 
-		m_vbView = std::make_shared<VertexBufferView>(buffer, m_desc.buffer_size, m_desc.stride);
+		m_vbView = std::make_shared<VertexBufferView>(m_buffer, m_desc.buffer_size, m_desc.stride);
 	}
 
 	void Buffer::CreateConstantBuffer()
 	{
-		auto device = engine.get_device();
+		auto device = engine.GetDevice();
 
 		if (m_desc.buffer_size <= 0) {
 			WD_ERROR("Constant buffer invalid data size.");
 			return;
 		}
 			
-		device->get_device()->CreateCommittedResource(
+		device->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 			D3D12_HEAP_FLAG_NONE,
 			&CD3DX12_RESOURCE_DESC::Buffer((m_desc.buffer_size + 255) & ~255),
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&buffer));
+			IID_PPV_ARGS(&m_buffer));
 
-		m_cbView = std::make_shared<ConstantBufferView>(buffer, m_desc.buffer_size);
+		m_cbView = std::make_shared<ConstantBufferView>(m_buffer, m_desc.buffer_size);
 	}
 
 	void Buffer::CreateIndexBuffer(std::vector<uint32_t> indices)
 	{
-		auto device = engine.get_device();
+		auto device = engine.GetDevice();
 
 		m_desc.buffer_size = indices.size() * sizeof(uint32_t);
 
 		WriteData((void*)indices.data(), m_desc.buffer_size);
 
-		device->get_device()->CreateCommittedResource(
+		device->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 			D3D12_HEAP_FLAG_NONE,
 			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.buffer_size),
 			D3D12_RESOURCE_STATE_COMMON,
 			nullptr,
-			IID_PPV_ARGS(&buffer));
+			IID_PPV_ARGS(&m_buffer));
 
 		// Upload buffer
 		ComPtr<ID3D12Resource> uploadHeap;
-		device->get_device()->CreateCommittedResource(
+		device->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 			D3D12_HEAP_FLAG_NONE,
 			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.buffer_size),
@@ -141,29 +141,29 @@ namespace Wild {
 
 		auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-		UpdateSubresources(list.get_list().Get(), buffer.Get(), uploadHeap.Get(),
+		UpdateSubresources(list.GetList().Get(), m_buffer.Get(), uploadHeap.Get(),
 			0, 0, 1, &indexData);
 
-		list.get_list()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
+		list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
 
 		// Execute the command list
-		list.close();
-		device->get_command_queue()->execute_list(list);
-		device->get_command_queue()->wait_for_fence();
+		list.Close();
+		device->GetCommandQueue()->execute_list(list);
+		device->GetCommandQueue()->wait_for_fence();
 
-		m_ibView = std::make_shared<IndexBufferView>(buffer, m_desc.buffer_size, DXGI_FORMAT_R32_UINT);
+		m_ibView = std::make_shared<IndexBufferView>(m_buffer, m_desc.buffer_size, DXGI_FORMAT_R32_UINT);
 	}
 
 	void Buffer::Map(ComPtr<ID3D12Resource2> rs)
 	{
 		m_dataIsMapped = true;
-		buffer->Map(0, nullptr, &m_data);
+		m_buffer->Map(0, nullptr, &m_data);
 	}
 
 	void Buffer::Unmap()
 	{
 		if (m_dataIsMapped) {
-			buffer->Unmap(0, nullptr);
+			m_buffer->Unmap(0, nullptr);
 			m_dataIsMapped = false;
 		}
 	}

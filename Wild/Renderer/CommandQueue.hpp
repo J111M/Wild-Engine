@@ -12,7 +12,7 @@ namespace Wild {
 		CommandQueue(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE list_type, const std::string& resource_name);
 		~CommandQueue() {};
 
-		ComPtr<ID3D12CommandQueue> get_queue() const { return command_queue; }
+		ComPtr<ID3D12CommandQueue> get_queue() const { return m_commandQueue; }
 
 		D3D12_COMMAND_LIST_TYPE get_type() const { return type; }
 
@@ -20,7 +20,7 @@ namespace Wild {
 
 		void wait_for_fence() const;
 	private:
-		ComPtr<ID3D12CommandQueue> command_queue;
+		ComPtr<ID3D12CommandQueue> m_commandQueue;
 		D3D12_COMMAND_LIST_TYPE type{};
 	};
 }

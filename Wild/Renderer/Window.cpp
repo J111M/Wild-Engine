@@ -6,31 +6,31 @@
 #include <wrl.h>
 
 namespace Wild {
-	Window::Window(std::string window_name, int widthIn, int heightIn)
+	Window::Window(std::string windowName, int width, int height)
 	{
-		width = widthIn;
-		height = heightIn;
+		m_width = width;
+		m_height = height;
 
 		if (!glfwInit()) {
 			WD_FATAL("Failed to initialize glfw!");
 			glfwTerminate();
 		}
 			
-		window_name = window_name;
+		m_windowName = windowName;
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-		window = glfwCreateWindow(width, height, window_name.c_str(), nullptr, nullptr);
+		m_window = glfwCreateWindow(m_width, m_height, windowName.c_str(), nullptr, nullptr);
 
-		hwnd = glfwGetWin32Window(window);
+		m_hwnd = glfwGetWin32Window(m_window);
 
-		glfwSetWindowUserPointer(window, this);
-		glfwSetFramebufferSizeCallback(window, FrameBufferResizeCallback);
+		glfwSetWindowUserPointer(m_window, this);
+		glfwSetFramebufferSizeCallback(m_window, FrameBufferResizeCallback);
 	}
 
 	Window::~Window()
 	{
-		glfwDestroyWindow(window);
+		glfwDestroyWindow(m_window);
 		glfwTerminate();
 	}
 
@@ -39,7 +39,7 @@ namespace Wild {
 		auto userWindow = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 
 		userWindow->m_frameBufferResized = true;
-		userWindow->width = width;
-		userWindow->height = height;
+		userWindow->m_width = width;
+		userWindow->m_height = height;
 	}
 }

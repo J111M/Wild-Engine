@@ -8,7 +8,7 @@ namespace Wild {
 	class Log
 	{
 	public:
-		static void initialize();
+		static void Initialize();
 
 		inline static std::shared_ptr<spdlog::logger>& get_logger() { return m_logger; }
 	private:

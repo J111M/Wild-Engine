@@ -10,30 +10,30 @@ namespace Wild {
 	class Window
 	{
 	public:
-		Window(std::string window_name, int widthIn, int heightIn);
+		Window(std::string windowName, int width, int height);
 		~Window();
 
-		bool should_close() { return glfwWindowShouldClose(window); }
+		bool ShouldClose() { return glfwWindowShouldClose(m_window); }
 
-		HWND get_handle() { return hwnd; }
+		HWND GetHandle() { return m_hwnd; }
 
-		GLFWwindow* GetWindow() { return window; }
+		GLFWwindow* GetWindow() { return m_window; }
 
-		int get_width() { return width; }
-		int get_height() { return height; }
+		int GetWidth() { return m_width; }
+		int GetHeight() { return m_height; }
 
 		float AspectRatio() {
-			return  static_cast<float>(width) / static_cast<float>(height);
+			return  static_cast<float>(m_width) / static_cast<float>(m_height);
 		}
 
 		static void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
 	private:
-		int width{}, height{};
+		int m_width{}, m_height{};
 		bool m_frameBufferResized = false;
 
-		GLFWwindow* window = nullptr;
+		GLFWwindow* m_window = nullptr;
 
-		std::string window_name{};
-		HWND hwnd{};
+		std::string m_windowName{};
+		HWND m_hwnd{};
 	};
 }

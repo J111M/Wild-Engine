@@ -15,78 +15,78 @@ namespace Wild {
 	class Device
 	{
 	public:
-		Device(std::shared_ptr<Window> p_window);
+		Device(std::shared_ptr<Window> window);
 		~Device() {};
 
-		void initialize();
+		void Initialize();
 		void Shutdown();
 
-		ComPtr<ID3D12Device> get_device() { return device; }
-		ComPtr<IDXGIFactory4> get_factory() { return factory; }
+		ComPtr<ID3D12Device> GetDevice() { return m_device; }
+		ComPtr<IDXGIFactory4> GetFactory() { return m_factory; }
 
-		std::shared_ptr<CommandQueue> get_command_queue() { return command_queue; }
+		std::shared_ptr<CommandQueue> GetCommandQueue() { return m_commandQueue; }
 
-		UINT get_back_buffer_index() { return m_swapchain->GetCurrentBackBufferIndex(); }
+		UINT GetBackBufferIndex() { return m_swapchain->GetCurrentBackBufferIndex(); }
 		
-		std::shared_ptr<Texture> GetRenderTarget() { return m_renderTargets[back_buffer_index]; }
-		std::shared_ptr<CommandList> GetCommandList() { return command_list[back_buffer_index]; }
+		std::shared_ptr<Texture> GetRenderTarget() { return m_renderTargets[m_backBufferIndex]; }
+		std::shared_ptr<CommandList> GetCommandList() { return m_commandList[m_backBufferIndex]; }
 
-		void begin_frame();
-		void end_frame();
+		void BeginFrame();
+		void EndFrame();
 
-		void resize_window();
+		void ResizeWindow();
 
-		int GetWidth() { return client_width; }
-		int GetHeight() { return client_height; }
+		int GetWidth() { return m_clientWidth; }
+		int GetHeight() { return m_clientHeight; }
 
-		void flush();
+		void Flush();
 
 		std::shared_ptr<DescriptorAllocatorRtv> GetRtvAllocator() { return m_descriptorAllocatorsRtv; }
 		std::shared_ptr<DescriptorAllocatorDsv> GetDsvAllocator() { return m_descriptorAllocatorsDsv; }
 		std::shared_ptr<DescriptorAllocatorCbvSrvUav> GetCbvSrvUavAllocator() { return m_desciptorAllocatorCbvSrvUav; }
 	private:
-		void setup_factory();
-		void create_adapter();
-		void create_device();
+		void SetupFactory();
+		void CreateAdapter();
+		void CreateDevice();
 		void CreateSwapchain();
 
 		void CreateTextureFromSwapchain(UINT index);
 
-		ComPtr<IDXGIFactory4> factory;
+		ComPtr<IDXGIFactory4> m_factory;
 
 		// factory flags
-		UINT dxgi_factory_flags = 0;
+		UINT m_dxgiFactoryFlags = 0;
 
-		ComPtr<ID3D12Debug1> debug_controller;
+		ComPtr<ID3D12Debug1> m_debugController;
 
-		ComPtr<IDXGIAdapter1> adapter;
+		ComPtr<IDXGIAdapter1> m_adapter;
 
-		ComPtr<ID3D12Device> device;
-		ComPtr<ID3D12DebugDevice> debug_device;
+		ComPtr<ID3D12Device> m_device;
+		ComPtr<ID3D12DebugDevice> m_debugDevice;
 
 		// Swapchain
 		ComPtr<IDXGISwapChain3> m_swapchain;
 		D3D12_VIEWPORT m_viewport;
 		D3D12_RECT m_surfaceSize;
 
-		std::shared_ptr<CommandList> command_list[BACK_BUFFER_COUNT];
+		std::shared_ptr<CommandList> m_commandList[BACK_BUFFER_COUNT];
 		std::shared_ptr<Texture> m_renderTargets[BACK_BUFFER_COUNT];
 
 		// TODO make command queue for each type
-		std::shared_ptr<CommandQueue> command_queue;
+		std::shared_ptr<CommandQueue> m_commandQueue;
 
-		std::shared_ptr<Window> window;
+		std::shared_ptr<Window> m_window;
 
 		std::shared_ptr<DescriptorAllocatorRtv> m_descriptorAllocatorsRtv;
 		std::shared_ptr<DescriptorAllocatorDsv> m_descriptorAllocatorsDsv;
 		std::shared_ptr<DescriptorAllocatorCbvSrvUav> m_desciptorAllocatorCbvSrvUav;
 
-		UINT back_buffer_index{};
-		UINT current_frame{};
+		UINT m_backBufferIndex{};
+		UINT m_currentFrame{};
 
-		bool is_vsync_enabled = true;
-		bool is_hdr_enabled = false;
+		bool m_vsyncEnabled = true;
+		bool m_hdrEnabled = false;
 
-		int client_width{}, client_height{};
+		int m_clientWidth{}, m_clientHeight{};
 	};
 }
