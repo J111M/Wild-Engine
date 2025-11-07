@@ -1,10 +1,11 @@
 #pragma once
 
-#include "Renderer/Resources/Buffer.hpp"
 #include "Core/Transform.hpp"
 
 #include <glm/glm.hpp>
 #include <memory>
+
+class Buffer;
 
 namespace Wild {
 	struct Vertex {
@@ -20,8 +21,10 @@ namespace Wild {
 		Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices = {});
 		~Mesh() {};
 
-		std::shared_ptr<Buffer> GetVertexBuffer() const { m_vertexBuffer; }
-		std::shared_ptr<Buffer> GetIndexBuffer() const { m_indexBuffer; }
+		std::shared_ptr<Buffer> GetVertexBuffer() const { return m_vertexBuffer; }
+		std::shared_ptr<Buffer> GetIndexBuffer() const { return m_indexBuffer; }
+
+		bool HasIndexBuffer() const { return m_hasIndexBuffer; }
 
 		uint32_t GetDrawCount() const { return m_drawCount; }
 

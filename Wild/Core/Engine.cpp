@@ -22,7 +22,7 @@ namespace Wild {
 		auto endTime = previousTime;
 
 		auto CameraEntity = engine.GetECS()->CreateEntity();
-		engine.GetECS()->AddComponent<Transform>(CameraEntity, glm::vec3(0, 0, -2), CameraEntity);
+		engine.GetECS()->AddComponent<Transform>(CameraEntity, glm::vec3(0, 0, 0), CameraEntity);
 		auto& camera = engine.GetECS()->AddComponent<Camera>(CameraEntity);
 
 		while (!window->should_close()) {

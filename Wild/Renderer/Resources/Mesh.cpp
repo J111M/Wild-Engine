@@ -1,5 +1,7 @@
 #include "Renderer/Resources/Mesh.hpp"
 
+#include "Renderer/Resources/Buffer.hpp"
+
 #include "Tools/Log.hpp"
 
 namespace Wild {
@@ -25,7 +27,7 @@ namespace Wild {
 		{
 			BufferDesc desc{};
 			m_indexBuffer = std::make_shared<Buffer>(desc);
-			m_vertexBuffer->CreateIndexBuffer(indices);
+			m_indexBuffer->CreateIndexBuffer(indices);
 
 			m_drawCount = indices.size();
 		}

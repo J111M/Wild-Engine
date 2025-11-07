@@ -1,6 +1,7 @@
 #include "Renderer/Resources/Buffer.hpp"
 
 #include "Renderer/Renderer.hpp"
+#include "Renderer/Resources/Mesh.hpp"
 
 namespace Wild {
 	Buffer::Buffer(BufferDesc desc)
@@ -119,7 +120,7 @@ namespace Wild {
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 			D3D12_HEAP_FLAG_NONE,
 			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.buffer_size),
-			D3D12_RESOURCE_STATE_COPY_DEST,
+			D3D12_RESOURCE_STATE_COMMON,
 			nullptr,
 			IID_PPV_ARGS(&buffer));
 
