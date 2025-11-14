@@ -31,13 +31,17 @@ namespace Wild {
 		//psoDesc.SampleDesc = sampleDesc;
 		psoDesc.SampleMask = 0xffffffff;
 		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.RasterizerState.FrontCounterClockwise = TRUE;
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.SampleDesc.Count = 1;
 		psoDesc.SampleDesc.Quality = 0;
 
-		psoDesc.DepthStencilState.DepthEnable = FALSE;
-		psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+		psoDesc.DepthStencilState.DepthEnable = TRUE;
+		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
 		ThrowIfFailed(device->GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
 
@@ -79,8 +83,10 @@ namespace Wild {
 		command_list.GetList()->RSSetViewports(1, &viewPort);
 		command_list.GetList()->RSSetViewports(1, &viewPort);
 		command_list.GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		command_list.GetList()->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->get_cpu_handle(), false, nullptr);
 
+		// Set main render target and depth
+		command_list.GetList()->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->get_cpu_handle(), FALSE, &device->GetDepthTarget()->GetDsv()->get_cpu_handle());
+		
 		auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
 		for (auto&& [entity, trans, mesh] : meshes.each()) {
 			if (camera) {
@@ -103,7 +109,6 @@ namespace Wild {
 			else {
 				command_list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
 			}
-			
 		}		
 	}
 

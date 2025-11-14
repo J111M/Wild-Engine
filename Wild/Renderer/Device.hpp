@@ -29,6 +29,8 @@ namespace Wild {
 		UINT GetBackBufferIndex() { return m_swapchain->GetCurrentBackBufferIndex(); }
 		
 		std::shared_ptr<Texture> GetRenderTarget() { return m_renderTargets[m_backBufferIndex]; }
+		std::shared_ptr<Texture> GetDepthTarget() { return m_depthTarget; }
+
 		std::shared_ptr<CommandList> GetCommandList() { return m_commandList[m_backBufferIndex]; }
 
 		void BeginFrame();
@@ -71,6 +73,7 @@ namespace Wild {
 
 		std::shared_ptr<CommandList> m_commandList[BACK_BUFFER_COUNT];
 		std::shared_ptr<Texture> m_renderTargets[BACK_BUFFER_COUNT];
+		std::shared_ptr<Texture> m_depthTarget;
 
 		// TODO make command queue for each type
 		std::shared_ptr<CommandQueue> m_commandQueue;

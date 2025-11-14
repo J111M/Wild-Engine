@@ -26,11 +26,14 @@ namespace Wild {
     }
 
     void Device::Shutdown(){
+        // Release resources manually since we are working with static objects
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)
         {
             m_renderTargets[i].reset();
         }
 
+        m_depthTarget.reset();
+        
         m_desciptorAllocatorCbvSrvUav.reset();
         m_descriptorAllocatorsDsv.reset();
         m_descriptorAllocatorsRtv.reset();
@@ -75,6 +78,7 @@ namespace Wild {
         FLOAT clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
         currentCommandList->GetList()->ClearRenderTargetView(backBuffer->GetRtv()->get_cpu_handle(), clearColor, 0, nullptr);
+        currentCommandList->GetList()->ClearDepthStencilView(m_depthTarget->GetDsv()->get_cpu_handle(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
         currentCommandList->BeginRender();
     }
@@ -133,6 +137,9 @@ namespace Wild {
                 m_renderTargets[i].reset();
                 m_renderTargets[i] = nullptr;
             }
+
+            m_depthTarget.reset();
+            m_depthTarget = nullptr;
 
             CreateSwapchain();
 
@@ -235,11 +242,20 @@ namespace Wild {
         {
             CreateTextureFromSwapchain(i);
         }
+
+        TextureDesc desc{};
+        desc.width = m_clientWidth;
+        desc.height = m_clientHeight;
+
+        desc.usage = TextureDesc::gpuOnly;
+        desc.flag = TextureDesc::depthStencil;
+
+        m_depthTarget = std::make_shared<Texture>(desc);
     }
 
     void Device::CreateTextureFromSwapchain(UINT index)
     {
-        TextureDesc desc;
+        TextureDesc desc{};
         DXGI_SWAP_CHAIN_DESC1 scDesc;
         m_swapchain->GetDesc1(&scDesc);
         desc.width = scDesc.Width;
