@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Tools/Common3d12.hpp"
+#include "Tools/Types3d12.hpp"
 
 #include "Renderer/ShaderPipeline.hpp"
 #include "Renderer/Resources/Buffer.hpp"
@@ -26,8 +27,6 @@ namespace Wild {
 
 		void BeginRender();
 		void EndRender();
-
-		//void SetPipelineSettings(const PipelineStateSettings& settings);
 
 	private:
 		ComPtr<ID3D12GraphicsCommandList> m_commandList;

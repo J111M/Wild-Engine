@@ -1,18 +1,27 @@
 #pragma once
 
+#include "Tools/Types3d12.hpp"
 #include "Tools/Common3d12.hpp"
 
 #include <string>
 
 namespace Wild {
-	class PipelineStateBuilder
+	enum class PipelineStateType : uint8_t
+	{
+		Graphics,
+		Compute
+	};
+
+	class PipelineState
 	{
 	public:
-		PipelineStateBuilder() {};
-		~PipelineStateBuilder() {};
+		PipelineState(PipelineStateType Type, const PipelineStateSettings& settings);
+		~PipelineState() {};
 
 	private:
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC m_psoDesc{};
-		std::string m_pipelineName;
+		
+
+
+		ComPtr<ID3D12PipelineState> m_pso;
 	};
 }

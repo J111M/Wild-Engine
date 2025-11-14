@@ -30,6 +30,8 @@ namespace Wild {
 
 		RootConstant m_rc;
 
+		PipelineStateSettings m_settings;
+
 		ComPtr<ID3D12RootSignature> m_rootSignature;
 
 		ComPtr<ID3D12PipelineState> m_pso;

@@ -9,6 +9,8 @@ namespace Wild {
 
 		CreateRootSignature();
 
+		//m_settings
+
 		// PSO
 		m_vertShader = std::make_shared<Shader>("Shaders/vertShader.hlsl");
 		m_fragShader = std::make_shared<Shader>("Shaders/fragShader.hlsl");
