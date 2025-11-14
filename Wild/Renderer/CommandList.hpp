@@ -19,7 +19,7 @@ namespace Wild {
 		ComPtr<ID3D12GraphicsCommandList> GetList() { return m_commandList; }
 		ComPtr<ID3D12CommandAllocator> GetAllocator() { return m_allocator; }
 
-		bool IsReady() { return command_list_closed; }
+		bool IsReady() { return m_commandListClosed; }
 
 		void Reset();
 		void Close();
@@ -35,8 +35,8 @@ namespace Wild {
 
 		D3D12_COMMAND_LIST_TYPE m_type;
 
-		bool command_list_closed = false;
-		bool root_signature_and_pso = false;
+		bool m_commandListClosed = false;
+		bool m_rootSignatureAndPso = false;
 		bool m_frameInFlight = false;
 		//std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> m_psoCache{};
 	};

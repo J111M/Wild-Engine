@@ -24,14 +24,14 @@ namespace Wild {
 		ComPtr<ID3D12Device> GetDevice() { return m_device; }
 		ComPtr<IDXGIFactory4> GetFactory() { return m_factory; }
 
-		std::shared_ptr<CommandQueue> GetCommandQueue() { return m_commandQueue; }
+		std::shared_ptr<CommandQueue> GetCommandQueue(QueueType type) { return m_commandQueue[static_cast<uint32_t>(type)]; }
 
 		UINT GetBackBufferIndex() { return m_swapchain->GetCurrentBackBufferIndex(); }
 		
 		std::shared_ptr<Texture> GetRenderTarget() { return m_renderTargets[m_backBufferIndex]; }
 		std::shared_ptr<Texture> GetDepthTarget() { return m_depthTarget; }
 
-		std::shared_ptr<CommandList> GetCommandList() { return m_commandList[m_backBufferIndex]; }
+		std::shared_ptr<CommandList> GetCommandList() { return m_directCommandList[m_backBufferIndex]; }
 
 		void BeginFrame();
 		void EndFrame();
@@ -71,12 +71,14 @@ namespace Wild {
 		D3D12_VIEWPORT m_viewport;
 		D3D12_RECT m_surfaceSize;
 
-		std::shared_ptr<CommandList> m_commandList[BACK_BUFFER_COUNT];
+		std::shared_ptr<CommandList> m_directCommandList[BACK_BUFFER_COUNT];
+		std::shared_ptr<CommandList> m_computeCommandList[BACK_BUFFER_COUNT];
+
 		std::shared_ptr<Texture> m_renderTargets[BACK_BUFFER_COUNT];
 		std::shared_ptr<Texture> m_depthTarget;
 
 		// TODO make command queue for each type
-		std::shared_ptr<CommandQueue> m_commandQueue;
+		std::shared_ptr<CommandQueue> m_commandQueue[static_cast<uint32_t>(QueueType::Max)];
 
 		std::shared_ptr<Window> m_window;
 

@@ -82,8 +82,8 @@ namespace Wild {
 
 		// Execute the command list
 		list.Close();
-		device->GetCommandQueue()->execute_list(list);
-		device->GetCommandQueue()->wait_for_fence();
+		device->GetCommandQueue(QueueType::Direct)->execute_list(list);
+		device->GetCommandQueue(QueueType::Direct)->wait_for_fence();
 
 		m_vbView = std::make_shared<VertexBufferView>(m_buffer, m_desc.buffer_size, m_desc.stride);
 	}
@@ -148,8 +148,8 @@ namespace Wild {
 
 		// Execute the command list
 		list.Close();
-		device->GetCommandQueue()->execute_list(list);
-		device->GetCommandQueue()->wait_for_fence();
+		device->GetCommandQueue(QueueType::Direct)->execute_list(list);
+		device->GetCommandQueue(QueueType::Direct)->wait_for_fence();
 
 		m_ibView = std::make_shared<IndexBufferView>(m_buffer, m_desc.buffer_size, DXGI_FORMAT_R32_UINT);
 	}

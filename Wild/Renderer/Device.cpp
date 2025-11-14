@@ -48,13 +48,15 @@ namespace Wild {
         m_descriptorAllocatorsDsv = std::make_shared<DescriptorAllocatorDsv>(m_device, 64);
         m_desciptorAllocatorCbvSrvUav = std::make_shared<DescriptorAllocatorCbvSrvUav>(m_device, 8192);
 
-        m_commandQueue = std::make_shared<CommandQueue>(m_device, D3D12_COMMAND_LIST_TYPE_DIRECT, "Direct queue");
+        m_commandQueue[static_cast<uint32_t>(QueueType::Direct)] = std::make_shared<CommandQueue>(m_device, D3D12_COMMAND_LIST_TYPE_DIRECT, "Direct queue");
+        m_commandQueue[static_cast<uint32_t>(QueueType::Compute)] = std::make_shared<CommandQueue>(m_device, D3D12_COMMAND_LIST_TYPE_COMPUTE, "Direct queue");
 
         CreateSwapchain();
 
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)
         {
-            m_commandList[i] = std::make_shared<CommandList>(D3D12_COMMAND_LIST_TYPE_DIRECT);
+            m_directCommandList[i] = std::make_shared<CommandList>(D3D12_COMMAND_LIST_TYPE_DIRECT);
+            m_computeCommandList[i] = std::make_shared<CommandList>(D3D12_COMMAND_LIST_TYPE_COMPUTE);
         }
     }
 
@@ -65,7 +67,7 @@ namespace Wild {
         m_currentFrame = m_backBufferIndex;
         m_backBufferIndex = GetBackBufferIndex();
 
-        auto currentCommandList = m_commandList[m_backBufferIndex];
+        auto currentCommandList = m_directCommandList[m_backBufferIndex];
         auto backBuffer = m_renderTargets[m_backBufferIndex];
 
         // Set the rt to the render target state for clearing
@@ -85,7 +87,7 @@ namespace Wild {
 
     void Device::EndFrame()
     {
-        auto current_command_list = m_commandList[m_backBufferIndex];
+        auto current_command_list = m_directCommandList[m_backBufferIndex];
         auto back_buffer = m_renderTargets[m_backBufferIndex];
 
         // Present frame
@@ -101,8 +103,8 @@ namespace Wild {
            current_command_list->GetList().Get()
         };
 
-        m_commandQueue->get_queue()->ExecuteCommandLists(_countof(commandLists), commandLists);
-        m_commandQueue->wait_for_fence();
+        GetCommandQueue(QueueType::Direct)->get_queue()->ExecuteCommandLists(_countof(commandLists), commandLists);
+        GetCommandQueue(QueueType::Direct)->wait_for_fence();
 
         uint32_t flags = DXGI_PRESENT_ALLOW_TEARING;
         UINT sync_interval = 0;
@@ -130,7 +132,7 @@ namespace Wild {
             m_clientHeight = std::max(1, window_height);
 
             // Wait till all commands are flushed
-            m_commandQueue->wait_for_fence();
+            GetCommandQueue(QueueType::Direct)->wait_for_fence();
 
             for (int i = 0; i < BACK_BUFFER_COUNT; i++)
             {
@@ -151,7 +153,7 @@ namespace Wild {
     }
 
     void Device::Flush() {
-        m_commandQueue->wait_for_fence();
+        GetCommandQueue(QueueType::Direct)->wait_for_fence();
     }
 
     void Device::SetupFactory()
@@ -233,7 +235,7 @@ namespace Wild {
 
             IDXGISwapChain1* new_swapchain;
 
-            ThrowIfFailed(m_factory->CreateSwapChainForHwnd(m_commandQueue->get_queue().Get(), m_window->GetHandle(), &swapchainDesc, nullptr, nullptr, &new_swapchain), "Swapchain creation failed");
+            ThrowIfFailed(m_factory->CreateSwapChainForHwnd(GetCommandQueue(QueueType::Direct)->get_queue().Get(), m_window->GetHandle(), &swapchainDesc, nullptr, nullptr, &new_swapchain), "Swapchain creation failed");
 
             m_swapchain = reinterpret_cast<IDXGISwapChain4*>(new_swapchain);
         }

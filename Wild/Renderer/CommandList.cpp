@@ -1,11 +1,11 @@
 #include "Renderer/CommandList.hpp"
 
 namespace Wild {
-	CommandList::CommandList(D3D12_COMMAND_LIST_TYPE list_type)
+	CommandList::CommandList(D3D12_COMMAND_LIST_TYPE listType)
 	{
 		auto device = engine.GetDevice();
 
-		m_type = list_type;
+		m_type = listType;
 
 		ThrowIfFailed(device->GetDevice()->CreateCommandAllocator(m_type, IID_PPV_ARGS(&m_allocator)));
 		ThrowIfFailed(device->GetDevice()->CreateCommandList(0, m_type, m_allocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
@@ -20,9 +20,9 @@ namespace Wild {
 	}
 
 	void CommandList::Close() {
-		if (!command_list_closed) {
+		if (!m_commandListClosed) {
 			m_commandList->Close();
-			command_list_closed = true;
+			m_commandListClosed = true;
 		}
 	}
 
@@ -30,7 +30,7 @@ namespace Wild {
 	{
 		auto device = engine.GetDevice();
 
-		root_signature_and_pso = false;
+		m_rootSignatureAndPso = false;
 		m_frameInFlight = true;
 
 		

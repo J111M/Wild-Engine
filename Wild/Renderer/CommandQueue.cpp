@@ -3,15 +3,15 @@
 #include "Renderer/Fence.hpp"
 
 namespace Wild {
-    CommandQueue::CommandQueue(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE list_type, const std::string& resource_name) : type{ list_type }
+    CommandQueue::CommandQueue(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE listType, const std::string& resourceName) : type{ listType }
 	{
         D3D12_COMMAND_QUEUE_DESC queueDesc = {};
         queueDesc.Type = type;
         queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
         ThrowIfFailed(device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue)));
-        m_commandQueue->SetName(StringToWString(resource_name).c_str());
+        m_commandQueue->SetName(StringToWString(resourceName).c_str());
 
-        WD_INFO("Command queue create: {0}", resource_name.c_str());
+        WD_INFO("Command queue create: {0}", resourceName.c_str());
 	}
 
     void CommandQueue::execute_list(CommandList& list)

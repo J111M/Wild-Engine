@@ -6,10 +6,17 @@
 
 
 namespace Wild {
+	enum class QueueType
+	{
+		Direct = 0,
+		Compute = 1,
+		Max = 2
+	};
+
 	class CommandQueue
 	{
 	public:
-		CommandQueue(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE list_type, const std::string& resource_name);
+		CommandQueue(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE listType, const std::string& resourceName);
 		~CommandQueue() {};
 
 		ComPtr<ID3D12CommandQueue> get_queue() const { return m_commandQueue; }
