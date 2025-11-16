@@ -8,44 +8,42 @@ namespace Wild {
 		auto device = engine.GetDevice();
 
 		CreateRootSignature();
-
 		//m_settings
 
 		// PSO
 		m_vertShader = std::make_shared<Shader>("Shaders/vertShader.hlsl");
 		m_fragShader = std::make_shared<Shader>("Shaders/fragShader.hlsl");
 
-		D3D12_INPUT_ELEMENT_DESC inputLayout[] =
-		{
-			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, sizeof(glm::vec3), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, sizeof(glm::vec3) * 2, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, sizeof(glm::vec3) * 3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-		};
+		m_settings.RootSignature = m_rootSignature;
+		m_settings.ShaderState.VertexShader = m_vertShader;
+		m_settings.ShaderState.FragShader = m_fragShader;
+		m_settings.DepthStencilState.DepthEnable = true;
 
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-		psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
-		psoDesc.pRootSignature = m_rootSignature.Get();
-		psoDesc.VS = m_vertShader->GetByteCode();
-		psoDesc.PS = m_fragShader->GetByteCode();;
-		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		//psoDesc.SampleDesc = sampleDesc;
-		psoDesc.SampleMask = 0xffffffff;
-		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-		psoDesc.RasterizerState.FrontCounterClockwise = TRUE;
-		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		psoDesc.NumRenderTargets = 1;
-		psoDesc.SampleDesc.Count = 1;
-		psoDesc.SampleDesc.Quality = 0;
+		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Graphics, m_settings);
 
-		psoDesc.DepthStencilState.DepthEnable = TRUE;
-		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		//D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+		//psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
+		//psoDesc.pRootSignature = m_rootSignature.Get();
+		//psoDesc.VS = m_vertShader->GetByteCode();
+		//psoDesc.PS = m_fragShader->GetByteCode();;
+		//psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		//psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		////psoDesc.SampleDesc = sampleDesc;
+		//psoDesc.SampleMask = 0xffffffff;
+		//psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		//psoDesc.RasterizerState.FrontCounterClockwise = TRUE;
+		//psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		//psoDesc.NumRenderTargets = 1;
+		//psoDesc.SampleDesc.Count = 1;
+		//psoDesc.SampleDesc.Quality = 0;
 
-		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		//psoDesc.DepthStencilState.DepthEnable = TRUE;
+		//psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		//psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
-		ThrowIfFailed(device->GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
+		//psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+		//ThrowIfFailed(device->GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
 
 		auto ecs = engine.GetECS();
 
@@ -68,7 +66,7 @@ namespace Wild {
 
 		D3D12_RECT scissorRect = { 0u, 0u, static_cast<LONG>(viewPort.Width), static_cast<LONG>(viewPort.Height) };
 
-		command_list.GetList()->SetPipelineState(m_pso.Get());
+		command_list.GetList()->SetPipelineState(m_pipeline->GetPso().Get());
 
 		command_list.GetList()->SetGraphicsRootSignature(m_rootSignature.Get());
 

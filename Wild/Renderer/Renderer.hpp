@@ -2,10 +2,12 @@
 
 #include "Renderer/Resources/Buffer.hpp"
 #include "Renderer/ShaderPipeline.hpp"
+#include "Renderer/PipelineStateBuilder.hpp"
 
 #include "Core/Transform.hpp"
 
 #include "Tools/Common3d12.hpp"
+#include "Tools/States.hpp"
 
 namespace Wild {
 	struct RootConstant {
@@ -35,5 +37,7 @@ namespace Wild {
 		ComPtr<ID3D12RootSignature> m_rootSignature;
 
 		ComPtr<ID3D12PipelineState> m_pso;
+
+		std::shared_ptr<PipelineState> m_pipeline;
 	};
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Tools/Common3d12.hpp"
-#include "Tools/Types3d12.hpp"
+#include "Tools/States.hpp"
 
 #include "Renderer/ShaderPipeline.hpp"
 #include "Renderer/Resources/Buffer.hpp"

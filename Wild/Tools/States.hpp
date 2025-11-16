@@ -134,6 +134,7 @@ namespace Wild {
 	};
 
     struct RasterizerState {
+		PrimitiveTopology TopologyMode = PrimitiveTopology::TriangleList;
 		FillMode FillMode = FillMode::Solid;
 		CullMode CullMode = CullMode::Back;
 		WindingOrder WindingMode = WindingOrder::CounterClockwise;
@@ -143,20 +144,20 @@ namespace Wild {
 
 	struct DepthStencilOp
 	{
-		StencilOp stencil_fail_op = StencilOp::Keep;
-		StencilOp stencil_depth_fail_op = StencilOp::Keep;
-		StencilOp stencil_pass_op = StencilOp::Keep;
-		ComparisonFunc stencil_func = ComparisonFunc::Always;
+		StencilOp StencilFailOp = StencilOp::Keep;
+		StencilOp StencilDepthFailOp = StencilOp::Keep;
+		StencilOp StencilPassOp = StencilOp::Keep;
+		ComparisonFunc StencilFunc = ComparisonFunc::Always;
 	};
 
 	struct DepthStencilState
 	{
 		bool DepthEnable = true;
-		DepthWriteMask depth_write_mask = DepthWriteMask::All;
-		ComparisonFunc depth_func = ComparisonFunc::Greater;
-		bool stencil_enable = false;
-		uint8_t stencil_read_mask = 0xff;
-		uint8_t stencil_write_mask = 0xff;
+		DepthWriteMask DepthWriteMask = DepthWriteMask::All;
+		ComparisonFunc DepthFunc = ComparisonFunc::LessEqual;
+		bool StencilEnable = false;
+		uint8_t StencilReadMask = 0xff;
+		uint8_t StencilWriteMask = 0xff;
 		
 		DepthStencilOp FrontFace{};
 		DepthStencilOp BackFace{};
