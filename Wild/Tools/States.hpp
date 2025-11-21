@@ -173,12 +173,20 @@ namespace Wild {
 
     struct PipelineStateSettings {
 		ShaderState ShaderState{};
-
 		RasterizerState RasterizerState{};
 		DepthStencilState DepthStencilState{};
 
-		ComPtr<ID3D12RootSignature> RootSignature{};
 
         std::string PipelineName{};
     };
+}
+
+namespace RootParams{
+	enum RootResourceType : uint8_t {
+		Constants,
+		ConstantBufferView,
+		ShaderResourceView,
+		UnorderedAccessView,
+		DescriptorTable, // For SRV, UAV and CBV table
+	};
 }

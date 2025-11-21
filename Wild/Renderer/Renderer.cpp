@@ -14,12 +14,18 @@ namespace Wild {
 		m_vertShader = std::make_shared<Shader>("Shaders/vertShader.hlsl");
 		m_fragShader = std::make_shared<Shader>("Shaders/fragShader.hlsl");
 
-		m_settings.RootSignature = m_rootSignature;
+		//m_settings.RootSignature = m_rootSignature;
 		m_settings.ShaderState.VertexShader = m_vertShader;
 		m_settings.ShaderState.FragShader = m_fragShader;
 		m_settings.DepthStencilState.DepthEnable = true;
 
-		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Graphics, m_settings);
+		std::vector<Uniform> uniforms;
+
+		Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(RootConstant) };
+
+		uniforms.emplace_back(uni);
+
+		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Graphics, m_settings, uniforms);
 
 		//D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 		//psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
