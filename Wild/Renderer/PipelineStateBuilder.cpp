@@ -78,7 +78,11 @@ namespace Wild {
         rootSignatureDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
         rootSignatureDesc.Desc_1_1.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
         rootSignatureDesc.Desc_1_1.NumParameters = 1;
-        rootSignatureDesc.Desc_1_1.pParameters = rootParameters.data();
+        if (rootParameters.size() > 0)
+            rootSignatureDesc.Desc_1_1.pParameters = rootParameters.data();
+        else
+            rootSignatureDesc.Desc_1_1.pParameters = nullptr;
+
         rootSignatureDesc.Desc_1_1.NumStaticSamplers = 0;
         rootSignatureDesc.Desc_1_1.pStaticSamplers = nullptr;
 

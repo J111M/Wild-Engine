@@ -24,7 +24,7 @@ namespace Wild {
 	class PipelineState
 	{
 	public:
-		PipelineState(PipelineStateType Type, const PipelineStateSettings& settings, const std::vector<Uniform>& uniforms);
+		PipelineState(PipelineStateType Type, const PipelineStateSettings& settings, const std::vector<Uniform>& uniforms = {});
 		~PipelineState() {};
 
 		ComPtr<ID3D12PipelineState> GetPso() { return m_pso; }

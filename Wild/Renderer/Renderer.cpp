@@ -33,74 +33,17 @@ namespace Wild {
 
 		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Graphics, m_settings, uniforms);
 
-		std::vector<Vertex> grassBlade{};
-
-		glm::vec3 basePos = { 0,0,0 };
-
-		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-		glm::vec3 right = glm::vec3(0.1f, 0.0f, 0.0f); // width of blade
-		glm::vec3 top = basePos + up * 1.0f;          // height of blade
-
-		glm::vec3 color = glm::vec3(0.2f, 0.8f, 0.1f);
-		glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
-
-		grassBlade.push_back({ {-0.1,0.0,0.0}, color, normal, {0.0f, 0.0f} });
-		grassBlade.push_back({ {0.1,0.0,0.0}, color, normal, {1.0f, 0.0f} });
-		grassBlade.push_back({ {-0.1,1.0,0.0},    color, normal, {1.0f, 1.0f} });
-
-		grassBlade.push_back({ {0.1,0.0,0.0},    color, normal, {1.0f, 1.0f} });
-		grassBlade.push_back({ {0.1,1.0,0.0},    color, normal, {0.0f, 1.0f} });
-		grassBlade.push_back({ {-0.1,1.0,0.0}, color, normal, { 0.0f, 0.0f } });
-
-		grassBlade.push_back({ {-0.1,1.0,0.0},    color, normal, {1.0f, 1.0f} });
-		grassBlade.push_back({ {0.1,1.0,0.0},    color, normal, {0.0f, 1.0f} });
-		grassBlade.push_back({ {-0.1,1.5,0.0}, color, normal, { 0.0f, 0.0f } });
-
-		grassBlade.push_back({ {0.1,1.0,0.0},    color, normal, {1.0f, 1.0f} });
-		grassBlade.push_back({ {0.1,1.5,0.0},    color, normal, {0.0f, 1.0f} });
-		grassBlade.push_back({ {-0.1,1.5,0.0}, color, normal, { 0.0f, 0.0f } });
-
-		grassBlade.push_back({ {-0.1,1.5,0.0},    color, normal, {1.0f, 1.0f} });
-		grassBlade.push_back({ {0.1,1.5,0.0},    color, normal, {0.0f, 1.0f} });
-		grassBlade.push_back({ {0.0,2.3,0.0}, color, normal, { 0.0f, 0.0f } });
-
-		BufferDesc desc{};
-		m_grassBuffer = std::make_shared<Buffer>(desc);
-		m_grassBuffer->CreateVertexBuffer<Vertex>(grassBlade);
-
-		//D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-		//psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
-		//psoDesc.pRootSignature = m_rootSignature.Get();
-		//psoDesc.VS = m_vertShader->GetByteCode();
-		//psoDesc.PS = m_fragShader->GetByteCode();;
-		//psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		//psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		////psoDesc.SampleDesc = sampleDesc;
-		//psoDesc.SampleMask = 0xffffffff;
-		//psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-		//psoDesc.RasterizerState.FrontCounterClockwise = TRUE;
-		//psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		//psoDesc.NumRenderTargets = 1;
-		//psoDesc.SampleDesc.Count = 1;
-		//psoDesc.SampleDesc.Quality = 0;
-
-		//psoDesc.DepthStencilState.DepthEnable = TRUE;
-		//psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		//psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-
-		//psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-
-		//ThrowIfFailed(device->GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
-
 		auto ecs = engine.GetECS();
 
 		auto entity = ecs->CreateEntity();
 		auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
 		ecs->AddComponent<Model>(entity, "Assets/Models/DamagedHelmet/glTF/DamagedHelmet.gltf", entity);
 		transform.SetPosition(glm::vec3(0, 0, -15));
+
+		m_grassManager = std::make_unique<GrassManager>();
 	}
 
-	void Renderer::Render(CommandList& command_list) {
+	void Renderer::Render(CommandList& list) {
 		auto device = engine.GetDevice();
 
 		D3D12_VIEWPORT viewPort{};
@@ -113,9 +56,9 @@ namespace Wild {
 
 		D3D12_RECT scissorRect = { 0u, 0u, static_cast<LONG>(viewPort.Width), static_cast<LONG>(viewPort.Height) };
 
-		command_list.GetList()->SetPipelineState(m_pipeline->GetPso().Get());
+		list.GetList()->SetPipelineState(m_pipeline->GetPso().Get());
 
-		command_list.GetList()->SetGraphicsRootSignature(m_pipeline->GetRootSignature().Get());
+		list.GetList()->SetGraphicsRootSignature(m_pipeline->GetRootSignature().Get());
 
 		auto ecs = engine.GetECS();
 		auto& cameras = ecs->View<Camera>();
@@ -126,13 +69,13 @@ namespace Wild {
 			break;
 		}
 
-		command_list.GetList()->RSSetScissorRects(1, &scissorRect);
-		command_list.GetList()->RSSetViewports(1, &viewPort);
-		command_list.GetList()->RSSetViewports(1, &viewPort);
-		command_list.GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		list.GetList()->RSSetScissorRects(1, &scissorRect);
+		list.GetList()->RSSetViewports(1, &viewPort);
+		list.GetList()->RSSetViewports(1, &viewPort);
+		list.GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		// Set main render target and depth
-		command_list.GetList()->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->get_cpu_handle(), FALSE, &device->GetDepthTarget()->GetDsv()->get_cpu_handle());
+		list.GetList()->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->get_cpu_handle(), FALSE, &device->GetDepthTarget()->GetDsv()->get_cpu_handle());
 		
 		auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
 		for (auto&& [entity, trans, mesh] : meshes.each()) {
@@ -140,26 +83,25 @@ namespace Wild {
 				m_rc.matrix = camera->GetProjection() * camera->GetView() * trans.GetWorldMatrix();
 			}
 
-			command_list.GetList()->SetGraphicsRoot32BitConstants(
+			list.GetList()->SetGraphicsRoot32BitConstants(
 				0,
 				sizeof(glm::mat4) / 4,
 				&m_rc.matrix,
 				0
 			);
 
-			command_list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
+			list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
 
-			/*if (mesh.HasIndexBuffer()) {
-				command_list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
-				command_list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
+			if (mesh.HasIndexBuffer()) {
+				list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
+				list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
 			}
 			else {
-				command_list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
-			}*/
+				list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
+			}
 		}
 
-		command_list.GetList()->IASetVertexBuffers(0, 1, &m_grassBuffer->GetVBView()->View());
-		command_list.GetList()->DrawInstanced(15, 1, 0, 0);
+		m_grassManager->Render(list);
 
 	}
 

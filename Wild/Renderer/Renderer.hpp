@@ -4,6 +4,8 @@
 #include "Renderer/ShaderPipeline.hpp"
 #include "Renderer/PipelineStateBuilder.hpp"
 
+#include "Systems/GrassManager.hpp"
+
 #include "Core/Transform.hpp"
 
 #include "Tools/Common3d12.hpp"
@@ -21,7 +23,7 @@ namespace Wild {
 		~Renderer() {};
 		
 		void Update() {};
-		void Render(CommandList& commandList);
+		void Render(CommandList& list);
 	private:
 		void CreateRootSignature();
 
@@ -37,6 +39,7 @@ namespace Wild {
 		//ComPtr<ID3D12RootSignature> m_rootSignature;
 
 		//ComPtr<ID3D12PipelineState> m_pso;
+		std::unique_ptr<GrassManager> m_grassManager;
 
 		std::shared_ptr<Buffer> m_grassBuffer;
 
