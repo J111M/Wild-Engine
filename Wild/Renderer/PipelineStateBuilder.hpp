@@ -28,6 +28,7 @@ namespace Wild {
 		~PipelineState() {};
 
 		ComPtr<ID3D12PipelineState> GetPso() { return m_pso; }
+		ComPtr<ID3D12RootSignature> GetRootSignature() { return m_rootSignature; }
 	private:
 		void CreateRootSignature(const std::vector<Uniform>& uniforms);
 		void CreateGraphicsPSO();

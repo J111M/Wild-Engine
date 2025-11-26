@@ -99,17 +99,9 @@ namespace Wild {
     void PipelineState::CreateGraphicsPSO()
     {
         auto device = engine.GetDevice();
-        
-        D3D12_INPUT_ELEMENT_DESC inputLayout[] =
-        {
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, sizeof(glm::vec3), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, sizeof(glm::vec3) * 2, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, sizeof(glm::vec3) * 3, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-        };
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-        psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
+        psoDesc.InputLayout = { m_settings.ShaderState.InputLayout.data(), (UINT)m_settings.ShaderState.InputLayout.size()};
         psoDesc.pRootSignature = m_rootSignature.Get();
 
         if (m_settings.ShaderState.VertexShader)
@@ -119,7 +111,6 @@ namespace Wild {
             psoDesc.PS = m_settings.ShaderState.FragShader->GetByteCode();
 
         psoDesc.PrimitiveTopologyType = GetTopologyMode(m_settings.RasterizerState.TopologyMode);
-        psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 
         psoDesc.SampleMask = 0xffffffff;
 
@@ -145,6 +136,7 @@ namespace Wild {
         }
 
         psoDesc.NumRenderTargets = 1;
+        psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
         psoDesc.SampleDesc.Count = 1;
         psoDesc.SampleDesc.Quality = 0;
 

@@ -18,7 +18,7 @@ namespace Wild {
 		{
 			BufferDesc desc{};
 			m_vertexBuffer = std::make_shared<Buffer>(desc);
-			m_vertexBuffer->CreateVertexBuffer(vertices);
+			m_vertexBuffer->CreateVertexBuffer<Vertex>(vertices);
 
 			m_drawCount = vertices.size();
 		}

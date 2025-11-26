@@ -15,3 +15,5 @@
 inline std::wstring StringToWString(const std::string& str) { return std::filesystem::path(str).wstring(); }
 
 inline std::string WStringToString(const std::wstring& str) { return std::filesystem::path(str).string(); }
+
+#include "InputElement.hpp"

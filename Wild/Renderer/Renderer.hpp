@@ -34,9 +34,11 @@ namespace Wild {
 
 		PipelineStateSettings m_settings;
 
-		ComPtr<ID3D12RootSignature> m_rootSignature;
+		//ComPtr<ID3D12RootSignature> m_rootSignature;
 
-		ComPtr<ID3D12PipelineState> m_pso;
+		//ComPtr<ID3D12PipelineState> m_pso;
+
+		std::shared_ptr<Buffer> m_grassBuffer;
 
 		std::shared_ptr<PipelineState> m_pipeline;
 	};

@@ -172,10 +172,10 @@ namespace Wild {
 	};
 
     struct PipelineStateSettings {
+		// Shader data and vertex layout
 		ShaderState ShaderState{};
 		RasterizerState RasterizerState{};
 		DepthStencilState DepthStencilState{};
-
 
         std::string PipelineName{};
     };

@@ -7,7 +7,7 @@ namespace Wild {
 	Renderer::Renderer() {
 		auto device = engine.GetDevice();
 
-		CreateRootSignature();
+		//CreateRootSignature();
 		//m_settings
 
 		// PSO
@@ -19,6 +19,12 @@ namespace Wild {
 		m_settings.ShaderState.FragShader = m_fragShader;
 		m_settings.DepthStencilState.DepthEnable = true;
 
+		// Setting up the input layout
+		m_settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+		m_settings.ShaderState.InputLayout.emplace_back(InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
+		m_settings.ShaderState.InputLayout.emplace_back(InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
+		m_settings.ShaderState.InputLayout.emplace_back(InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
+
 		std::vector<Uniform> uniforms;
 
 		Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(RootConstant) };
@@ -26,6 +32,41 @@ namespace Wild {
 		uniforms.emplace_back(uni);
 
 		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Graphics, m_settings, uniforms);
+
+		std::vector<Vertex> grassBlade{};
+
+		glm::vec3 basePos = { 0,0,0 };
+
+		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+		glm::vec3 right = glm::vec3(0.1f, 0.0f, 0.0f); // width of blade
+		glm::vec3 top = basePos + up * 1.0f;          // height of blade
+
+		glm::vec3 color = glm::vec3(0.2f, 0.8f, 0.1f);
+		glm::vec3 normal = glm::vec3(0.0f, 0.0f, 1.0f);
+
+		grassBlade.push_back({ {-0.1,0.0,0.0}, color, normal, {0.0f, 0.0f} });
+		grassBlade.push_back({ {0.1,0.0,0.0}, color, normal, {1.0f, 0.0f} });
+		grassBlade.push_back({ {-0.1,1.0,0.0},    color, normal, {1.0f, 1.0f} });
+
+		grassBlade.push_back({ {0.1,0.0,0.0},    color, normal, {1.0f, 1.0f} });
+		grassBlade.push_back({ {0.1,1.0,0.0},    color, normal, {0.0f, 1.0f} });
+		grassBlade.push_back({ {-0.1,1.0,0.0}, color, normal, { 0.0f, 0.0f } });
+
+		grassBlade.push_back({ {-0.1,1.0,0.0},    color, normal, {1.0f, 1.0f} });
+		grassBlade.push_back({ {0.1,1.0,0.0},    color, normal, {0.0f, 1.0f} });
+		grassBlade.push_back({ {-0.1,1.5,0.0}, color, normal, { 0.0f, 0.0f } });
+
+		grassBlade.push_back({ {0.1,1.0,0.0},    color, normal, {1.0f, 1.0f} });
+		grassBlade.push_back({ {0.1,1.5,0.0},    color, normal, {0.0f, 1.0f} });
+		grassBlade.push_back({ {-0.1,1.5,0.0}, color, normal, { 0.0f, 0.0f } });
+
+		grassBlade.push_back({ {-0.1,1.5,0.0},    color, normal, {1.0f, 1.0f} });
+		grassBlade.push_back({ {0.1,1.5,0.0},    color, normal, {0.0f, 1.0f} });
+		grassBlade.push_back({ {0.0,2.3,0.0}, color, normal, { 0.0f, 0.0f } });
+
+		BufferDesc desc{};
+		m_grassBuffer = std::make_shared<Buffer>(desc);
+		m_grassBuffer->CreateVertexBuffer<Vertex>(grassBlade);
 
 		//D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 		//psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
@@ -74,7 +115,7 @@ namespace Wild {
 
 		command_list.GetList()->SetPipelineState(m_pipeline->GetPso().Get());
 
-		command_list.GetList()->SetGraphicsRootSignature(m_rootSignature.Get());
+		command_list.GetList()->SetGraphicsRootSignature(m_pipeline->GetRootSignature().Get());
 
 		auto ecs = engine.GetECS();
 		auto& cameras = ecs->View<Camera>();
@@ -108,14 +149,18 @@ namespace Wild {
 
 			command_list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
 
-			if (mesh.HasIndexBuffer()) {
+			/*if (mesh.HasIndexBuffer()) {
 				command_list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
 				command_list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
 			}
 			else {
 				command_list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
-			}
-		}		
+			}*/
+		}
+
+		command_list.GetList()->IASetVertexBuffers(0, 1, &m_grassBuffer->GetVBView()->View());
+		command_list.GetList()->DrawInstanced(15, 1, 0, 0);
+
 	}
 
 	void Renderer::CreateRootSignature()
@@ -157,8 +202,7 @@ namespace Wild {
 		ComPtr<ID3DBlob> error;
 
 		ThrowIfFailed(D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &signature, &error));
-		ThrowIfFailed(device->GetDevice()->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
-		m_rootSignature->SetName(L"Wild Root Signature");
+		ThrowIfFailed(device->GetDevice()->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_pipeline->GetRootSignature())));
 
 		if (error)
 		{
