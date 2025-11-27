@@ -102,7 +102,6 @@ namespace Wild {
 		}
 
 		m_grassManager->Render(list);
-
 	}
 
 	void Renderer::CreateRootSignature()

@@ -22,8 +22,8 @@ namespace Wild {
 		auto endTime = previousTime;
 
 		auto CameraEntity = engine.GetECS()->CreateEntity();
-		engine.GetECS()->AddComponent<Transform>(CameraEntity, glm::vec3(0, 0, 0), CameraEntity);
-		auto& camera = engine.GetECS()->AddComponent<Camera>(CameraEntity);
+		auto& transform = engine.GetECS()->AddComponent<Transform>(CameraEntity, glm::vec3(0, 0, 0), CameraEntity);
+		auto& camera = engine.GetECS()->AddComponent<Camera>(CameraEntity, glm::vec3(0,0,5));
 
 		while (!m_window->ShouldClose()) {
 			auto currentTime = std::chrono::high_resolution_clock::now();

@@ -4,6 +4,8 @@
 #include "Renderer/ShaderPipeline.hpp"
 #include "Renderer/PipelineStateBuilder.hpp"
 
+#include "Core/ECS.hpp"
+
 #include <memory>
 
 namespace Wild {
@@ -11,6 +13,10 @@ namespace Wild {
 		glm::vec3 Position{};
 		float OneDCoordinates{};
 		float Sway{};
+	};
+
+	struct GrassRC {
+		glm::mat4 matrix{};
 	};
 
 	class GrassManager
@@ -29,7 +35,10 @@ namespace Wild {
 
 		std::shared_ptr<PipelineState> m_pipeline;
 
-		PipelineStateSettings m_settings;
+		GrassRC m_rc{};
+		Entity m_chunkEntity;
+
+		PipelineStateSettings m_settings{};
 	};
 
 }

@@ -7,8 +7,8 @@ namespace Wild {
 	{
 		auto device = engine.GetDevice();
 
-		m_vertShader = std::make_shared<Shader>("Shaders/vertShader.hlsl");
-		m_fragShader = std::make_shared<Shader>("Shaders/fragShader.hlsl");
+		m_vertShader = std::make_shared<Shader>("Shaders/vertGrassShader.hlsl");
+		m_fragShader = std::make_shared<Shader>("Shaders/fragGrassShader.hlsl");
 
 		m_settings.ShaderState.VertexShader = m_vertShader;
 		m_settings.ShaderState.FragShader = m_fragShader;
@@ -18,6 +18,8 @@ namespace Wild {
 		m_settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
 		m_settings.ShaderState.InputLayout.emplace_back(InputElement("COORDS", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3)));
 		m_settings.ShaderState.InputLayout.emplace_back(InputElement("SWAY", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3) + sizeof(float)));
+
+		m_settings.RasterizerState.CullMode = CullMode::None;
 
 		std::vector<Uniform> uniforms;
 
@@ -54,12 +56,40 @@ namespace Wild {
 		m_grassBuffer = std::make_shared<Buffer>(desc);
 		m_grassBuffer->CreateVertexBuffer<GrassVertex>(grassBlade);
 
+		m_chunkEntity = engine.GetECS()->CreateEntity();
+		engine.GetECS()->AddComponent<Transform>(m_chunkEntity, glm::vec3(2, 0, -5), m_chunkEntity);
 	}
+
 	GrassManager::~GrassManager()
 	{
 	}
 
 	void GrassManager::Render(CommandList& list) {
+		auto& transform = engine.GetECS()->GetComponent<Transform>(m_chunkEntity);
+
+		auto ecs = engine.GetECS();
+		auto& cameras = ecs->View<Camera>();
+
+		Camera* camera = nullptr;
+		for (auto entity : cameras) {
+			camera = &ecs->GetComponent<Camera>(entity);
+			break;
+		}
+
+		if (camera) {
+			m_rc.matrix = camera->GetProjection() * camera->GetView() * transform.GetWorldMatrix();
+		}
+
+		list.GetList()->SetPipelineState(m_pipeline->GetPso().Get());
+
+		list.GetList()->SetGraphicsRootSignature(m_pipeline->GetRootSignature().Get());
+
+		list.GetList()->SetGraphicsRoot32BitConstants(
+			0,
+			sizeof(glm::mat4) / 4,
+			&m_rc.matrix,
+			0
+		);
 		list.GetList()->IASetVertexBuffers(0, 1, &m_grassBuffer->GetVBView()->View());
 		list.GetList()->DrawInstanced(15, 1, 0, 0);
 	}
