@@ -44,14 +44,16 @@ namespace Wild {
 			endTime = std::chrono::high_resolution_clock::now();
 			float frameTime = std::chrono::duration<float, std::milli>(endTime - currentTime).count();
 		}
-
-		m_device->Flush();
-
-		m_device->Shutdown();
 	}
 
 	void Engine::Shutdown()
 	{
+		m_device->Flush();
+		m_renderer.reset();
+		m_ecs.reset();
+		m_device->Shutdown();
+		m_device.reset();
+		m_window.reset();
 	}
 
 	Engine engine = {};

@@ -44,8 +44,6 @@ namespace Wild {
 
 		void Flush();
 
-		void CreatePSO(const PipelineStateSettings& pipelineSettings, ComPtr<ID3D12PipelineState> psoIn);
-
 		std::shared_ptr<DescriptorAllocatorRtv> GetRtvAllocator() { return m_descriptorAllocatorsRtv; }
 		std::shared_ptr<DescriptorAllocatorDsv> GetDsvAllocator() { return m_descriptorAllocatorsDsv; }
 		std::shared_ptr<DescriptorAllocatorCbvSrvUav> GetCbvSrvUavAllocator() { return m_desciptorAllocatorCbvSrvUav; }
