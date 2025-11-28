@@ -1,0 +1,53 @@
+#include "Systems/GrassCompute.hpp"
+
+namespace Wild {
+	GrassCompute::GrassCompute() {
+		m_computeShader = std::make_shared<Shader>("Shaders/computeGrassDataShader.hlsl");
+
+		m_settings.ShaderState.ComputeShader = m_computeShader;
+
+		std::vector<Uniform> uniforms;
+
+		Uniform uni{ 0, 0, RootParams::RootResourceType::DescriptorTable, sizeof(GrassBladeData) * MAXGRASSBLADES };
+
+		uniforms.emplace_back(uni);
+
+		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Compute, m_settings, uniforms);
+
+		BufferDesc desc{};
+		desc.buffer_size = sizeof(GrassBladeData);
+		m_bladeDataBuffer = std::make_shared<Buffer>(desc);
+		m_bladeDataBuffer->CreateUAVBuffer(MAXGRASSBLADES);
+	}
+
+	void GrassCompute::Render(CommandList& list)
+	{
+		list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+			m_bladeDataBuffer->GetBuffer().Get(),
+			D3D12_RESOURCE_STATE_COMMON,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS
+		));
+
+		list.GetList()->SetPipelineState(m_pipeline->GetPso().Get());
+		list.GetList()->SetComputeRootSignature(m_pipeline->GetRootSignature().Get());
+
+		ID3D12DescriptorHeap* heaps[] = { engine.GetDevice()->GetCbvSrvUavAllocator()->GetHeap().Get() };
+		list.GetList()->SetDescriptorHeaps(1, heaps);
+
+		list.GetList()->SetComputeRootDescriptorTable(
+			0,
+			m_bladeDataBuffer->GetUAView()->get_gpu_handle()
+		);
+
+		// Were using 64 threads
+		list.GetList()->Dispatch(MAXGRASSBLADES / 64, 1, 1);
+
+		list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(m_bladeDataBuffer->GetBuffer().Get()));
+
+		list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+			m_bladeDataBuffer->GetBuffer().Get(),
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER
+		));
+	}
+}

@@ -43,6 +43,44 @@ namespace Wild {
 		m_cbView = std::make_shared<ConstantBufferView>(m_buffer, m_desc.buffer_size);
 	}
 
+	void Buffer::CreateUAVBuffer(uint32_t numElements)
+	{
+		auto device = engine.GetDevice();
+
+		if (m_desc.buffer_size <= 0) {
+			WD_ERROR("Constant buffer invalid data size.");
+			return;
+		}
+
+		D3D12_RESOURCE_DESC desc = {};
+		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		desc.Width = m_desc.buffer_size * numElements;
+		desc.Height = m_desc.height;
+		desc.DepthOrArraySize = m_desc.depth;
+		desc.MipLevels = m_desc.mip_levels;
+		desc.SampleDesc.Count = 1;
+		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+		device->GetDevice()->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_COMMON,
+			nullptr,
+			IID_PPV_ARGS(&m_buffer)
+		);
+
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+		uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+		uavDesc.Buffer.FirstElement = 0;
+		uavDesc.Buffer.NumElements = numElements;
+		uavDesc.Buffer.StructureByteStride = m_desc.buffer_size;
+
+		m_uaView = std::make_shared<UnorderedAccessView>(m_buffer, uavDesc);
+	}
+
 	void Buffer::CreateIndexBuffer(std::vector<uint32_t> indices)
 	{
 		auto device = engine.GetDevice();
@@ -135,6 +173,14 @@ namespace Wild {
 		if (m_cbView) { return m_cbView; }
 
 		WD_WARN("Trying to access invalid constant buffer view.");
+		return nullptr;
+	}
+
+	std::shared_ptr<UnorderedAccessView> Buffer::GetUAView() const
+	{
+		if (m_uaView) { return m_uaView; }
+
+		WD_WARN("Trying to access invalid unordered access buffer view.");
 		return nullptr;
 	}
 }

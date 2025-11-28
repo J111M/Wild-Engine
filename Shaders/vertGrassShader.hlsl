@@ -15,12 +15,24 @@ struct VSOutput
 cbuffer Constants : register(b0)
 {
     matrix model;
+    uint bladeId;
+    uint foo1;
+    uint foo2;
+    uint foo3;
 };
+
+struct GrassData
+{
+    float3 position;
+};
+
+StructuredBuffer<GrassData> grassBuffer : register(t0);
 
 VSOutput main(VSInput input)
 {
     VSOutput output;
-    output.position = mul(model, float4(input.position, 1.0f));
+    float3 bladePosition = input.position + grassBuffer[bladeId].position;
+    output.position = mul(model, float4(bladePosition, 1.0f));
     output.sway = input.sway;
     return output;
 }

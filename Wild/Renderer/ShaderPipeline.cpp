@@ -23,7 +23,8 @@ namespace Wild {
             shaderTarget = "gs_5_0";
         }
         else if (shaderPath.find(".comp") != std::string::npos ||
-            shaderPath.find(".cs") != std::string::npos) {
+            shaderPath.find(".cs") != std::string::npos ||
+            shaderPath.find("compute") != std::string::npos) {
             shaderTarget = "cs_5_0";
         }
         else {

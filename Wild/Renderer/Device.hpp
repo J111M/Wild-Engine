@@ -32,6 +32,7 @@ namespace Wild {
 		std::shared_ptr<Texture> GetDepthTarget() { return m_depthTarget; }
 
 		std::shared_ptr<CommandList> GetCommandList() { return m_directCommandList[m_backBufferIndex]; }
+		std::shared_ptr<CommandList> GetComputeCommandList() { return m_computeCommandList[m_backBufferIndex]; }
 
 		void BeginFrame();
 		void EndFrame();

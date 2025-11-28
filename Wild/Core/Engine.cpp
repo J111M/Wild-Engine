@@ -35,7 +35,7 @@ namespace Wild {
 
 			m_device->BeginFrame();
 
-			m_renderer->Render(*m_device->GetCommandList().get());
+			m_renderer->Render(*m_device->GetCommandList().get(), *m_device->GetComputeCommandList().get());
 
 			m_device->EndFrame();
 

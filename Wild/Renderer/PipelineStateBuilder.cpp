@@ -65,8 +65,10 @@ namespace Wild {
                 rootParameters[i].InitAsUnorderedAccessView(uniform.ShaderRegister, uniform.RegisterSpace, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, uniform.Visibility);
                 break;
             case RootParams::DescriptorTable:
-                //rootParameters[i].InitAsDescriptorTable();
-                WD_WARN("To be implemented.");
+                CD3DX12_DESCRIPTOR_RANGE1 range;
+                range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+                rootParameters[i].InitAsDescriptorTable(1, &range);
+                // TODO refactor to proper implementation
                 break;
             default:
                 break;
@@ -77,7 +79,7 @@ namespace Wild {
         D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
         rootSignatureDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
         rootSignatureDesc.Desc_1_1.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-        rootSignatureDesc.Desc_1_1.NumParameters = 1;
+        rootSignatureDesc.Desc_1_1.NumParameters = rootParameters.size();
         if (rootParameters.size() > 0)
             rootSignatureDesc.Desc_1_1.pParameters = rootParameters.data();
         else
@@ -172,7 +174,7 @@ namespace Wild {
     void PipelineState::CreateComputePSO()
     {
         auto device = engine.GetDevice();
-        if (m_settings.ShaderState.ComputeShader)
+        if (!m_settings.ShaderState.ComputeShader)
         {
             WD_WARN("No compute shader supplied in compute pipeline");
             return;

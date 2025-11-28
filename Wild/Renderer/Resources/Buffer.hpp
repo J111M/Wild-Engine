@@ -34,6 +34,7 @@ namespace Wild {
         void CreateCpuResource(BufferDesc desc);
 
         void CreateConstantBuffer();
+		void CreateUAVBuffer(uint32_t numElements);
         void CreateIndexBuffer(std::vector<uint32_t> indices);
 
         void Map(ComPtr<ID3D12Resource2> rs);
@@ -41,9 +42,12 @@ namespace Wild {
 
         void WriteData(void* dataSrc, size_t size);
 
+		ComPtr<ID3D12Resource2> GetBuffer() { return m_buffer; }
+
         std::shared_ptr<VertexBufferView> GetVBView() const;
         std::shared_ptr<IndexBufferView> GetIBView() const;
         std::shared_ptr<ConstantBufferView> GetCBView() const;
+        std::shared_ptr<UnorderedAccessView> GetUAView() const;
 	private:
         BufferDesc m_desc;
 
@@ -55,6 +59,7 @@ namespace Wild {
         std::shared_ptr<VertexBufferView> m_vbView;
         std::shared_ptr<IndexBufferView> m_ibView;
         std::shared_ptr<ConstantBufferView> m_cbView;
+        std::shared_ptr<UnorderedAccessView> m_uaView;
 
         void* m_data = nullptr;
 

@@ -27,10 +27,11 @@ namespace Wild {
 
 		std::vector<Uniform> uniforms;
 
-		Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(RootConstant) };
-
-		uniforms.emplace_back(uni);
-
+		{
+			Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(RootConstant) };
+			uniforms.emplace_back(uni);
+		}
+		
 		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Graphics, m_settings, uniforms);
 
 		auto ecs = engine.GetECS();
@@ -41,9 +42,12 @@ namespace Wild {
 		transform.SetPosition(glm::vec3(0, 0, -15));
 
 		m_grassManager = std::make_unique<GrassManager>();
+		m_grassPreCompute = std::make_unique<GrassCompute>();
+
+		m_grassPreCompute->Render(*engine.GetDevice()->GetCommandList());
 	}
 
-	void Renderer::Render(CommandList& list) {
+	void Renderer::Render(CommandList& list, CommandList& computeList) {
 		auto device = engine.GetDevice();
 
 		D3D12_VIEWPORT viewPort{};
@@ -101,7 +105,16 @@ namespace Wild {
 			}
 		}
 
-		m_grassManager->Render(list);
+		
+
+		m_grassManager->Render(list, m_grassPreCompute->GetGrassData());
+
+		/*list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+			m_grassPreCompute->GetGrassData()->GetBuffer().Get(),
+			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
+			D3D12_RESOURCE_STATE_COMMON
+		));*/
+
 	}
 
 	void Renderer::CreateRootSignature()
