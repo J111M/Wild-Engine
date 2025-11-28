@@ -47,7 +47,7 @@ namespace Wild {
 		list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
 			m_bladeDataBuffer->GetBuffer().Get(),
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
 		));
 	}
 }

@@ -3,7 +3,7 @@ struct VSInput
     float3 position : POSITION;
     float texCoord : COORDS;
     float sway : SWAY;
-
+    uint instanceID : SV_InstanceID;
 };
 
 struct VSOutput
@@ -31,7 +31,7 @@ StructuredBuffer<GrassData> grassBuffer : register(t0);
 VSOutput main(VSInput input)
 {
     VSOutput output;
-    float3 bladePosition = input.position + grassBuffer[bladeId].position;
+    float3 bladePosition = input.position + grassBuffer[input.instanceID].position;
     output.position = mul(model, float4(bladePosition, 1.0f));
     output.sway = input.sway;
     return output;

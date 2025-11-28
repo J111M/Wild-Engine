@@ -95,20 +95,22 @@ namespace Wild {
 		);
 
 
-		for (size_t i = 0; i < MAXGRASSBLADES; i++)
+		m_rc.bladeId = 0;
+
+		list.GetList()->SetGraphicsRoot32BitConstants(
+			0,
+			sizeof(GrassRC) / 4,
+			&m_rc,
+			0
+		);
+
+		list.GetList()->IASetVertexBuffers(0, 1, &m_grassBuffer->GetVBView()->View());
+		list.GetList()->DrawInstanced(15, MAXGRASSBLADES, 0, 0);
+
+		/*for (size_t i = 0; i < ; i++)
 		{
-			m_rc.bladeId = i;
-
-			list.GetList()->SetGraphicsRoot32BitConstants(
-				0,
-				sizeof(GrassRC) / 4,
-				&m_rc,
-				0
-			);
-
-			list.GetList()->IASetVertexBuffers(0, 1, &m_grassBuffer->GetVBView()->View());
-			list.GetList()->DrawInstanced(15, 1, 0, 0);
-		}
+			
+		}*/
 		
 	}
 }
