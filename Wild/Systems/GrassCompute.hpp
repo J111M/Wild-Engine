@@ -8,7 +8,7 @@ namespace Wild{
 
 	struct GrassBladeData {
 		glm::vec3 position{};
-		float foo;
+		float rotation{};
 	};
 
 	class GrassCompute : RenderPass
