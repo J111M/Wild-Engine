@@ -1,4 +1,5 @@
 #include "Renderer/PipelineStateBuilder.hpp"
+#include "Renderer/RootSignatureBuilder.hpp"
 
 #include "Tools/StateTransfer.hpp"
 
@@ -10,7 +11,7 @@ namespace Wild {
         CreateRootSignature(uniforms);
 
         if (!m_rootSignature)
-            WD_FATAL("No root signature supplied in pipelineSettings.");
+            WD_FATAL("Failed to create root signature.");
 
         switch (m_type)
         {
@@ -28,78 +29,33 @@ namespace Wild {
     void PipelineState::CreateRootSignature(const std::vector<Uniform>& uniforms) {
         auto device = engine.GetDevice();
 
-        D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
-        featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+        RootSignatureBuilder builder;
 
-        if (FAILED(device->GetDevice()->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
-            featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
-
-
-        std::vector<CD3DX12_ROOT_PARAMETER1> rootParameters{};
-        rootParameters.resize(uniforms.size());
-
-        for (size_t i = 0; i < rootParameters.size(); i++)
+        for (size_t i = 0; i < uniforms.size(); i++)
         {
             const Uniform& uniform = uniforms[i];
 
             switch (uniform.Type)
             {
             case RootParams::Constants:
-                if (!m_hasRootConstant) {
-                    if (uniform.ResourceSize == 0)
-                        WD_FATAL("No resource size supplied for root constant.");
-
-                    rootParameters[i].InitAsConstants((uniform.ResourceSize / 4), uniform.ShaderRegister, uniform.RegisterSpace);
-                    m_hasRootConstant = true;
-                }
-                else
-                    WD_WARN("Tried to initialize more than 1 root constant in the same pass.");
+                builder.AddConstants((uniform.ResourceSize / 4), uniform.ShaderRegister, uniform.RegisterSpace, uniform.Visibility);
                 break;
             case RootParams::ConstantBufferView:
-                rootParameters[i].InitAsConstantBufferView(uniform.ShaderRegister, uniform.RegisterSpace, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, uniform.Visibility);
+                builder.AddCBV(uniform.ShaderRegister, uniform.RegisterSpace, uniform.Visibility);
                 break;
             case RootParams::ShaderResourceView:
-                rootParameters[i].InitAsShaderResourceView(uniform.ShaderRegister, uniform.RegisterSpace, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, uniform.Visibility);
+                builder.AddSRV(uniform.ShaderRegister, uniform.RegisterSpace, uniform.Visibility);
                 break;
             case RootParams::UnorderedAccessView:
-                rootParameters[i].InitAsUnorderedAccessView(uniform.ShaderRegister, uniform.RegisterSpace, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, uniform.Visibility);
+                builder.AddUAV(uniform.ShaderRegister, uniform.RegisterSpace, uniform.Visibility);
                 break;
             case RootParams::DescriptorTable:
-                CD3DX12_DESCRIPTOR_RANGE1 range;
-                range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
-                rootParameters[i].InitAsDescriptorTable(1, &range);
-                // TODO refactor to proper implementation
-                break;
-            default:
+                builder.AddDescriptorTable(uniform.Ranges, uniform.Visibility);
                 break;
             }
         }
 
-        // Root signature layout
-        D3D12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
-        rootSignatureDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
-        rootSignatureDesc.Desc_1_1.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-        rootSignatureDesc.Desc_1_1.NumParameters = rootParameters.size();
-        if (rootParameters.size() > 0)
-            rootSignatureDesc.Desc_1_1.pParameters = rootParameters.data();
-        else
-            rootSignatureDesc.Desc_1_1.pParameters = nullptr;
-
-        rootSignatureDesc.Desc_1_1.NumStaticSamplers = 0;
-        rootSignatureDesc.Desc_1_1.pStaticSamplers = nullptr;
-
-        ComPtr<ID3DBlob> signature;
-        ComPtr<ID3DBlob> error;
-
-        ThrowIfFailed(D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &signature, &error));
-        ThrowIfFailed(device->GetDevice()->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
-        m_rootSignature->SetName(L"Wild Root Signature");
-
-        if (error)
-        {
-            const char* errStr = (const char*)error->GetBufferPointer();
-            WD_ERROR(errStr);
-        }
+        m_rootSignature = builder.Build(device->GetDevice().Get());
     }
 
     void PipelineState::CreateGraphicsPSO()

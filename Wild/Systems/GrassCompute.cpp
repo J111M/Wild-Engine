@@ -8,7 +8,7 @@ namespace Wild {
 
 		std::vector<Uniform> uniforms;
 
-		Uniform uni{ 0, 0, RootParams::RootResourceType::DescriptorTable, sizeof(GrassBladeData) * MAXGRASSBLADES };
+		Uniform uni{ 0, 0, RootParams::RootResourceType::UnorderedAccessView, sizeof(GrassBladeData) * MAXGRASSBLADES };
 
 		uniforms.emplace_back(uni);
 
@@ -34,9 +34,9 @@ namespace Wild {
 		ID3D12DescriptorHeap* heaps[] = { engine.GetDevice()->GetCbvSrvUavAllocator()->GetHeap().Get() };
 		list.GetList()->SetDescriptorHeaps(1, heaps);
 
-		list.GetList()->SetComputeRootDescriptorTable(
+		list.GetList()->SetComputeRootUnorderedAccessView(
 			0,
-			m_bladeDataBuffer->GetUAView()->get_gpu_handle()
+			m_bladeDataBuffer->GetBuffer()->GetGPUVirtualAddress()
 		);
 
 		// Were using 64 threads

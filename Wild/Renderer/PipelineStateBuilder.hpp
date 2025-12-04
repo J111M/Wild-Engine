@@ -13,6 +13,7 @@ namespace Wild {
 		size_t ResourceSize{};
 
 		D3D12_SHADER_VISIBILITY Visibility = D3D12_SHADER_VISIBILITY_ALL;
+		std::vector<D3D12_DESCRIPTOR_RANGE> Ranges;
 	};
 
 	enum class PipelineStateType : uint8_t
