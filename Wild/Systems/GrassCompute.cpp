@@ -15,7 +15,7 @@ namespace Wild {
 		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Compute, m_settings, uniforms);
 
 		BufferDesc desc{};
-		desc.buffer_size = sizeof(GrassBladeData);
+		desc.bufferSize = sizeof(GrassBladeData);
 		m_bladeDataBuffer = std::make_shared<Buffer>(desc);
 		m_bladeDataBuffer->CreateUAVBuffer(MAXGRASSBLADES);
 	}

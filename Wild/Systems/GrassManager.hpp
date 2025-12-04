@@ -13,8 +13,13 @@ namespace Wild {
 		float Sway{};
 	};
 
+	struct SceneData {
+		glm::mat4 ProjView{};
+		glm::vec3 CameraPosition{};
+	};
+
 	struct GrassRC {
-		glm::mat4 matrix{};
+		glm::mat4 Matrix{};
 		uint32_t bladeId{};
 		uint32_t foo1;
 		uint32_t foo2;
@@ -27,13 +32,14 @@ namespace Wild {
 		GrassManager();
 		~GrassManager();
 
-		void Update() {};
+		void Update();
 		void Render(CommandList& list, std::shared_ptr<Buffer> GrassData);
 	private:
 		std::shared_ptr<Shader> m_vertShader;
 		std::shared_ptr<Shader> m_fragShader;
 
 		std::shared_ptr<Buffer> m_grassBuffer;
+		std::shared_ptr<Buffer> m_sceneData[BACK_BUFFER_COUNT];
 
 		GrassRC m_rc{};
 		Entity m_chunkEntity;

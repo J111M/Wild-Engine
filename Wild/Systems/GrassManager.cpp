@@ -9,7 +9,7 @@ namespace Wild {
 
 		m_vertShader = std::make_shared<Shader>("Shaders/vertGrassShader.hlsl");
 		m_fragShader = std::make_shared<Shader>("Shaders/fragGrassShader.hlsl");
-		
+
 		m_settings.ShaderState.VertexShader = m_vertShader;
 		m_settings.ShaderState.FragShader = m_fragShader;
 		m_settings.DepthStencilState.DepthEnable = true;
@@ -32,12 +32,17 @@ namespace Wild {
 			uniforms.emplace_back(uni);
 		}
 
+		{
+			Uniform uni{ 1, 0, RootParams::RootResourceType::ConstantBufferView, 0 };
+			uniforms.emplace_back(uni);
+		}
+
 		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Graphics, m_settings, uniforms);
 
 		std::vector<GrassVertex> grassBlade{};
 
 		// Grass blade vertice data | position, 1D coordinates and sway
-		grassBlade.push_back({ {-0.06,0.0,0.0}, 0.0, 0.0});
+		grassBlade.push_back({ {-0.06,0.0,0.0}, 0.0, 0.0 });
 		grassBlade.push_back({ {0.06,0.0,0.0}, 0.0, 0.0 });
 		grassBlade.push_back({ {-0.06,1.0,0.0}, 0.0, 0.4 });
 
@@ -57,9 +62,26 @@ namespace Wild {
 		grassBlade.push_back({ {0.06,1.5,0.0}, 0.0, 0.7 });
 		grassBlade.push_back({ {0.0,2.3,0.0}, 0.0, 1.0 });
 
-		BufferDesc desc{};
-		m_grassBuffer = std::make_shared<Buffer>(desc);
-		m_grassBuffer->CreateVertexBuffer<GrassVertex>(grassBlade);
+		{
+			BufferDesc desc{};
+			m_grassBuffer = std::make_shared<Buffer>(desc);
+			m_grassBuffer->CreateVertexBuffer<GrassVertex>(grassBlade);
+		}
+
+		{
+			BufferDesc desc{};
+			desc.bufferSize = sizeof(SceneData);
+
+			for (int i = 0; i < BACK_BUFFER_COUNT; i++)
+			{
+				m_sceneData[i] = std::make_shared<Buffer>(desc);
+				m_sceneData[i]->CreateConstantBuffer();
+
+				// Keep buffer data mapped for cpu write access
+				CD3DX12_RANGE readRange(0, 0);
+				m_sceneData[i]->Map(&readRange);
+			}
+		}
 
 		m_chunkEntity = engine.GetECS()->CreateEntity();
 		engine.GetECS()->AddComponent<Transform>(m_chunkEntity, glm::vec3(2, 0, -5), m_chunkEntity);
@@ -67,23 +89,35 @@ namespace Wild {
 
 	GrassManager::~GrassManager()
 	{
+		
+	}
+
+	void GrassManager::Update() {
+		auto& device = engine.GetDevice();
+		auto& ecs = engine.GetECS();
+
+		SceneData SceneCbv{};
+		auto& cameras = ecs->View<Camera>();
+		
+		// TODO change to support multiple cameras I only have 1 for now
+		for (auto& cameraEntity : cameras) {
+			if (ecs->HasComponent<Camera>(cameraEntity)) {
+				auto& cam = ecs->GetComponent<Camera>(cameraEntity);
+
+				SceneCbv.ProjView = cam.GetProjection() * cam.GetView();
+				SceneCbv.CameraPosition = cam.GetPosition();
+			}
+		}
+
+		m_sceneData[device->GetBackBufferIndex()]->WriteData(&SceneCbv);
 	}
 
 	void GrassManager::Render(CommandList& list, std::shared_ptr<Buffer> GrassData) {
+		auto& device = engine.GetDevice();
+
 		auto& transform = engine.GetECS()->GetComponent<Transform>(m_chunkEntity);
 
-		auto ecs = engine.GetECS();
-		auto& cameras = ecs->View<Camera>();
-
-		Camera* camera = nullptr;
-		for (auto entity : cameras) {
-			camera = &ecs->GetComponent<Camera>(entity);
-			break;
-		}
-
-		if (camera) {
-			m_rc.matrix = camera->GetProjection() * camera->GetView() * transform.GetWorldMatrix();
-		}
+		m_rc.Matrix = transform.GetWorldMatrix();
 
 		list.GetList()->SetPipelineState(m_pipeline->GetPso().Get());
 
@@ -94,6 +128,10 @@ namespace Wild {
 			GrassData->GetBuffer()->GetGPUVirtualAddress()
 		);
 
+		list.GetList()->SetGraphicsRootConstantBufferView(
+			2,
+			m_sceneData[device->GetBackBufferIndex()]->GetBuffer()->GetGPUVirtualAddress()
+		);
 
 		m_rc.bladeId = 0;
 

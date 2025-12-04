@@ -104,6 +104,7 @@ namespace Wild {
 	{
 		if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors))
 			WD_FATAL("Heap has overflown.");
+
 		IFCHECK(numBytes % 256 == 0, "Constant buffer views should always have a 256 byte alignment.");
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC desc;

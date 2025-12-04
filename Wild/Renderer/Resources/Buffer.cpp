@@ -11,10 +11,7 @@ namespace Wild {
 
 	Buffer::~Buffer()
 	{
-		if (m_data) {
-			free(m_data);
-			m_data = nullptr;
-		}
+		Unmap();
 	}
 
 	void Buffer::CreateCpuResource(BufferDesc desc)
@@ -27,34 +24,36 @@ namespace Wild {
 	{
 		auto device = engine.GetDevice();
 
-		if (m_desc.buffer_size <= 0) {
+		if (m_desc.bufferSize <= 0) {
 			WD_ERROR("Constant buffer invalid data size.");
 			return;
 		}
-			
+		
+		m_desc.bufferSize = (m_desc.bufferSize + 255) & ~255;
+
 		device->GetDevice()->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer((m_desc.buffer_size + 255) & ~255),
+			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
 			IID_PPV_ARGS(&m_buffer));
 
-		m_cbView = std::make_shared<ConstantBufferView>(m_buffer, m_desc.buffer_size);
+		m_cbView = std::make_shared<ConstantBufferView>(m_buffer, m_desc.bufferSize);
 	}
 
 	void Buffer::CreateUAVBuffer(uint32_t numElements)
 	{
 		auto device = engine.GetDevice();
 
-		if (m_desc.buffer_size <= 0) {
+		if (m_desc.bufferSize <= 0) {
 			WD_ERROR("Constant buffer invalid data size.");
 			return;
 		}
 
 		D3D12_RESOURCE_DESC desc = {};
 		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		desc.Width = m_desc.buffer_size * numElements;
+		desc.Width = m_desc.bufferSize * numElements;
 		desc.Height = m_desc.height;
 		desc.DepthOrArraySize = m_desc.depth;
 		desc.MipLevels = m_desc.mip_levels;
@@ -76,7 +75,7 @@ namespace Wild {
 		uavDesc.Format = DXGI_FORMAT_UNKNOWN;
 		uavDesc.Buffer.FirstElement = 0;
 		uavDesc.Buffer.NumElements = numElements;
-		uavDesc.Buffer.StructureByteStride = m_desc.buffer_size;
+		uavDesc.Buffer.StructureByteStride = m_desc.bufferSize;
 
 		m_uaView = std::make_shared<UnorderedAccessView>(m_buffer, uavDesc);
 	}
@@ -85,14 +84,14 @@ namespace Wild {
 	{
 		auto device = engine.GetDevice();
 
-		m_desc.buffer_size = indices.size() * sizeof(uint32_t);
+		m_desc.bufferSize = indices.size() * sizeof(uint32_t);
 
-		WriteData((void*)indices.data(), m_desc.buffer_size);
+		WriteData((void*)indices.data(), m_desc.bufferSize);
 
 		device->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.buffer_size),
+			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
 			D3D12_RESOURCE_STATE_COMMON,
 			nullptr,
 			IID_PPV_ARGS(&m_buffer));
@@ -102,14 +101,14 @@ namespace Wild {
 		device->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.buffer_size),
+			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
 			IID_PPV_ARGS(&uploadHeap));
 
 		D3D12_SUBRESOURCE_DATA indexData = {};
 		indexData.pData = m_data;
-		indexData.RowPitch = m_desc.buffer_size;
+		indexData.RowPitch = m_desc.bufferSize;
 		indexData.SlicePitch = indexData.RowPitch;
 
 		auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
@@ -124,13 +123,13 @@ namespace Wild {
 		device->GetCommandQueue(QueueType::Direct)->execute_list(list);
 		device->GetCommandQueue(QueueType::Direct)->wait_for_fence();
 
-		m_ibView = std::make_shared<IndexBufferView>(m_buffer, m_desc.buffer_size, DXGI_FORMAT_R32_UINT);
+		m_ibView = std::make_shared<IndexBufferView>(m_buffer, m_desc.bufferSize, DXGI_FORMAT_R32_UINT);
 	}
 
-	void Buffer::Map(ComPtr<ID3D12Resource2> rs)
+	void Buffer::Map(CD3DX12_RANGE* readRange)
 	{
 		m_dataIsMapped = true;
-		m_buffer->Map(0, nullptr, &m_data);
+		m_buffer->Map(0, readRange, &m_data);
 	}
 
 	void Buffer::Unmap()
@@ -143,12 +142,16 @@ namespace Wild {
 
 	void Buffer::WriteData(void* dataSrc, size_t size)
 	{
+		// TODO change to just use 1 standard instead of being able to overwrite it
+		if(size > 0)
+			m_desc.bufferSize = size;
+
 		// Make sure the pointed has allocated data
-		m_data = malloc(size);
-		m_desc.buffer_size = size;
+		if (!m_data)
+			m_data = malloc(m_desc.bufferSize);
 
 		if (m_data) {
-			memcpy(m_data, dataSrc, size);
+			memcpy(m_data, dataSrc, m_desc.bufferSize);
 		}
 	}
 

@@ -17,7 +17,7 @@ namespace Wild {
 		DXGI_FORMAT format;
 		D3D12_RESOURCE_FLAGS flags;
 
-        int buffer_size{};
+        int bufferSize{};
         UINT stride{};
 
         std::string name = "default";
@@ -37,10 +37,10 @@ namespace Wild {
 		void CreateUAVBuffer(uint32_t numElements);
         void CreateIndexBuffer(std::vector<uint32_t> indices);
 
-        void Map(ComPtr<ID3D12Resource2> rs);
+        void Map(CD3DX12_RANGE* readRange = nullptr);
         void Unmap();
 
-        void WriteData(void* dataSrc, size_t size);
+        void WriteData(void* dataSrc, size_t size = 0);
 
 		ComPtr<ID3D12Resource2> GetBuffer() { return m_buffer; }
 
@@ -74,7 +74,7 @@ namespace Wild {
 			}
 
 			m_desc.stride = sizeof(T);
-			m_desc.buffer_size = vertices.size() * sizeof(T);
+			m_desc.bufferSize = vertices.size() * sizeof(T);
 
 			if (m_desc.stride == 0) {
 				WD_ERROR("No valid stride supplied at resource creation for vertex buffer!");
@@ -86,7 +86,7 @@ namespace Wild {
 			device->GetDevice()->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 				D3D12_HEAP_FLAG_NONE,
-				&CD3DX12_RESOURCE_DESC::Buffer(m_desc.buffer_size),
+				&CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
 				D3D12_RESOURCE_STATE_COMMON,
 				nullptr,
 				IID_PPV_ARGS(&m_buffer));
@@ -99,7 +99,7 @@ namespace Wild {
 			device->GetDevice()->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), // upload heap
 				D3D12_HEAP_FLAG_NONE, // no flags
-				&CD3DX12_RESOURCE_DESC::Buffer(m_desc.buffer_size), // resource description for a buffer
+				&CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize), // resource description for a buffer
 				D3D12_RESOURCE_STATE_GENERIC_READ, // GPU will read from this buffer and copy its contents to the default heap
 				nullptr,
 				IID_PPV_ARGS(&upload_heap));
@@ -108,13 +108,13 @@ namespace Wild {
 
 			upload_heap->SetName(std::wstring(upload_resource_name.begin(), upload_resource_name.end()).c_str());
 
-			WriteData((void*)vertices.data(), m_desc.buffer_size);
+			WriteData((void*)vertices.data(), m_desc.bufferSize);
 
 			// Buffer type to upload heap
 			D3D12_SUBRESOURCE_DATA data = {};
 			data.pData = reinterpret_cast<BYTE*>(m_data);
-			data.RowPitch = m_desc.buffer_size;
-			data.SlicePitch = m_desc.buffer_size;
+			data.RowPitch = m_desc.bufferSize;
+			data.SlicePitch = m_desc.bufferSize;
 
 			auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
@@ -127,7 +127,7 @@ namespace Wild {
 			device->GetCommandQueue(QueueType::Direct)->execute_list(list);
 			device->GetCommandQueue(QueueType::Direct)->wait_for_fence();
 
-			m_vbView = std::make_shared<VertexBufferView>(m_buffer, m_desc.buffer_size, m_desc.stride);
+			m_vbView = std::make_shared<VertexBufferView>(m_buffer, m_desc.bufferSize, m_desc.stride);
 		}
 	};
 }

@@ -105,7 +105,8 @@ namespace Wild {
 			}
 		}
 
-		
+		// TODO move update to update function
+		m_grassManager->Update();
 
 		m_grassManager->Render(list, m_grassPreCompute->GetGrassData());
 
