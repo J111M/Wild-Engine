@@ -3,6 +3,7 @@
 #include "Renderer/Resources/Buffer.hpp"
 #include "Renderer/ShaderPipeline.hpp"
 #include "Renderer/PipelineStateBuilder.hpp"
+#include "Renderer/Resources/Texture.hpp"
 
 #include "Systems/GrassCompute.hpp"
 #include "Systems/GrassManager.hpp"
@@ -45,5 +46,7 @@ namespace Wild {
 		std::shared_ptr<Buffer> m_grassBuffer;
 
 		std::shared_ptr<PipelineState> m_pipeline;
+
+		std::unique_ptr<Texture> m_texture;
 	};
 }

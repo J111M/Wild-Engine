@@ -14,7 +14,7 @@ namespace Wild {
         WD_INFO("Command queue create: {0}", resourceName.c_str());
 	}
 
-    void CommandQueue::execute_list(CommandList& list)
+    void CommandQueue::ExecuteList(CommandList& list)
     {
         if (list.IsReady()) {
             ID3D12CommandList* l[] = { list.GetList().Get() };
@@ -25,7 +25,7 @@ namespace Wild {
 
     }
 
-    void CommandQueue::wait_for_fence() const
+    void CommandQueue::WaitForFence() const
     {
         Fence fence;
         fence.SignalAndWait(*this);

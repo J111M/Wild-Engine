@@ -10,7 +10,8 @@ namespace Wild {
 	{
 		Direct = 0,
 		Compute = 1,
-		Max = 2
+		Copy = 2,
+		Max = 3
 	};
 
 	class CommandQueue
@@ -23,9 +24,9 @@ namespace Wild {
 
 		D3D12_COMMAND_LIST_TYPE get_type() const { return type; }
 
-		void execute_list(CommandList& list);
+		void ExecuteList(CommandList& list);
 
-		void wait_for_fence() const;
+		void WaitForFence() const;
 	private:
 		ComPtr<ID3D12CommandQueue> m_commandQueue;
 		D3D12_COMMAND_LIST_TYPE type{};

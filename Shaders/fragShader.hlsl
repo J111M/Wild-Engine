@@ -6,7 +6,12 @@ struct PSInput
     float2 uv : TEXCOORD;
 };
 
+Texture2D albedo : register(t0);
+SamplerState anisotropySampler : register(s0);
+
 float4 main(PSInput input) : SV_TARGET
 {
-    return float4(input.normal, 1.0f);
+    float4 albedoColor = albedo.Sample(anisotropySampler, input.uv);
+    
+    return float4(albedoColor.xyz, 1.0f);
 }

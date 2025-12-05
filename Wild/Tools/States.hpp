@@ -11,7 +11,8 @@
 namespace Wild {
     enum class TextureType
     {
-        TEXTURE_2D = 0,
+        TEXTURE_2D,
+		TEXTURE_1D,
         CUBEMAP
     };
 
@@ -188,5 +189,6 @@ namespace RootParams{
 		ShaderResourceView,
 		UnorderedAccessView,
 		DescriptorTable, // For SRV, UAV and CBV table
+		StaticSampler,
 	};
 }

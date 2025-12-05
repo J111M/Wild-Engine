@@ -120,8 +120,8 @@ namespace Wild {
 
 		// Execute the command list
 		list.Close();
-		device->GetCommandQueue(QueueType::Direct)->execute_list(list);
-		device->GetCommandQueue(QueueType::Direct)->wait_for_fence();
+		device->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
+		device->GetCommandQueue(QueueType::Direct)->WaitForFence();
 
 		m_ibView = std::make_shared<IndexBufferView>(m_buffer, m_desc.bufferSize, DXGI_FORMAT_R32_UINT);
 	}

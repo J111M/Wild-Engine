@@ -124,8 +124,8 @@ namespace Wild {
 
 			// Execute the command list
 			list.Close();
-			device->GetCommandQueue(QueueType::Direct)->execute_list(list);
-			device->GetCommandQueue(QueueType::Direct)->wait_for_fence();
+			device->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
+			device->GetCommandQueue(QueueType::Direct)->WaitForFence();
 
 			m_vbView = std::make_shared<VertexBufferView>(m_buffer, m_desc.bufferSize, m_desc.stride);
 		}

@@ -52,6 +52,9 @@ namespace Wild {
             case RootParams::DescriptorTable:
                 builder.AddDescriptorTable(uniform.Ranges, uniform.Visibility);
                 break;
+            case RootParams::StaticSampler:
+                builder.AddStaticSampler(uniform.ShaderRegister, D3D12_FILTER_ANISOTROPIC, D3D12_TEXTURE_ADDRESS_MODE_WRAP, uniform.RegisterSpace, uniform.Visibility);
+                break;
             }
         }
 

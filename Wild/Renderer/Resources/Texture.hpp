@@ -2,8 +2,10 @@
 
 #include "Tools/States.hpp"
 #include "Tools/View3d12.hpp"
+#include "Tools/Common3d12.hpp"
 
 #include <string>
+#include <filesystem>
 
 namespace Wild {
 	struct TextureDesc
@@ -25,24 +27,26 @@ namespace Wild {
 		TextureType type = TextureType::TEXTURE_2D;
 		UsageFlag usage = cpuWrite;
 		uint32_t width{ 0 };
-		uint32_t height{ 0 };
-		uint32_t slices{ 0 };
+		uint32_t Height{ 0 };
+		uint32_t Depth{ 1 };
+		uint32_t Layers{ 1 };
 		uint32_t mips{ 0 };
+
+		// TODO make abstracted format type
+		DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 		ViewFlag flag = default;
 
-		// Data type is unkown at this point
-		void* data = nullptr;
-
 		std::string name = "default";
-
-		bool shouldGenerateMips = false;
 	};
 
 	class Texture
 	{
 	public:
+		// For loading texture from disk
+		Texture(const std::string& filePath, TextureType type = TextureType::TEXTURE_2D, uint32_t mips = 0);
 		Texture(const TextureDesc& desc);
+		// For swapchain rendertargets
 		Texture(const TextureDesc& desc, ComPtr<ID3D12Resource2> resource);
 		~Texture() {};
 
@@ -50,16 +54,23 @@ namespace Wild {
 		TextureDesc GetDesc() { return m_desc; }
 
 		uint32_t Width() const { return m_desc.width; }
-		uint32_t Height() const { return m_desc.height; }
+		uint32_t Height() const { return m_desc.Height; }
 
 		std::shared_ptr<RenderTargetView> GetRtv() const;
 		std::shared_ptr<DepthStencilView> GetDsv() const;
+		std::shared_ptr<ShaderResourceView> GetSrv() const;
+
+		//TextureHandle Handle{};
 
 	private:
+		void CreateTexture(const std::string& filePath);
+		void CreateCubeMapTexture(const std::string& filePath);
+
 		ComPtr<ID3D12Resource2> m_resource;
 
 		std::shared_ptr<RenderTargetView> m_rtv;
 		std::shared_ptr<DepthStencilView> m_dsv;
+		std::shared_ptr<ShaderResourceView> m_srv;
 
 		TextureDesc m_desc;
 	};

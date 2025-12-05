@@ -84,8 +84,8 @@ namespace Wild {
 
         FLOAT clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-        currentCommandList->GetList()->ClearRenderTargetView(backBuffer->GetRtv()->get_cpu_handle(), clearColor, 0, nullptr);
-        currentCommandList->GetList()->ClearDepthStencilView(m_depthTarget->GetDsv()->get_cpu_handle(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+        currentCommandList->GetList()->ClearRenderTargetView(backBuffer->GetRtv()->GetCpuHandle(), clearColor, 0, nullptr);
+        currentCommandList->GetList()->ClearDepthStencilView(m_depthTarget->GetDsv()->GetCpuHandle(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
         currentCommandList->BeginRender();
     }
@@ -109,7 +109,7 @@ namespace Wild {
         };
 
         GetCommandQueue(QueueType::Direct)->get_queue()->ExecuteCommandLists(_countof(commandLists), commandLists);
-        GetCommandQueue(QueueType::Direct)->wait_for_fence();
+        GetCommandQueue(QueueType::Direct)->WaitForFence();
 
         uint32_t flags = DXGI_PRESENT_ALLOW_TEARING;
         UINT sync_interval = 0;
@@ -137,7 +137,7 @@ namespace Wild {
             m_clientHeight = std::max(1, window_height);
 
             // Wait till all commands are flushed
-            GetCommandQueue(QueueType::Direct)->wait_for_fence();
+            GetCommandQueue(QueueType::Direct)->WaitForFence();
 
             for (int i = 0; i < BACK_BUFFER_COUNT; i++)
             {
@@ -158,7 +158,7 @@ namespace Wild {
     }
 
     void Device::Flush() {
-        GetCommandQueue(QueueType::Direct)->wait_for_fence();
+        GetCommandQueue(QueueType::Direct)->WaitForFence();
     }
 
     void Device::SetupFactory()
@@ -252,7 +252,7 @@ namespace Wild {
 
         TextureDesc desc{};
         desc.width = m_clientWidth;
-        desc.height = m_clientHeight;
+        desc.Height = m_clientHeight;
 
         desc.usage = TextureDesc::gpuOnly;
         desc.flag = TextureDesc::depthStencil;
@@ -266,7 +266,7 @@ namespace Wild {
         DXGI_SWAP_CHAIN_DESC1 scDesc;
         m_swapchain->GetDesc1(&scDesc);
         desc.width = scDesc.Width;
-        desc.height = scDesc.Height;
+        desc.Height = scDesc.Height;
 
         desc.usage = TextureDesc::gpuOnly;
         desc.flag = TextureDesc::renderTarget;

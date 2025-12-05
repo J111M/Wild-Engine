@@ -31,6 +31,21 @@ namespace Wild {
 			Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(RootConstant) };
 			uniforms.emplace_back(uni);
 		}
+
+		{
+			Uniform uni{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+			CD3DX12_DESCRIPTOR_RANGE srvRange{};
+			srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+			uni.Ranges.emplace_back(srvRange);
+			uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+			uniforms.emplace_back(uni);
+		}
+
+		{
+			Uniform uni{ 0, 0, RootParams::RootResourceType::StaticSampler };
+			uniforms.emplace_back(uni);
+		}
 		
 		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Graphics, m_settings, uniforms);
 
@@ -45,6 +60,8 @@ namespace Wild {
 		m_grassPreCompute = std::make_unique<GrassCompute>();
 
 		m_grassPreCompute->Render(*engine.GetDevice()->GetCommandList());
+
+		m_texture = std::make_unique<Texture>("Assets/Models/DamagedHelmet/glTF/Default_albedo.jpg");
 	}
 
 	void Renderer::Render(CommandList& list, CommandList& computeList) {
@@ -79,7 +96,7 @@ namespace Wild {
 		list.GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		// Set main render target and depth
-		list.GetList()->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->get_cpu_handle(), FALSE, &device->GetDepthTarget()->GetDsv()->get_cpu_handle());
+		list.GetList()->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->GetCpuHandle(), FALSE, &device->GetDepthTarget()->GetDsv()->GetCpuHandle());
 		
 		auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
 		for (auto&& [entity, trans, mesh] : meshes.each()) {
@@ -93,6 +110,11 @@ namespace Wild {
 				&m_rc.matrix,
 				0
 			);
+
+			ID3D12DescriptorHeap* heaps[] = { engine.GetDevice()->GetCbvSrvUavAllocator()->GetHeap().Get() };
+			list.GetList()->SetDescriptorHeaps(1, heaps);
+
+			list.GetList()->SetGraphicsRootDescriptorTable(1, m_texture->GetSrv()->GetGpuHandle());
 
 			list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
 
