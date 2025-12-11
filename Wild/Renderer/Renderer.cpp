@@ -35,7 +35,7 @@ namespace Wild {
 		{
 			Uniform uni{ 0, 0, RootParams::RootResourceType::DescriptorTable };
 			CD3DX12_DESCRIPTOR_RANGE srvRange{};
-			srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+			srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
 			uni.Ranges.emplace_back(srvRange);
 			uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
@@ -92,7 +92,6 @@ namespace Wild {
 
 		list.GetList()->RSSetScissorRects(1, &scissorRect);
 		list.GetList()->RSSetViewports(1, &viewPort);
-		list.GetList()->RSSetViewports(1, &viewPort);
 		list.GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		// Set main render target and depth
@@ -104,17 +103,19 @@ namespace Wild {
 				m_rc.matrix = camera->GetProjection() * camera->GetView() * trans.GetWorldMatrix();
 			}
 
+			m_rc.view = m_texture->GetSrv()->View();
+
 			list.GetList()->SetGraphicsRoot32BitConstants(
 				0,
-				sizeof(glm::mat4) / 4,
-				&m_rc.matrix,
+				sizeof(RootConstant) / 4,
+				&m_rc,
 				0
 			);
 
 			ID3D12DescriptorHeap* heaps[] = { engine.GetDevice()->GetCbvSrvUavAllocator()->GetHeap().Get() };
 			list.GetList()->SetDescriptorHeaps(1, heaps);
 
-			list.GetList()->SetGraphicsRootDescriptorTable(1, m_texture->GetSrv()->GetGpuHandle());
+			list.GetList()->SetGraphicsRootDescriptorTable(1, engine.GetDevice()->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
 
 			list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
 

@@ -17,6 +17,7 @@ struct VSOutput
 cbuffer Constants : register(b0)
 {
     matrix model;
+    uint texIndex;
 };
 
 VSOutput main(VSInput input)

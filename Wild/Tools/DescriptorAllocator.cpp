@@ -111,6 +111,7 @@ namespace Wild {
 		desc.SizeInBytes = numBytes;
 		desc.BufferLocation	= resource->GetGPUVirtualAddress();
 
+		// Get the next free handle in the descriptor heap
 		const uint32_t nextFreeHandle = NextFreeHandle();
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();

@@ -10,22 +10,22 @@ namespace Wild {
         if (shaderPath.find(".vert") != std::string::npos ||
             shaderPath.find(".vs") != std::string::npos ||
             shaderPath.find("vert") != std::string::npos) {
-            shaderTarget = "vs_5_0";
+            shaderTarget = "vs_5_1";
         }
         else if (shaderPath.find(".frag") != std::string::npos ||
             shaderPath.find(".ps") != std::string::npos ||
             shaderPath.find(".pixel") != std::string::npos ||
             shaderPath.find("frag") != std::string::npos) {
-            shaderTarget = "ps_5_0";
+            shaderTarget = "ps_5_1";
         }
         else if (shaderPath.find(".geom") != std::string::npos ||
             shaderPath.find(".gs") != std::string::npos) {
-            shaderTarget = "gs_5_0";
+            shaderTarget = "gs_5_1";
         }
         else if (shaderPath.find(".comp") != std::string::npos ||
             shaderPath.find(".cs") != std::string::npos ||
             shaderPath.find("compute") != std::string::npos) {
-            shaderTarget = "cs_5_0";
+            shaderTarget = "cs_5_1";
         }
         else {
             WD_ERROR("Cannot determine shader type from file: " + shaderPath);

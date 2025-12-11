@@ -16,6 +16,7 @@
 namespace Wild {
 	struct RootConstant {
 		glm::mat4 matrix{};
+		uint32_t view{};
 	};
 
 	class Renderer
