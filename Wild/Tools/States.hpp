@@ -180,6 +180,19 @@ namespace Wild {
 
         std::string PipelineName{};
     };
+
+	enum class ClearOperation
+	{
+		Clear = 0,
+		Store = 1 // No clear
+	};
+
+	enum class DSClearOperation
+	{
+		DepthClear = 0,
+		StencilClear = 1,
+		Store = 2
+	};
 }
 
 namespace RootParams{

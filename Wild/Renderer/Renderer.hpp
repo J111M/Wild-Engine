@@ -25,8 +25,8 @@ namespace Wild {
 		Renderer();
 		~Renderer() {};
 		
-		void Update() {};
-		void Render(CommandList& list, CommandList& computeList);
+		void Update(CommandList& list);
+		void Render(CommandList& list);
 	private:
 		void CreateRootSignature();
 

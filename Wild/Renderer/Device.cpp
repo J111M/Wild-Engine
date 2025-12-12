@@ -86,8 +86,6 @@ namespace Wild {
 
         currentCommandList->GetList()->ClearRenderTargetView(backBuffer->GetRtv()->GetCpuHandle(), clearColor, 0, nullptr);
         currentCommandList->GetList()->ClearDepthStencilView(m_depthTarget->GetDsv()->GetCpuHandle(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-        currentCommandList->BeginRender();
     }
 
     void Device::EndFrame()

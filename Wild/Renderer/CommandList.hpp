@@ -11,6 +11,9 @@
 #include <glm/glm.hpp>
 
 namespace Wild {
+	class Texture;
+	class PipelineState;
+
 	class CommandList : private NonCopyable
 	{
 	public:
@@ -25,7 +28,12 @@ namespace Wild {
 		void Reset();
 		void Close();
 
-		void BeginRender();
+		void BeginRender(const std::vector<Texture*>& renderTargets,
+			const std::vector<ClearOperation>& clearRt,
+			Texture* depthStencil,
+			DSClearOperation clearDs,
+			const std::shared_ptr<PipelineState> pipeline);
+
 		void EndRender();
 
 	private:
@@ -35,7 +43,6 @@ namespace Wild {
 		D3D12_COMMAND_LIST_TYPE m_type;
 
 		bool m_commandListClosed = false;
-		bool m_rootSignatureAndPso = false;
 		bool m_frameInFlight = false;
 		//std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> m_psoCache{};
 	};

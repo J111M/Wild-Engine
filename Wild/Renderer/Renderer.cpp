@@ -64,7 +64,13 @@ namespace Wild {
 		m_texture = std::make_unique<Texture>("Assets/Models/DamagedHelmet/glTF/Default_albedo.jpg");
 	}
 
-	void Renderer::Render(CommandList& list, CommandList& computeList) {
+	void Renderer::Update(CommandList& list)
+	{
+		// TODO collect all passes and update them
+		m_grassManager->Update();
+	}
+
+	void Renderer::Render(CommandList& list) {
 		auto device = engine.GetDevice();
 
 		D3D12_VIEWPORT viewPort{};
@@ -77,10 +83,6 @@ namespace Wild {
 
 		D3D12_RECT scissorRect = { 0u, 0u, static_cast<LONG>(viewPort.Width), static_cast<LONG>(viewPort.Height) };
 
-		list.GetList()->SetPipelineState(m_pipeline->GetPso().Get());
-
-		list.GetList()->SetGraphicsRootSignature(m_pipeline->GetRootSignature().Get());
-
 		auto ecs = engine.GetECS();
 		auto& cameras = ecs->View<Camera>();
 
@@ -89,14 +91,9 @@ namespace Wild {
 			camera = &ecs->GetComponent<Camera>(entity);
 			break;
 		}
-
-		list.GetList()->RSSetScissorRects(1, &scissorRect);
-		list.GetList()->RSSetViewports(1, &viewPort);
-		list.GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-		// Set main render target and depth
-		list.GetList()->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->GetCpuHandle(), FALSE, &device->GetDepthTarget()->GetDsv()->GetCpuHandle());
 		
+		list.BeginRender({}, { ClearOperation::Store }, {}, DSClearOperation::DepthClear, m_pipeline);
+
 		auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
 		for (auto&& [entity, trans, mesh] : meshes.each()) {
 			if (camera) {
@@ -128,8 +125,7 @@ namespace Wild {
 			}
 		}
 
-		// TODO move update to update function
-		m_grassManager->Update();
+		list.EndRender();
 
 		m_grassManager->Render(list, m_grassPreCompute->GetGrassData());
 

@@ -1,5 +1,8 @@
 #include "Renderer/CommandList.hpp"
 
+#include "Renderer/PipelineStateBuilder.hpp"
+#include "Renderer/Resources/Texture.hpp"
+
 namespace Wild {
 	CommandList::CommandList(D3D12_COMMAND_LIST_TYPE listType)
 	{
@@ -9,9 +12,6 @@ namespace Wild {
 
 		ThrowIfFailed(device->GetDevice()->CreateCommandAllocator(m_type, IID_PPV_ARGS(&m_allocator)));
 		ThrowIfFailed(device->GetDevice()->CreateCommandList(0, m_type, m_allocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
-
-
-		
 	}
 
 	void CommandList::Reset() {
@@ -26,16 +26,40 @@ namespace Wild {
 		}
 	}
 
-	void CommandList::BeginRender()
+	void CommandList::BeginRender(const std::vector<Texture*>& renderTargets,
+								  const std::vector<ClearOperation>& clearRt,
+								  Texture* depthStencil,
+								  DSClearOperation clearDs,
+								  const std::shared_ptr<PipelineState> pipeline)
 	{
+		if (!pipeline->GetPso() && !pipeline->GetRootSignature()) {
+			WD_WARN("Invalid PSO or Root signature supplied pass will not execute.");
+			return;
+		}
+
 		auto device = engine.GetDevice();
 
-		m_rootSignatureAndPso = false;
-		m_frameInFlight = true;
+		m_commandList->SetPipelineState(pipeline->GetPso().Get());
+		m_commandList->SetGraphicsRootSignature(pipeline->GetRootSignature().Get());
 
-		
+		ID3D12DescriptorHeap* heaps[] = { engine.GetDevice()->GetCbvSrvUavAllocator()->GetHeap().Get()};
+		m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
 
-		
+		D3D12_VIEWPORT viewPort{};
+		viewPort.TopLeftX = 0.0f;
+		viewPort.TopLeftY = 0.0f;
+		viewPort.Width = static_cast<FLOAT>(device->GetWidth());
+		viewPort.Height = static_cast<FLOAT>(device->GetHeight());
+		viewPort.MinDepth = 0.0f;
+		viewPort.MaxDepth = 1.0f;
+
+		D3D12_RECT scissorRect = { 0u, 0u, static_cast<LONG>(viewPort.Width), static_cast<LONG>(viewPort.Height) };
+
+		m_commandList->RSSetScissorRects(1, &scissorRect);
+		m_commandList->RSSetViewports(1, &viewPort);
+		m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		m_commandList->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->GetCpuHandle(), FALSE, &device->GetDepthTarget()->GetDsv()->GetCpuHandle());
 	}
 
 	void CommandList::EndRender()
