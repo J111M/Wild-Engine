@@ -8,9 +8,15 @@ namespace Wild {
 
 		std::vector<Uniform> uniforms;
 
-		Uniform uni{ 0, 0, RootParams::RootResourceType::UnorderedAccessView, sizeof(GrassBladeData) * MAXGRASSBLADES };
+		{
+			Uniform uni{ 0, 0, RootParams::RootResourceType::UnorderedAccessView, sizeof(GrassBladeData) * MAXGRASSBLADES };
+			uniforms.emplace_back(uni);
+		}
 
-		uniforms.emplace_back(uni);
+		{
+			Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(GrassComputeRC) };
+			uniforms.emplace_back(uni);
+		}
 
 		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Compute, m_settings, uniforms);
 
@@ -37,6 +43,13 @@ namespace Wild {
 		list.GetList()->SetComputeRootUnorderedAccessView(
 			0,
 			m_bladeDataBuffer->GetBuffer()->GetGPUVirtualAddress()
+		);
+
+		list.GetList()->SetComputeRoot32BitConstants(
+			1,
+			sizeof(GrassComputeRC) / 4,
+			&m_rc,
+			0
 		);
 
 		// Were using 64 threads

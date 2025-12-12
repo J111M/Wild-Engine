@@ -33,6 +33,7 @@ struct GrassData
 {
     float3 position;
     float rotation;
+    float height;
 };
 
 StructuredBuffer<GrassData> grassBuffer : register(t0);
@@ -63,6 +64,18 @@ float3 toBezierDerivative(float yValue)
     return 2 * (1 - yValue) * (pOne - pZero) + 2 * yValue * (pTwo - pOne);
 }
 
+float3 bezier(float3 p0, float3 p1, float3 p2, float t)
+{
+    float3 a = lerp(p0, p1, t);
+    float3 b = lerp(p1, p2, t);
+    return lerp(a, b, t);
+}
+
+float remap1(float value, float inMin, float inMax, float outMin, float outMax)
+{
+    return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin);
+}
+
 VSOutput main(VSInput input)
 {
     VSOutput output;
@@ -71,14 +84,24 @@ VSOutput main(VSInput input)
     float3x3 rotationMat = rotY(grassData.rotation);
     
     float3 bladePosition = input.position;
-    bladePosition = mul(rotationMat, bladePosition); // Rotate grass blade
     
-    bladePosition += toBezier(bladePosition.y);
+    float2 bladeDirection = float2(cos(grassData.rotation), -sin(grassData.rotation));
+    
+    // Grass leaning value
+    const float leaning = 0.3f;
+    float3 p0 = bladePosition;
+    float3 p1 = p0 + float3(0, grassData.height, 0);
+    float3 p2 = p0 + float3(bladeDirection.x, grassData.height * 0.67f, bladeDirection.y) * leaning;
+    float3 p3 = p0 + p1 + p2 / leaning;
+    
+    bladePosition += bezier(p0, p1, p2, bladePosition.y);
 
     float3 up = normalize(toBezierDerivative(bladePosition.y));
     float3 right = float3(1, 0, 0);
 
     float3 normal = normalize(cross(up, right));
+    
+    //bladePosition = mul(rotationMat, bladePosition); // Rotate grass blade
     
     float4 vertexWorldPos = mul(model, float4(bladePosition + grassData.position, 1.0f));
     

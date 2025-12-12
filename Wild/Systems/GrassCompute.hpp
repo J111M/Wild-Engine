@@ -9,6 +9,12 @@ namespace Wild{
 	struct GrassBladeData {
 		glm::vec3 position{};
 		float rotation{};
+		float height{};
+	};
+
+	struct GrassComputeRC {
+		glm::vec2 minMaxHeight{};
+		uint32_t seed{};
 	};
 
 	class GrassCompute : RenderPass
@@ -23,8 +29,9 @@ namespace Wild{
 		std::shared_ptr<Buffer> GetGrassData() { return m_bladeDataBuffer; }
 
 	private:
-		std::shared_ptr<Buffer> m_bladeDataBuffer;
+		GrassComputeRC m_rc{};
 
+		std::shared_ptr<Buffer> m_bladeDataBuffer;
 		std::shared_ptr<Shader> m_computeShader;
 	};
 }

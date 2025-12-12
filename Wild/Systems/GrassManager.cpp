@@ -42,25 +42,25 @@ namespace Wild {
 		std::vector<GrassVertex> grassBlade{};
 
 		// Grass blade vertice data | position, 1D coordinates and sway
-		grassBlade.push_back({ {-0.06,0.0,0.0}, 0.0, 0.0 });
-		grassBlade.push_back({ {0.06,0.0,0.0}, 0.0, 0.0 });
-		grassBlade.push_back({ {-0.06,1.0,0.0}, 0.0, 0.4 });
+		grassBlade.push_back({ {-0.03,0.0,0.0}, 0.0, 0.0 });
+		grassBlade.push_back({ {0.03,0.0,0.0}, 0.0, 0.0 });
+		grassBlade.push_back({ {-0.03,0.3,0.0}, 0.0, 0.4 });
 
-		grassBlade.push_back({ {0.06,0.0,0.0}, 0.0, 0.0 });
-		grassBlade.push_back({ {0.06,1.0,0.0}, 0.0, 0.4 });
-		grassBlade.push_back({ {-0.06,1.0,0.0}, 0.0, 0.4 });
+		grassBlade.push_back({ {0.03,0.0,0.0}, 0.0, 0.0 });
+		grassBlade.push_back({ {0.03,0.3,0.0}, 0.0, 0.4 });
+		grassBlade.push_back({ {-0.03,0.3,0.0}, 0.0, 0.4 });
 
-		grassBlade.push_back({ {-0.06,1.0,0.0}, 0.0, 0.4 });
-		grassBlade.push_back({ {0.06,1.0,0.0}, 0.0, 0.4 });
-		grassBlade.push_back({ {-0.06,1.5,0.0}, 0.0, 0.7 });
+		grassBlade.push_back({ {-0.03,0.3,0.0}, 0.0, 0.4 });
+		grassBlade.push_back({ {0.03,0.3,0.0}, 0.0, 0.4 });
+		grassBlade.push_back({ {-0.03,0.5,0.0}, 0.0, 0.7 });
 
-		grassBlade.push_back({ {0.06,1.0,0.0}, 0.0, 0.4 });
-		grassBlade.push_back({ {0.06,1.5,0.0}, 0.0, 0.7 });
-		grassBlade.push_back({ {-0.06,1.5,0.0}, 0.0, 0.7 });
+		grassBlade.push_back({ {0.03,0.3,0.0}, 0.0, 0.4 });
+		grassBlade.push_back({ {0.03,0.5,0.0}, 0.0, 0.7 });
+		grassBlade.push_back({ {-0.03,0.5,0.0}, 0.0, 0.7 });
 
-		grassBlade.push_back({ {-0.06,1.5,0.0}, 0.0, 0.7 });
-		grassBlade.push_back({ {0.06,1.5,0.0}, 0.0, 0.7 });
-		grassBlade.push_back({ {0.0,2.3,0.0}, 0.0, 1.0 });
+		grassBlade.push_back({ {-0.03,0.5,0.0}, 0.0, 0.7 });
+		grassBlade.push_back({ {0.03,0.5,0.0}, 0.0, 0.7 });
+		grassBlade.push_back({ {0.0,0.7,0.0}, 0.0, 1.0 });
 
 		{
 			BufferDesc desc{};

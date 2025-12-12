@@ -73,6 +73,8 @@ namespace Wild {
 	void Renderer::Render(CommandList& list) {
 		auto gfxContext = engine.GetGfxContext();
 
+		ImGui::Text("Testtext");
+
 		D3D12_VIEWPORT viewPort{};
 		viewPort.TopLeftX = 0.0f;
 		viewPort.TopLeftY = 0.0f;

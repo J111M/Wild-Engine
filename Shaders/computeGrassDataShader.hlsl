@@ -2,9 +2,16 @@ struct GrassBlade
 {
     float3 position;
     float rotation; // in radians
+    float height;
 };
 
 RWStructuredBuffer<GrassBlade> GrassData : register(u0);
+
+cbuffer RootConsant : register(b0)
+{
+    float2 minMaxHeight;
+    uint seed;
+};
 
 // https://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11
 float HashFloat(uint x)
@@ -30,17 +37,53 @@ float2 HashFloat2InRange(uint seed, float minVal, float maxVal)
     return float2(x, y);
 }
 
+// Hash source shadertoy: https://www.shadertoy.com/view/ttc3zr
+uint murmurHash11(uint src)
+{
+    const uint M = 0x5bd1e995u;
+    uint h = 1190494759u;
+    src *= M;
+    src ^= src >> 24u;
+    src *= M;
+    h *= M;
+    h ^= src;
+    h ^= h >> 13u;
+    h *= M;
+    h ^= h >> 15u;
+    return h;
+}
+
+// 1 input 1 output
+float hash11(float src)
+{
+    uint h = murmurHash11(asuint(src));
+    return asfloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
+}
+
+float uhash11(uint src)
+{
+    uint h = murmurHash11(src);
+    return asfloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
+}
+
+float rescale(float value, float min, float max)
+{
+    return min + value * (max - min);
+}
+
 [numthreads(64, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     // TODO add bounds for safity
     
-    float2 randomHash = HashFloat2InRange(DTid.x + 1, 0, 32); // 32 units per chunk for now
+    float2 rHash1 = HashFloat2InRange(DTid.x + 1, 0, 32); // 32 units per chunk for now
 
-    GrassData[DTid.x].position = float3(randomHash.x, 0, randomHash.y);
+    GrassData[DTid.x].position = float3(rHash1.x, 0, rHash1.y);
 
-    float rotateHash = HashFloatInRange(DTid.x ^ 0x6C8E9CF5u, 0, 16);
+    float rHash2 = HashFloatInRange(DTid.x ^ 0x6C8E9CF5u, 0, 16);
     
-    GrassData[DTid.x].rotation = rotateHash * 3.141592653589793f; // To radiance
+    GrassData[DTid.x].rotation = rescale(uhash11(DTid.x), 0, 4) * 2 * 3.141592653589793f; // To radiance
+
+    GrassData[DTid.x].height = HashFloatInRange(DTid.x ^ 0x6C8EFE5u, 0.4, 1.1);
 
 }
