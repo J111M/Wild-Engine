@@ -103,7 +103,7 @@ namespace Wild {
 				m_rc.matrix = camera->GetProjection() * camera->GetView() * trans.GetWorldMatrix();
 			}
 
-			m_rc.view = m_texture->GetSrv()->View();
+			m_rc.view = m_texture->GetSrv()->View() - 1;
 
 			list.GetList()->SetGraphicsRoot32BitConstants(
 				0,

@@ -21,7 +21,7 @@ float4 main(PSInput input) : SV_TARGET
     
     if(texIndex != 0)
     {
-        Texture2D albedo = textures[NonUniformResourceIndex(texIndex - 1)];
+        Texture2D albedo = textures[NonUniformResourceIndex(texIndex)];
         albedoColor = albedo.Sample(anisotropySampler, input.uv);
     }
 

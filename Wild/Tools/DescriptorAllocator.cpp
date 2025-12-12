@@ -28,7 +28,7 @@ namespace Wild {
 	{
 		ThrowIfFailed(device->CreateDescriptorHeap(&m_desc, IID_PPV_ARGS(&m_heap)));
 		m_heap->SetName(resourceName.c_str());
-		m_nextFreeIndex = 0;
+		m_nextFreeIndex = 1;
 		m_freedDiscriptors.reserve(64);
 	}
 
@@ -38,7 +38,7 @@ namespace Wild {
 		{
 			const uint32_t firstFreedValue = *m_freedDiscriptors.begin();
 			m_freedDiscriptors.erase(m_freedDiscriptors.begin());
-			return firstFreedValue;
+			return firstFreedValue + 1;
 		}
 
 		return m_nextFreeIndex++;
