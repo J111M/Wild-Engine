@@ -31,7 +31,7 @@ namespace Wild {
 		list.GetList()->SetPipelineState(m_pipeline->GetPso().Get());
 		list.GetList()->SetComputeRootSignature(m_pipeline->GetRootSignature().Get());
 
-		ID3D12DescriptorHeap* heaps[] = { engine.GetDevice()->GetCbvSrvUavAllocator()->GetHeap().Get() };
+		ID3D12DescriptorHeap* heaps[] = { engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get() };
 		list.GetList()->SetDescriptorHeaps(1, heaps);
 
 		list.GetList()->SetComputeRootUnorderedAccessView(

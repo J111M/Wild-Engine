@@ -5,7 +5,7 @@
 
 namespace Wild {
 	Renderer::Renderer() {
-		auto device = engine.GetDevice();
+		auto gfxContext = engine.GetGfxContext();
 
 		//CreateRootSignature();
 		//m_settings
@@ -59,7 +59,7 @@ namespace Wild {
 		m_grassManager = std::make_unique<GrassManager>();
 		m_grassPreCompute = std::make_unique<GrassCompute>();
 
-		m_grassPreCompute->Render(*engine.GetDevice()->GetCommandList());
+		m_grassPreCompute->Render(*engine.GetGfxContext()->GetCommandList());
 
 		m_texture = std::make_unique<Texture>("Assets/Models/DamagedHelmet/glTF/Default_albedo.jpg");
 	}
@@ -71,13 +71,13 @@ namespace Wild {
 	}
 
 	void Renderer::Render(CommandList& list) {
-		auto device = engine.GetDevice();
+		auto gfxContext = engine.GetGfxContext();
 
 		D3D12_VIEWPORT viewPort{};
 		viewPort.TopLeftX = 0.0f;
 		viewPort.TopLeftY = 0.0f;
-		viewPort.Width = static_cast<FLOAT>(device->GetWidth());
-		viewPort.Height = static_cast<FLOAT>(device->GetHeight());
+		viewPort.Width = static_cast<FLOAT>(gfxContext->GetWidth());
+		viewPort.Height = static_cast<FLOAT>(gfxContext->GetHeight());
 		viewPort.MinDepth = 0.0f;
 		viewPort.MaxDepth = 1.0f;
 
@@ -109,10 +109,10 @@ namespace Wild {
 				0
 			);
 
-			ID3D12DescriptorHeap* heaps[] = { engine.GetDevice()->GetCbvSrvUavAllocator()->GetHeap().Get() };
+			ID3D12DescriptorHeap* heaps[] = { engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get() };
 			list.GetList()->SetDescriptorHeaps(1, heaps);
 
-			list.GetList()->SetGraphicsRootDescriptorTable(1, engine.GetDevice()->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
+			list.GetList()->SetGraphicsRootDescriptorTable(1, engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
 
 			list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
 
@@ -139,12 +139,12 @@ namespace Wild {
 
 	void Renderer::CreateRootSignature()
 	{
-		auto device = engine.GetDevice();
+		auto gfxContext = engine.GetGfxContext();
 
 		D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
 		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
 
-		if (FAILED(device->GetDevice()->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+		if (FAILED(gfxContext->GetDevice()->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
 			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 
 		//// GPU resources
@@ -176,7 +176,7 @@ namespace Wild {
 		ComPtr<ID3DBlob> error;
 
 		ThrowIfFailed(D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &signature, &error));
-		ThrowIfFailed(device->GetDevice()->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_pipeline->GetRootSignature())));
+		ThrowIfFailed(gfxContext->GetDevice()->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_pipeline->GetRootSignature())));
 
 		if (error)
 		{

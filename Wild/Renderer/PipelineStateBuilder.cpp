@@ -27,7 +27,7 @@ namespace Wild {
 	}
 
     void PipelineState::CreateRootSignature(const std::vector<Uniform>& uniforms) {
-        auto device = engine.GetDevice();
+        auto gfxContext = engine.GetGfxContext();
 
         RootSignatureBuilder builder;
 
@@ -58,12 +58,12 @@ namespace Wild {
             }
         }
 
-        m_rootSignature = builder.Build(device->GetDevice().Get());
+        m_rootSignature = builder.Build(gfxContext->GetDevice().Get());
     }
 
     void PipelineState::CreateGraphicsPSO()
     {
-        auto device = engine.GetDevice();
+        auto gfxContext = engine.GetGfxContext();
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
         psoDesc.InputLayout = { m_settings.ShaderState.InputLayout.data(), (UINT)m_settings.ShaderState.InputLayout.size()};
@@ -127,12 +127,12 @@ namespace Wild {
 
         psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
-        ThrowIfFailed(device->GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
+        ThrowIfFailed(gfxContext->GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
     }
 
     void PipelineState::CreateComputePSO()
     {
-        auto device = engine.GetDevice();
+        auto gfxContext = engine.GetGfxContext();
         if (!m_settings.ShaderState.ComputeShader)
         {
             WD_WARN("No compute shader supplied in compute pipeline");
@@ -143,6 +143,6 @@ namespace Wild {
         psoDesc.pRootSignature = m_rootSignature.Get();
         psoDesc.CS = m_settings.ShaderState.ComputeShader->GetByteCode();
 
-        ThrowIfFailed(device->GetDevice()->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
+        ThrowIfFailed(gfxContext->GetDevice()->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
     }
 }

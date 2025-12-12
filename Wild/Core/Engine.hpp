@@ -26,13 +26,13 @@ namespace Wild {
 		void Run();
 		void Shutdown();
 
-		std::shared_ptr<Device> GetDevice() { return m_device; }
+		std::shared_ptr<GfxContext> GetGfxContext() { return m_gfxContext; }
 		std::shared_ptr<EntityComponentSystem> GetECS() { return m_ecs; }
 	private:
 		bool should_close = false;
 
 		std::shared_ptr<Window> m_window;
-		std::shared_ptr<Device> m_device;
+		std::shared_ptr<GfxContext> m_gfxContext;
 		std::shared_ptr<Renderer> m_renderer;
 		std::shared_ptr<EntityComponentSystem> m_ecs;
 	};

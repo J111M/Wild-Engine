@@ -81,9 +81,9 @@ namespace Wild {
 				return;
 			}
 
-			auto device = engine.GetDevice();
+			auto gfxContext = engine.GetGfxContext();
 
-			device->GetDevice()->CreateCommittedResource(
+			gfxContext->GetDevice()->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 				D3D12_HEAP_FLAG_NONE,
 				&CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
@@ -96,7 +96,7 @@ namespace Wild {
 			// Upload heap for GPU resources
 			ComPtr<ID3D12Resource2> upload_heap;
 
-			device->GetDevice()->CreateCommittedResource(
+			gfxContext->GetDevice()->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), // upload heap
 				D3D12_HEAP_FLAG_NONE, // no flags
 				&CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize), // resource description for a buffer
@@ -124,8 +124,8 @@ namespace Wild {
 
 			// Execute the command list
 			list.Close();
-			device->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
-			device->GetCommandQueue(QueueType::Direct)->WaitForFence();
+			gfxContext->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
+			gfxContext->GetCommandQueue(QueueType::Direct)->WaitForFence();
 
 			m_vbView = std::make_shared<VertexBufferView>(m_buffer, m_desc.bufferSize, m_desc.stride);
 		}

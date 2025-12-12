@@ -16,13 +16,13 @@ namespace Wild {
 
 	void Buffer::CreateCpuResource(BufferDesc desc)
 	{
-		auto device = engine.GetDevice();
+		auto gfxContext = engine.GetGfxContext();
 		WD_ERROR("CPU resources creation not unimplemented!");
 	}
 
 	void Buffer::CreateConstantBuffer()
 	{
-		auto device = engine.GetDevice();
+		auto gfxContext = engine.GetGfxContext();
 
 		if (m_desc.bufferSize <= 0) {
 			WD_ERROR("Constant buffer invalid data size.");
@@ -31,7 +31,7 @@ namespace Wild {
 		
 		m_desc.bufferSize = (m_desc.bufferSize + 255) & ~255;
 
-		device->GetDevice()->CreateCommittedResource(
+		gfxContext->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 			D3D12_HEAP_FLAG_NONE,
 			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
@@ -44,7 +44,7 @@ namespace Wild {
 
 	void Buffer::CreateUAVBuffer(uint32_t numElements)
 	{
-		auto device = engine.GetDevice();
+		auto gfxContext = engine.GetGfxContext();
 
 		if (m_desc.bufferSize <= 0) {
 			WD_ERROR("Constant buffer invalid data size.");
@@ -61,7 +61,7 @@ namespace Wild {
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-		device->GetDevice()->CreateCommittedResource(
+		gfxContext->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 			D3D12_HEAP_FLAG_NONE,
 			&desc,
@@ -82,13 +82,13 @@ namespace Wild {
 
 	void Buffer::CreateIndexBuffer(std::vector<uint32_t> indices)
 	{
-		auto device = engine.GetDevice();
+		auto gfxContext = engine.GetGfxContext();
 
 		m_desc.bufferSize = indices.size() * sizeof(uint32_t);
 
 		WriteData((void*)indices.data(), m_desc.bufferSize);
 
-		device->GetDevice()->CreateCommittedResource(
+		gfxContext->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 			D3D12_HEAP_FLAG_NONE,
 			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
@@ -98,7 +98,7 @@ namespace Wild {
 
 		// Upload buffer
 		ComPtr<ID3D12Resource> uploadHeap;
-		device->GetDevice()->CreateCommittedResource(
+		gfxContext->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 			D3D12_HEAP_FLAG_NONE,
 			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
@@ -120,8 +120,8 @@ namespace Wild {
 
 		// Execute the command list
 		list.Close();
-		device->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
-		device->GetCommandQueue(QueueType::Direct)->WaitForFence();
+		gfxContext->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
+		gfxContext->GetCommandQueue(QueueType::Direct)->WaitForFence();
 
 		m_ibView = std::make_shared<IndexBufferView>(m_buffer, m_desc.bufferSize, DXGI_FORMAT_R32_UINT);
 	}

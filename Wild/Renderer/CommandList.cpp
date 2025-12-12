@@ -6,12 +6,12 @@
 namespace Wild {
 	CommandList::CommandList(D3D12_COMMAND_LIST_TYPE listType)
 	{
-		auto device = engine.GetDevice();
+		auto gfxContext = engine.GetGfxContext();
 
 		m_type = listType;
 
-		ThrowIfFailed(device->GetDevice()->CreateCommandAllocator(m_type, IID_PPV_ARGS(&m_allocator)));
-		ThrowIfFailed(device->GetDevice()->CreateCommandList(0, m_type, m_allocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
+		ThrowIfFailed(gfxContext->GetDevice()->CreateCommandAllocator(m_type, IID_PPV_ARGS(&m_allocator)));
+		ThrowIfFailed(gfxContext->GetDevice()->CreateCommandList(0, m_type, m_allocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
 	}
 
 	void CommandList::Reset() {
@@ -37,19 +37,19 @@ namespace Wild {
 			return;
 		}
 
-		auto device = engine.GetDevice();
+		auto gfxContext = engine.GetGfxContext();
 
 		m_commandList->SetPipelineState(pipeline->GetPso().Get());
 		m_commandList->SetGraphicsRootSignature(pipeline->GetRootSignature().Get());
 
-		ID3D12DescriptorHeap* heaps[] = { engine.GetDevice()->GetCbvSrvUavAllocator()->GetHeap().Get()};
+		ID3D12DescriptorHeap* heaps[] = { engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get()};
 		m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
 
 		D3D12_VIEWPORT viewPort{};
 		viewPort.TopLeftX = 0.0f;
 		viewPort.TopLeftY = 0.0f;
-		viewPort.Width = static_cast<FLOAT>(device->GetWidth());
-		viewPort.Height = static_cast<FLOAT>(device->GetHeight());
+		viewPort.Width = static_cast<FLOAT>(gfxContext->GetWidth());
+		viewPort.Height = static_cast<FLOAT>(gfxContext->GetHeight());
 		viewPort.MinDepth = 0.0f;
 		viewPort.MaxDepth = 1.0f;
 
@@ -59,7 +59,7 @@ namespace Wild {
 		m_commandList->RSSetViewports(1, &viewPort);
 		m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		m_commandList->OMSetRenderTargets(1, &device->GetRenderTarget()->GetRtv()->GetCpuHandle(), FALSE, &device->GetDepthTarget()->GetDsv()->GetCpuHandle());
+		m_commandList->OMSetRenderTargets(1, &gfxContext->GetRenderTarget()->GetRtv()->GetCpuHandle(), FALSE, &gfxContext->GetDepthTarget()->GetDsv()->GetCpuHandle());
 	}
 
 	void CommandList::EndRender()

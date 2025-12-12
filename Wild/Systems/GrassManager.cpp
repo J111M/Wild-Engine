@@ -5,7 +5,7 @@
 namespace Wild {
 	GrassManager::GrassManager()
 	{
-		auto device = engine.GetDevice();
+		auto device = engine.GetGfxContext();
 
 		m_vertShader = std::make_shared<Shader>("Shaders/vertGrassShader.hlsl");
 		m_fragShader = std::make_shared<Shader>("Shaders/fragGrassShader.hlsl");
@@ -93,7 +93,7 @@ namespace Wild {
 	}
 
 	void GrassManager::Update() {
-		auto& device = engine.GetDevice();
+		auto& device = engine.GetGfxContext();
 		auto& ecs = engine.GetECS();
 
 		SceneData SceneCbv{};
@@ -113,7 +113,7 @@ namespace Wild {
 	}
 
 	void GrassManager::Render(CommandList& list, std::shared_ptr<Buffer> GrassData) {
-		auto& device = engine.GetDevice();
+		auto& gfxContext = engine.GetGfxContext();
 
 		auto& transform = engine.GetECS()->GetComponent<Transform>(m_chunkEntity);
 
@@ -130,7 +130,7 @@ namespace Wild {
 
 		list.GetList()->SetGraphicsRootConstantBufferView(
 			2,
-			m_sceneData[device->GetBackBufferIndex()]->GetBuffer()->GetGPUVirtualAddress()
+			m_sceneData[gfxContext->GetBackBufferIndex()]->GetBuffer()->GetGPUVirtualAddress()
 		);
 
 		m_rc.bladeId = 0;

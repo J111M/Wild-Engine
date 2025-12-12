@@ -12,11 +12,11 @@
 namespace Wild {
 	constexpr int BACK_BUFFER_COUNT = 2;
 
-	class Device
+	class GfxContext
 	{
 	public:
-		Device(std::shared_ptr<Window> window);
-		~Device() {};
+		GfxContext(std::shared_ptr<Window> window);
+		~GfxContext() {};
 
 		void Initialize();
 		void Shutdown();

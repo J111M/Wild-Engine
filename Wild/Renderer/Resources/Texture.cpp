@@ -30,7 +30,7 @@ namespace Wild {
     {
         m_desc = desc;
 
-        auto device = engine.GetDevice();
+        auto gfxContext = engine.GetGfxContext();
 
         if (desc.flag & TextureDesc::renderTarget) {
             D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
@@ -57,7 +57,7 @@ namespace Wild {
             clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
             clearValue.DepthStencil = { 1.0f, 0 };
 
-            device->GetDevice()->CreateCommittedResource(
+            gfxContext->GetDevice()->CreateCommittedResource(
                 &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
                 D3D12_HEAP_FLAG_NONE,
                 &depthDesc,
@@ -128,7 +128,7 @@ namespace Wild {
 
     void Texture::CreateTexture(const std::string& filePath)
     {
-        auto& device = engine.GetDevice();
+        auto& gfxContext = engine.GetGfxContext();
 
         int width, height, channels;
         stbi_uc* pixels = stbi_load(filePath.c_str(), &width, &height, &channels, STBI_rgb_alpha);
@@ -152,7 +152,7 @@ namespace Wild {
             static_cast<UINT16>(m_desc.Layers),
             static_cast<UINT16>(m_desc.mips));
 
-        ThrowIfFailed(device->GetDevice()->CreateCommittedResource(
+        ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
             D3D12_HEAP_FLAG_NONE,
             &textureDesc,
@@ -164,7 +164,7 @@ namespace Wild {
         UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_resource.Get(), 0, 1);
 
         ComPtr<ID3D12Resource> uploadHeap;
-        ThrowIfFailed(device->GetDevice()->CreateCommittedResource(
+        ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
             D3D12_HEAP_FLAG_NONE,
             &CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
@@ -187,8 +187,8 @@ namespace Wild {
                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
         list.Close();
-        engine.GetDevice()->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
-        engine.GetDevice()->GetCommandQueue(QueueType::Direct)->WaitForFence();
+        engine.GetGfxContext()->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
+        engine.GetGfxContext()->GetCommandQueue(QueueType::Direct)->WaitForFence();
 
         stbi_image_free(pixels);
 

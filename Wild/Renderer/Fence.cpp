@@ -3,7 +3,7 @@
 namespace Wild {
 	Fence::Fence() : m_fenceValue(0)
 	{
-		ThrowIfFailed(Wild::engine.GetDevice()->GetDevice()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
+		ThrowIfFailed(Wild::engine.GetGfxContext()->GetDevice()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
 
 		// Create fence event
 		m_fenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);

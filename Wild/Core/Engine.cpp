@@ -8,8 +8,8 @@ namespace Wild {
 		WD_INFO("Wild engine initialized.");
 
 		m_window = std::make_shared<Window>("Wild engine", 1200, 800);
-		m_device = std::make_shared<Device>(m_window);
-		m_device->Initialize();
+		m_gfxContext = std::make_shared<GfxContext>(m_window);
+		m_gfxContext->Initialize();
 
 		m_ecs = std::make_shared<EntityComponentSystem>();
 
@@ -33,13 +33,13 @@ namespace Wild {
 			camera.Input(*m_window.get(), m_window->GetWidth(), m_window->GetHeight(), deltaTime);
 			camera.UpdateMatrix(glm::radians(70.0f), m_window->AspectRatio(), 0.1f, 100.0f);
 
-			m_device->BeginFrame();
+			m_gfxContext->BeginFrame();
 
 			// Update and render all the passes
-			m_renderer->Update(*m_device->GetCommandList().get());
-			m_renderer->Render(*m_device->GetCommandList().get());
+			m_renderer->Update(*m_gfxContext->GetCommandList().get());
+			m_renderer->Render(*m_gfxContext->GetCommandList().get());
 
-			m_device->EndFrame();
+			m_gfxContext->EndFrame();
 
 			glfwPollEvents();
 
@@ -50,11 +50,11 @@ namespace Wild {
 
 	void Engine::Shutdown()
 	{
-		m_device->Flush();
+		m_gfxContext->Flush();
 		m_renderer.reset();
 		m_ecs.reset();
-		m_device->Shutdown();
-		m_device.reset();
+		m_gfxContext->Shutdown();
+		m_gfxContext.reset();
 		m_window.reset();
 	}
 

@@ -5,7 +5,7 @@
 #include <locale>
 
 namespace Wild {
-    Device::Device(std::shared_ptr<Window> window)
+    GfxContext::GfxContext(std::shared_ptr<Window> window)
     {
         m_window = window;
 
@@ -25,7 +25,7 @@ namespace Wild {
         m_viewport.MaxDepth = 1.0f;
     }
 
-    void Device::Shutdown(){
+    void GfxContext::Shutdown(){
         // Release resources manually since we are working with static objects
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)
         {
@@ -44,7 +44,7 @@ namespace Wild {
 #endif
     }
 
-    void Device::Initialize() {
+    void GfxContext::Initialize() {
         SetupFactory();
         CreateAdapter();
         CreateDevice();
@@ -65,7 +65,7 @@ namespace Wild {
         }
     }
 
-    void Device::BeginFrame()
+    void GfxContext::BeginFrame()
     {
         ResizeWindow();
         
@@ -88,7 +88,7 @@ namespace Wild {
         currentCommandList->GetList()->ClearDepthStencilView(m_depthTarget->GetDsv()->GetCpuHandle(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
     }
 
-    void Device::EndFrame()
+    void GfxContext::EndFrame()
     {
         auto current_command_list = m_directCommandList[m_backBufferIndex];
         auto back_buffer = m_renderTargets[m_backBufferIndex];
@@ -123,7 +123,7 @@ namespace Wild {
         current_command_list->Reset();
     }
 
-    void Device::ResizeWindow()
+    void GfxContext::ResizeWindow()
     {
         int window_width = m_window->GetWidth();
         int window_height = m_window->GetHeight();
@@ -155,11 +155,11 @@ namespace Wild {
         }
     }
 
-    void Device::Flush() {
+    void GfxContext::Flush() {
         GetCommandQueue(QueueType::Direct)->WaitForFence();
     }
 
-    void Device::SetupFactory()
+    void GfxContext::SetupFactory()
     {
 #if defined(_DEBUG)
         
@@ -175,7 +175,7 @@ namespace Wild {
         ThrowIfFailed(CreateDXGIFactory2(m_dxgiFactoryFlags, IID_PPV_ARGS(&m_factory)));
     }
 
-    void Device::CreateAdapter()
+    void GfxContext::CreateAdapter()
     {
         for (UINT adapterIndex = 0;
             DXGI_ERROR_NOT_FOUND != m_factory->EnumAdapters1(adapterIndex, &m_adapter);
@@ -209,7 +209,7 @@ namespace Wild {
         }
     }
 
-    void Device::CreateDevice()
+    void GfxContext::CreateDevice()
     {
         ThrowIfFailed(D3D12CreateDevice(m_adapter.Get(), D3D_FEATURE_LEVEL_12_0,
             IID_PPV_ARGS(&m_device)));
@@ -219,7 +219,7 @@ namespace Wild {
 #endif
     }
 
-    void Device::CreateSwapchain()
+    void GfxContext::CreateSwapchain()
     {
         if (m_swapchain) {
             m_swapchain->ResizeBuffers(BACK_BUFFER_COUNT, m_window->GetWidth(), m_window->GetHeight(),
@@ -258,7 +258,7 @@ namespace Wild {
         m_depthTarget = std::make_shared<Texture>(desc);
     }
 
-    void Device::CreateTextureFromSwapchain(UINT index)
+    void GfxContext::CreateTextureFromSwapchain(UINT index)
     {
         TextureDesc desc{};
         DXGI_SWAP_CHAIN_DESC1 scDesc;
