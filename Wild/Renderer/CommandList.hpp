@@ -18,21 +18,23 @@ namespace Wild {
 	{
 	public:
 		CommandList(D3D12_COMMAND_LIST_TYPE listType);
-		~CommandList() {};
+		~CommandList();
 
 		ComPtr<ID3D12GraphicsCommandList> GetList() { return m_commandList; }
 		ComPtr<ID3D12CommandAllocator> GetAllocator() { return m_allocator; }
 
 		bool IsReady() { return m_commandListClosed; }
 
-		void Reset();
+		void ResetList();
 		void Close();
+
+		void SetPipelineState(const std::shared_ptr<PipelineState> pipeline);
 
 		void BeginRender(const std::vector<Texture*>& renderTargets,
 			const std::vector<ClearOperation>& clearRt,
 			Texture* depthStencil,
 			DSClearOperation clearDs,
-			const std::shared_ptr<PipelineState> pipeline);
+			const std::string& passName = {});
 
 		void EndRender();
 
@@ -42,8 +44,12 @@ namespace Wild {
 
 		D3D12_COMMAND_LIST_TYPE m_type;
 
+		// Pipeline state is set per pass
+		std::shared_ptr<PipelineState> m_pipelineState{};
+
 		bool m_commandListClosed = false;
 		bool m_frameInFlight = false;
+		bool m_pipelineIsSet = false;
 		//std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> m_psoCache{};
 	};
 }

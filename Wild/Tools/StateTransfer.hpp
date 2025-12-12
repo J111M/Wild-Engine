@@ -27,7 +27,35 @@ namespace Wild {
     //UINT ForcedSampleCount;
     //D3D12_CONSERVATIVE_RASTERIZATION_MODE ConservativeRaster;
 
-    D3D12_PRIMITIVE_TOPOLOGY_TYPE GetTopologyMode(PrimitiveTopology primitive) {
+    D3D12_PRIMITIVE_TOPOLOGY GetTopologyMode(PrimitiveTopology primitive) {
+        switch (primitive)
+        {
+        case Wild::PrimitiveTopology::Undefined:
+            return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+            break;
+        case Wild::PrimitiveTopology::TriangleList:
+            return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+            break;
+        case Wild::PrimitiveTopology::TriangleStrip:
+            return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+            break;
+        case Wild::PrimitiveTopology::PointList:
+            return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+            break;
+        case Wild::PrimitiveTopology::LineList:
+            return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+            break;
+        case Wild::PrimitiveTopology::LineStrip:
+            return D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
+            break;
+        default:
+            return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+            break;
+        }
+    }
+
+
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE GetTopologyModeType(PrimitiveTopology primitive) {
         switch (primitive)
         {
         case Wild::PrimitiveTopology::Undefined:

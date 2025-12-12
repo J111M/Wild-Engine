@@ -4,6 +4,8 @@
 #include <codecvt>
 #include <locale>
 
+#include <dxgidebug.h>
+
 namespace Wild {
     GfxContext::GfxContext(std::shared_ptr<Window> window)
     {
@@ -39,8 +41,10 @@ namespace Wild {
         m_descriptorAllocatorsRtv.reset();
 
 #ifdef DEBUG
-        m_debugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY);
-        m_debugController.Reset();
+        ComPtr<IDXGIDebug1> dxgiDebug;
+        if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug)))) {
+            dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+        }
 #endif
     }
 
@@ -61,14 +65,12 @@ namespace Wild {
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)
         {
             m_directCommandList[i] = std::make_shared<CommandList>(D3D12_COMMAND_LIST_TYPE_DIRECT);
-            m_computeCommandList[i] = std::make_shared<CommandList>(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+           // m_computeCommandList[i] = std::make_shared<CommandList>(D3D12_COMMAND_LIST_TYPE_COMPUTE);
         }
     }
 
     void GfxContext::BeginFrame()
     {
-        ResizeWindow();
-        
         m_currentFrame = m_backBufferIndex;
         m_backBufferIndex = GetBackBufferIndex();
 
@@ -90,23 +92,23 @@ namespace Wild {
 
     void GfxContext::EndFrame()
     {
-        auto current_command_list = m_directCommandList[m_backBufferIndex];
-        auto back_buffer = m_renderTargets[m_backBufferIndex];
+        auto currentCommandList = m_directCommandList[m_backBufferIndex];
+        auto backBuffer = m_renderTargets[m_backBufferIndex];
 
         // Present frame
         CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            back_buffer->GetResource().Get(),
+            backBuffer->GetResource().Get(),
             D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
-        current_command_list->GetList()->ResourceBarrier(1, &barrier);
+        currentCommandList->GetList()->ResourceBarrier(1, &barrier);
 
-        ThrowIfFailed(current_command_list->GetList()->Close());
+        ThrowIfFailed(currentCommandList->GetList()->Close());
 
         ID3D12CommandList* const commandLists[] = {
-           current_command_list->GetList().Get()
+           currentCommandList->GetList().Get()
         };
 
-        GetCommandQueue(QueueType::Direct)->get_queue()->ExecuteCommandLists(_countof(commandLists), commandLists);
+        GetCommandQueue(QueueType::Direct)->GetQueue()->ExecuteCommandLists(_countof(commandLists), commandLists);
         GetCommandQueue(QueueType::Direct)->WaitForFence();
 
         uint32_t flags = DXGI_PRESENT_ALLOW_TEARING;
@@ -120,36 +122,39 @@ namespace Wild {
         ThrowIfFailed(m_swapchain->Present(sync_interval, flags));
 
         // Reset allocator and list
-        current_command_list->Reset();
+        currentCommandList->ResetList();
     }
 
     void GfxContext::ResizeWindow()
     {
-        int window_width = m_window->GetWidth();
-        int window_height = m_window->GetHeight();
+        int windowWidth = m_window->GetWidth();
+        int windowHeight = m_window->GetHeight();
 
-        if (m_clientWidth != window_width  || m_clientHeight != window_height) {
+        if (m_clientWidth != windowWidth  || m_clientHeight != windowHeight) {
 
             // We don't want the back buffer to be smaller than 1
-            m_clientWidth = std::max(1, window_width);
-            m_clientHeight = std::max(1, window_height);
+            m_clientWidth = std::max(1, windowWidth);
+            m_clientHeight = std::max(1, windowHeight);
 
-            // Wait till all commands are flushed
+           /* for (int i = 0; i < BACK_BUFFER_COUNT; i++)
+            {
+                m_directCommandList[i]->Close();
+            }*/
+
             GetCommandQueue(QueueType::Direct)->WaitForFence();
-
+            
             for (int i = 0; i < BACK_BUFFER_COUNT; i++)
             {
                 m_renderTargets[i].reset();
-                m_renderTargets[i] = nullptr;
             }
-
+            
             m_depthTarget.reset();
-            m_depthTarget = nullptr;
 
             CreateSwapchain();
 
-            WD_INFO("Window is resized succsesfully!");
 
+            WD_INFO("Window is resized succsesfully!");
+            
             m_clientWidth = m_window->GetWidth();
             m_clientHeight = m_window->GetHeight();
         }
@@ -222,11 +227,9 @@ namespace Wild {
     void GfxContext::CreateSwapchain()
     {
         if (m_swapchain) {
-            m_swapchain->ResizeBuffers(BACK_BUFFER_COUNT, m_window->GetWidth(), m_window->GetHeight(),
-                DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+            m_swapchain->ResizeBuffers(BACK_BUFFER_COUNT, m_window->GetWidth(), m_window->GetHeight(), DXGI_FORMAT_UNKNOWN, 0); //ThrowIfFailed();
         }
         else {
-            // If there is no swapchain create one
             DXGI_SWAP_CHAIN_DESC1 swapchainDesc = {};
             swapchainDesc.BufferCount = BACK_BUFFER_COUNT;
             swapchainDesc.Width = m_window->GetWidth();
@@ -238,19 +241,19 @@ namespace Wild {
 
             IDXGISwapChain1* new_swapchain;
 
-            ThrowIfFailed(m_factory->CreateSwapChainForHwnd(GetCommandQueue(QueueType::Direct)->get_queue().Get(), m_window->GetHandle(), &swapchainDesc, nullptr, nullptr, &new_swapchain), "Swapchain creation failed");
+            ThrowIfFailed(m_factory->CreateSwapChainForHwnd(GetCommandQueue(QueueType::Direct)->GetQueue().Get(), m_window->GetHandle(), &swapchainDesc, nullptr, nullptr, &new_swapchain), "Swapchain creation failed");
 
             m_swapchain = reinterpret_cast<IDXGISwapChain4*>(new_swapchain);
         }
-
+       
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)
         {
             CreateTextureFromSwapchain(i);
         }
 
         TextureDesc desc{};
-        desc.width = m_clientWidth;
-        desc.Height = m_clientHeight;
+        desc.width = m_window->GetWidth();
+        desc.Height = m_window->GetHeight();
 
         desc.usage = TextureDesc::gpuOnly;
         desc.flag = TextureDesc::depthStencil;
@@ -263,8 +266,9 @@ namespace Wild {
         TextureDesc desc{};
         DXGI_SWAP_CHAIN_DESC1 scDesc;
         m_swapchain->GetDesc1(&scDesc);
-        desc.width = scDesc.Width;
-        desc.Height = scDesc.Height;
+
+        desc.width = m_clientWidth;
+        desc.Height = m_clientHeight;
 
         desc.usage = TextureDesc::gpuOnly;
         desc.flag = TextureDesc::renderTarget;

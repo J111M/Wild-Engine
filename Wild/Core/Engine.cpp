@@ -12,6 +12,7 @@ namespace Wild {
 		m_gfxContext->Initialize();
 
 		m_ecs = std::make_shared<EntityComponentSystem>();
+		m_imguiCore = std::make_shared<ImguiCore>(m_window);
 
 		m_renderer = std::make_shared<Renderer>();
 	}
@@ -33,12 +34,16 @@ namespace Wild {
 			camera.Input(*m_window.get(), m_window->GetWidth(), m_window->GetHeight(), deltaTime);
 			camera.UpdateMatrix(glm::radians(70.0f), m_window->AspectRatio(), 0.1f, 100.0f);
 
+			m_gfxContext->ResizeWindow();
+
 			m_gfxContext->BeginFrame();
+			m_imguiCore->Prepare();
 
 			// Update and render all the passes
 			m_renderer->Update(*m_gfxContext->GetCommandList().get());
 			m_renderer->Render(*m_gfxContext->GetCommandList().get());
 
+			m_imguiCore->Draw();
 			m_gfxContext->EndFrame();
 
 			glfwPollEvents();
@@ -52,6 +57,7 @@ namespace Wild {
 	{
 		m_gfxContext->Flush();
 		m_renderer.reset();
+		m_imguiCore.reset();
 		m_ecs.reset();
 		m_gfxContext->Shutdown();
 		m_gfxContext.reset();

@@ -3,9 +3,8 @@
 namespace Wild {
 	void DescriptorAllocator::FreeHandle(uint32_t handle)
 	{
-		if (handle >= m_nextFreeIndex)
-			WD_ERROR("Handle is higher than the existing index.");
-		IFCHECK(std::find(m_freedDiscriptors.begin(), m_freedDiscriptors.end(), handle) == m_freedDiscriptors.end(), "Handle is higher than existing index")
+		IFCHECK(handle <= m_nextFreeIndex, "Handle is higher than the existing index.");
+		IFCHECK(std::find(m_freedDiscriptors.begin(), m_freedDiscriptors.end(), handle) == m_freedDiscriptors.end(), "Handle is higher than existing index");
 
 		m_freedDiscriptors.push_back(handle);
 	}
@@ -38,7 +37,7 @@ namespace Wild {
 		{
 			const uint32_t firstFreedValue = *m_freedDiscriptors.begin();
 			m_freedDiscriptors.erase(m_freedDiscriptors.begin());
-			return firstFreedValue + 1;
+			return firstFreedValue;
 		}
 
 		return m_nextFreeIndex++;

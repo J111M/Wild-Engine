@@ -18,7 +18,7 @@ namespace Wild {
 	void Fence::Signal(const CommandQueue& m_commandQueue)
 	{
 		m_fenceValue++;
-		ThrowIfFailed(m_commandQueue.get_queue()->Signal(m_fence.Get(), m_fenceValue));
+		ThrowIfFailed(m_commandQueue.GetQueue()->Signal(m_fence.Get(), m_fenceValue));
 	}
 
 	void Fence::SignalAndWait(const CommandQueue& m_commandQueue)

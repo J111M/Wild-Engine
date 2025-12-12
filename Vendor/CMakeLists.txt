@@ -38,7 +38,52 @@ FetchContent_MakeAvailable(spdlog)
 
 target_link_libraries(Wild PRIVATE spdlog::spdlog)
 
-target_link_libraries(Wild PRIVATE d3d12 dxgi dxguid d3dcompiler)
+# Add ImGui
+set(IMGUI_SRC
+    imgui/imgui.cpp
+    imgui/imgui_demo.cpp
+    imgui/imgui_draw.cpp
+    imgui/imgui_tables.cpp
+    imgui/imgui_widgets.cpp
+    imgui/implot/implot.cpp
+    imgui/implot/implot_demo.cpp
+    imgui/implot/implot_items.cpp
+    imgui/backends/imgui_impl_glfw.cpp
+    imgui/backends/imgui_impl_dx12.cpp
+)
+
+add_library(imgui STATIC ${IMGUI_SRC})
+target_include_directories(imgui PUBLIC 
+    "./imgui" 
+    "./imgui/backends"
+    "./imgui/implot"
+    "./glfw/include"
+)
+
+# Link ImGui to Wild
+#target_link_libraries(Wild PRIVATE imgui)
+
+# Set path to ImGuizmo
+set(IMGUIZMO_DIR ./imgizmo/)
+
+# Add ImGuizmo as a library
+add_library(ImGuizmo STATIC
+    ${IMGUIZMO_DIR}/ImGuizmo.cpp
+    ${IMGUIZMO_DIR}/ImGuizmo.h
+)
+
+# Global definition for imgui math operators
+add_compile_definitions(IMGUI_DEFINE_MATH_OPERATORS)
+
+# Include directories for ImGuizmo
+target_include_directories(ImGuizmo PUBLIC ${IMGUIZMO_DIR})
+
+target_link_libraries(ImGuizmo PRIVATE imgui)
+
+# Link ImGuizmo with your executable
+target_link_libraries(Wild PRIVATE ImGuizmo imgui)
+
+target_link_libraries(Wild PRIVATE ImGuizmo imgui d3d12 dxgi dxguid d3dcompiler)
 
 set(CMAKE_SYSTEM_VERSION 10.0.26100.0 CACHE STRING "" FORCE)
 

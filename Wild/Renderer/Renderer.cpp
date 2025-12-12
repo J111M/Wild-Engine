@@ -92,7 +92,8 @@ namespace Wild {
 			break;
 		}
 		
-		list.BeginRender({}, { ClearOperation::Store }, {}, DSClearOperation::DepthClear, m_pipeline);
+		list.SetPipelineState(m_pipeline);
+		list.BeginRender({}, { ClearOperation::Store }, {}, DSClearOperation::DepthClear);
 
 		auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
 		for (auto&& [entity, trans, mesh] : meshes.each()) {

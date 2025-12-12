@@ -14,9 +14,18 @@ namespace Wild {
 		ThrowIfFailed(gfxContext->GetDevice()->CreateCommandList(0, m_type, m_allocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
 	}
 
-	void CommandList::Reset() {
+	CommandList::~CommandList() {
+		Close();
+
+		ResetList();
+	}
+
+	void CommandList::ResetList() {
 		m_allocator->Reset();
 		m_commandList->Reset(m_allocator.Get(), nullptr);
+		m_pipelineState = nullptr;
+		m_pipelineIsSet = false;
+		m_commandListClosed = false;
 	}
 
 	void CommandList::Close() {
@@ -26,21 +35,30 @@ namespace Wild {
 		}
 	}
 
+	void CommandList::SetPipelineState(const std::shared_ptr<PipelineState> pipeline)
+	{
+		m_pipelineIsSet = true;
+		m_pipelineState = pipeline;
+	}
+
 	void CommandList::BeginRender(const std::vector<Texture*>& renderTargets,
 								  const std::vector<ClearOperation>& clearRt,
 								  Texture* depthStencil,
 								  DSClearOperation clearDs,
-								  const std::shared_ptr<PipelineState> pipeline)
+								  const std::string& passName)
 	{
-		if (!pipeline->GetPso() && !pipeline->GetRootSignature()) {
+		if (!m_pipelineIsSet)
+		{
 			WD_WARN("Invalid PSO or Root signature supplied pass will not execute.");
 			return;
 		}
 
+		m_pipelineIsSet = false;
+
 		auto gfxContext = engine.GetGfxContext();
 
-		m_commandList->SetPipelineState(pipeline->GetPso().Get());
-		m_commandList->SetGraphicsRootSignature(pipeline->GetRootSignature().Get());
+		m_commandList->SetPipelineState(m_pipelineState->GetPso().Get());
+		m_commandList->SetGraphicsRootSignature(m_pipelineState->GetRootSignature().Get());
 
 		ID3D12DescriptorHeap* heaps[] = { engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get()};
 		m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
@@ -57,6 +75,7 @@ namespace Wild {
 
 		m_commandList->RSSetScissorRects(1, &scissorRect);
 		m_commandList->RSSetViewports(1, &viewPort);
+		
 		m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		m_commandList->OMSetRenderTargets(1, &gfxContext->GetRenderTarget()->GetRtv()->GetCpuHandle(), FALSE, &gfxContext->GetDepthTarget()->GetDsv()->GetCpuHandle());

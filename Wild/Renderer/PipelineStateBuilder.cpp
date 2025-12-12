@@ -75,7 +75,7 @@ namespace Wild {
         if (m_settings.ShaderState.FragShader)
             psoDesc.PS = m_settings.ShaderState.FragShader->GetByteCode();
 
-        psoDesc.PrimitiveTopologyType = GetTopologyMode(m_settings.RasterizerState.TopologyMode);
+        psoDesc.PrimitiveTopologyType = GetTopologyModeType(m_settings.RasterizerState.TopologyMode);
 
         psoDesc.SampleMask = 0xffffffff;
 

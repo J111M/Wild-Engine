@@ -20,9 +20,9 @@ namespace Wild {
 		CommandQueue(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE listType, const std::string& resourceName);
 		~CommandQueue() {};
 
-		ComPtr<ID3D12CommandQueue> get_queue() const { return m_commandQueue; }
+		ComPtr<ID3D12CommandQueue> GetQueue() const { return m_commandQueue; }
 
-		D3D12_COMMAND_LIST_TYPE get_type() const { return type; }
+		D3D12_COMMAND_LIST_TYPE GetType() const { return type; }
 
 		void ExecuteList(CommandList& list);
 

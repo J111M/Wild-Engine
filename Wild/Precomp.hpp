@@ -10,7 +10,7 @@
 
 #ifdef DEBUG
 #define IFCHECK(condition, ...) \
-    if(!(condition)) WD_ERROR(__VA_ARGS__);
+    if(!(condition)) WD_ERROR(__VA_ARGS__)
 #else
 #define IFCHECK(...) \
 { \
