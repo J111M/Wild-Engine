@@ -18,7 +18,7 @@ cbuffer Constants : register(b0)
 {
     matrix model;
     uint bladeId;
-    uint foo1;
+    float time;
     uint foo2;
     uint foo3;
 };
@@ -84,15 +84,17 @@ VSOutput main(VSInput input)
     float3x3 rotationMat = rotY(grassData.rotation);
     
     float3 bladePosition = input.position;
+
+    float2 windDirection = normalize(float2(sin(time), cos(time)));
     
     float2 bladeDirection = float2(cos(grassData.rotation), -sin(grassData.rotation));
     
     // Grass leaning value
-    const float leaning = 0.3f;
-    float3 p0 = bladePosition;
-    float3 p1 = p0 + float3(0, grassData.height, 0);
-    float3 p2 = p0 + float3(bladeDirection.x, grassData.height * 0.67f, bladeDirection.y) * leaning;
-    float3 p3 = p0 + p1 + p2 / leaning;
+    const float leaning = 1.3f;
+    float3 p0 = float3(0.0, 0.0, 0.0); //bladePosition
+    float3 p1 = p0 + float3(0, grassData.height * 0.67, 0);
+    float3 p2 = p0 + float3(bladeDirection.x * windDirection.x * input.sway, grassData.height, bladeDirection.y * windDirection.y * input.sway) * leaning;
+    //float3 p3 = p0 + p1 + p2 * grassData.height * -leaning;
     
     bladePosition += bezier(p0, p1, p2, bladePosition.y);
 
@@ -101,7 +103,7 @@ VSOutput main(VSInput input)
 
     float3 normal = normalize(cross(up, right));
     
-    //bladePosition = mul(rotationMat, bladePosition); // Rotate grass blade
+    bladePosition = mul(rotationMat, bladePosition); // Rotate grass blade
     
     float4 vertexWorldPos = mul(model, float4(bladePosition + grassData.position, 1.0f));
     

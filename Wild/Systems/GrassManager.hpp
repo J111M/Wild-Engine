@@ -21,7 +21,7 @@ namespace Wild {
 	struct GrassRC {
 		glm::mat4 Matrix{};
 		uint32_t bladeId{};
-		uint32_t foo1;
+		float time;
 		uint32_t foo2;
 		uint32_t foo3;
 	};
@@ -33,13 +33,15 @@ namespace Wild {
 		~GrassManager();
 
 		void Update();
-		void Render(CommandList& list, std::shared_ptr<Buffer> GrassData);
+		void Render(CommandList& list, std::shared_ptr<Buffer> GrassData, float deltaTime);
 	private:
 		std::shared_ptr<Shader> m_vertShader;
 		std::shared_ptr<Shader> m_fragShader;
 
 		std::shared_ptr<Buffer> m_grassBuffer;
 		std::shared_ptr<Buffer> m_sceneData[BACK_BUFFER_COUNT];
+
+		float m_accumulatedTime{};
 
 		GrassRC m_rc{};
 		Entity m_chunkEntity;

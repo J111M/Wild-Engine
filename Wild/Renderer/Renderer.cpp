@@ -70,7 +70,7 @@ namespace Wild {
 		m_grassManager->Update();
 	}
 
-	void Renderer::Render(CommandList& list) {
+	void Renderer::Render(CommandList& list, float deltaTime) {
 		auto gfxContext = engine.GetGfxContext();
 
 		ImGui::Text("Testtext");
@@ -130,7 +130,7 @@ namespace Wild {
 
 		list.EndRender();
 
-		m_grassManager->Render(list, m_grassPreCompute->GetGrassData());
+		m_grassManager->Render(list, m_grassPreCompute->GetGrassData(), deltaTime);
 
 		/*list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
 			m_grassPreCompute->GetGrassData()->GetBuffer().Get(),

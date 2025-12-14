@@ -41,7 +41,7 @@ namespace Wild {
 
 			// Update and render all the passes
 			m_renderer->Update(*m_gfxContext->GetCommandList().get());
-			m_renderer->Render(*m_gfxContext->GetCommandList().get());
+			m_renderer->Render(*m_gfxContext->GetCommandList().get(), deltaTime);
 
 			m_imguiCore->Draw();
 			m_gfxContext->EndFrame();

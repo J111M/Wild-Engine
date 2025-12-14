@@ -26,7 +26,7 @@ namespace Wild {
 		~Renderer() {};
 		
 		void Update(CommandList& list);
-		void Render(CommandList& list);
+		void Render(CommandList& list, float deltaTime);
 	private:
 		void CreateRootSignature();
 

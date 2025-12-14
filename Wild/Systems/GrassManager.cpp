@@ -42,24 +42,24 @@ namespace Wild {
 		std::vector<GrassVertex> grassBlade{};
 
 		// Grass blade vertice data | position, 1D coordinates and sway
-		grassBlade.push_back({ {-0.03,0.0,0.0}, 0.0, 0.0 });
-		grassBlade.push_back({ {0.03,0.0,0.0}, 0.0, 0.0 });
-		grassBlade.push_back({ {-0.03,0.3,0.0}, 0.0, 0.4 });
+		grassBlade.push_back({ {-0.06,0.0,0.0}, 0.0, 0.0 });
+		grassBlade.push_back({ {0.06,0.0,0.0}, 0.0, 0.0 });
+		grassBlade.push_back({ {-0.06,0.3,0.0}, 0.0, 0.4 });
 
-		grassBlade.push_back({ {0.03,0.0,0.0}, 0.0, 0.0 });
-		grassBlade.push_back({ {0.03,0.3,0.0}, 0.0, 0.4 });
-		grassBlade.push_back({ {-0.03,0.3,0.0}, 0.0, 0.4 });
+		grassBlade.push_back({ {0.06,0.0,0.0}, 0.0, 0.0 });
+		grassBlade.push_back({ {0.06,0.3,0.0}, 0.0, 0.4 });
+		grassBlade.push_back({ {-0.06,0.3,0.0}, 0.0, 0.4 });
 
-		grassBlade.push_back({ {-0.03,0.3,0.0}, 0.0, 0.4 });
-		grassBlade.push_back({ {0.03,0.3,0.0}, 0.0, 0.4 });
-		grassBlade.push_back({ {-0.03,0.5,0.0}, 0.0, 0.7 });
+		grassBlade.push_back({ {-0.06,0.3,0.0}, 0.0, 0.4 });
+		grassBlade.push_back({ {0.06,0.3,0.0}, 0.0, 0.4 });
+		grassBlade.push_back({ {-0.06,0.5,0.0}, 0.0, 0.7 });
 
-		grassBlade.push_back({ {0.03,0.3,0.0}, 0.0, 0.4 });
-		grassBlade.push_back({ {0.03,0.5,0.0}, 0.0, 0.7 });
-		grassBlade.push_back({ {-0.03,0.5,0.0}, 0.0, 0.7 });
+		grassBlade.push_back({ {0.06,0.3,0.0}, 0.0, 0.4 });
+		grassBlade.push_back({ {0.06,0.5,0.0}, 0.0, 0.7 });
+		grassBlade.push_back({ {-0.06,0.5,0.0}, 0.0, 0.7 });
 
-		grassBlade.push_back({ {-0.03,0.5,0.0}, 0.0, 0.7 });
-		grassBlade.push_back({ {0.03,0.5,0.0}, 0.0, 0.7 });
+		grassBlade.push_back({ {-0.06,0.5,0.0}, 0.0, 0.7 });
+		grassBlade.push_back({ {0.06,0.5,0.0}, 0.0, 0.7 });
 		grassBlade.push_back({ {0.0,0.7,0.0}, 0.0, 1.0 });
 
 		{
@@ -112,7 +112,7 @@ namespace Wild {
 		m_sceneData[device->GetBackBufferIndex()]->WriteData(&SceneCbv);
 	}
 
-	void GrassManager::Render(CommandList& list, std::shared_ptr<Buffer> GrassData) {
+	void GrassManager::Render(CommandList& list, std::shared_ptr<Buffer> GrassData, float deltaTime) {
 		auto& gfxContext = engine.GetGfxContext();
 
 		auto& transform = engine.GetECS()->GetComponent<Transform>(m_chunkEntity);
@@ -134,6 +134,8 @@ namespace Wild {
 		);
 
 		m_rc.bladeId = 0;
+		m_accumulatedTime += deltaTime * 1;
+		m_rc.time = m_accumulatedTime;
 
 		list.GetList()->SetGraphicsRoot32BitConstants(
 			0,
