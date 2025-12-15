@@ -71,6 +71,12 @@ float3 bezier(float3 p0, float3 p1, float3 p2, float t)
     return lerp(a, b, t);
 }
 
+// Bezier Derivitive formula from GPUOpen AMD | https://gpuopen.com/learn/mesh_shaders/mesh_shaders-procedural_grass_rendering/
+float3 bezierDerivitive(float3 p0, float3 p1, float3 p2, float t)
+{
+    return 2. * (1. - t) * (p1 - p0) + 2. * t * (p2 - p1);
+}
+
 float remap1(float value, float inMin, float inMax, float outMin, float outMax)
 {
     return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin);
@@ -87,7 +93,7 @@ VSOutput main(VSInput input)
 
     float2 windDirection = normalize(float2(sin(time), cos(time)));
     
-    float2 bladeDirection = float2(cos(grassData.rotation), -sin(grassData.rotation));
+    float2 bladeDirection = float2(cos(grassData.rotation), sin(grassData.rotation));
     
     // Grass leaning value
     const float leaning = 1.3f;
@@ -98,10 +104,10 @@ VSOutput main(VSInput input)
     
     bladePosition += bezier(p0, p1, p2, bladePosition.y);
 
-    float3 up = normalize(toBezierDerivative(bladePosition.y));
-    float3 right = float3(1, 0, 0);
+    float3 up = normalize(bezierDerivitive(p0, p1, p2, bladePosition.y));
+    float3 right = normalize(float3(bladeDirection.y, -bladeDirection.x, 0));
 
-    float3 normal = normalize(cross(up, right));
+    float3 normal = cross(right, up);
     
     bladePosition = mul(rotationMat, bladePosition); // Rotate grass blade
     
