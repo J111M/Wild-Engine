@@ -5,6 +5,8 @@
 #include "Renderer/PipelineStateBuilder.hpp"
 #include "Renderer/Resources/Texture.hpp"
 
+#include "Renderer/RenderGraph/RenderGraph.hpp"
+
 #include "Systems/GrassCompute.hpp"
 #include "Systems/GrassManager.hpp"
 
@@ -17,6 +19,15 @@ namespace Wild {
 	struct RootConstant {
 		glm::mat4 matrix{};
 		uint32_t view{};
+	};
+
+	class Renderer;
+
+	class RenderFeature : public NonCopyable
+	{
+	public:
+		virtual void Add(Renderer& renderer, RenderGraph& rg) = 0;
+		virtual ~RenderFeature() = default;
 	};
 
 	class Renderer

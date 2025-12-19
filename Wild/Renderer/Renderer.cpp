@@ -1,6 +1,8 @@
 #include "Renderer/Renderer.hpp"
 #include "Renderer/Resources/Model.hpp"
 
+#include "Renderer/RenderGraph/TransientResourceCache.hpp"
+
 #include "Core/Camera.hpp"
 
 namespace Wild {

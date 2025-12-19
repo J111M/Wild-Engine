@@ -4,7 +4,7 @@
 
 #include <vector>
 
-// View abstraction code from https://github.com/t-Boons
+// Descriptor allocator code from https://github.com/t-Boons
 namespace Wild {
 	class DescriptorAllocator : private NonCopyable
 	{

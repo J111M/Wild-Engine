@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Renderer/RenderPass.hpp"
-
 #include "Core/ECS.hpp"
 
 #include <memory>
@@ -26,7 +24,7 @@ namespace Wild {
 		uint32_t foo3;
 	};
 
-	class GrassManager : RenderPass
+	class GrassManager
 	{
 	public:
 		GrassManager();
@@ -45,6 +43,9 @@ namespace Wild {
 
 		GrassRC m_rc{};
 		Entity m_chunkEntity;
+
+		PipelineStateSettings m_settings;
+		std::shared_ptr<PipelineState> m_pipeline{};
 	};
 
 }

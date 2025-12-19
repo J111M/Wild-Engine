@@ -25,6 +25,8 @@ namespace Wild {
 		float AspectRatio() {
 			if(m_width > 0 && m_height > 0)
 				return  static_cast<float>(m_width) / static_cast<float>(m_height);
+
+			return 0.01;
 		}
 
 		static void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);

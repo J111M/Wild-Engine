@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Renderer/RenderPass.hpp"
-
 namespace Wild{
 
 #define MAXGRASSBLADES 5000
@@ -17,7 +15,7 @@ namespace Wild{
 		uint32_t seed{};
 	};
 
-	class GrassCompute : RenderPass
+	class GrassCompute
 	{
 	public:
 		GrassCompute();
@@ -33,5 +31,8 @@ namespace Wild{
 
 		std::shared_ptr<Buffer> m_bladeDataBuffer;
 		std::shared_ptr<Shader> m_computeShader;
+
+		PipelineStateSettings m_settings;
+		std::shared_ptr<PipelineState> m_pipeline{};
 	};
 }
