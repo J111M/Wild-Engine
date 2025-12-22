@@ -53,4 +53,29 @@ namespace Wild {
 
 
 	}
+
+    ///
+    /// Shader tracker
+    ///
+
+    std::shared_ptr<Shader> ShaderTracker::GetOrCreateShader(const std::string& key)
+    {
+        auto& shader = m_trackedShaders[key];
+
+        if (!shader)
+            shader = std::make_shared<Shader>(key);
+
+        return shader;
+    }
+
+    void ShaderTracker::RemoveShader(const std::string& key)
+    {
+        // To be implemented
+    }
+
+    void ShaderTracker::ClearAllShaders()
+    {
+        // To be implemented
+    }
+
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Renderer/Resources/Resource3d12.hpp"
+
 #include "Tools/States.hpp"
 #include "Tools/View3d12.hpp"
 #include "Tools/Common3d12.hpp"
@@ -47,10 +49,10 @@ namespace Wild {
 		Texture(const std::string& filePath, TextureType type = TextureType::TEXTURE_2D, uint32_t mips = 0);
 		Texture(const TextureDesc& desc);
 		// For swapchain rendertargets
-		Texture(const TextureDesc& desc, ComPtr<ID3D12Resource2> resource);
+		Texture(const TextureDesc& desc, ComPtr<ID3D12Resource> resource);
 		~Texture() {};
 
-		ComPtr<ID3D12Resource2> GetResource() { return m_resource; }
+		ComPtr<ID3D12Resource> GetResource() { return m_resource; }
 		TextureDesc GetDesc() { return m_desc; }
 
 		uint32_t Width() const { return m_desc.width; }
@@ -66,7 +68,7 @@ namespace Wild {
 		void CreateTexture(const std::string& filePath);
 		void CreateCubeMapTexture(const std::string& filePath);
 
-		ComPtr<ID3D12Resource2> m_resource;
+		ComPtr<ID3D12Resource> m_resource;
 
 		std::shared_ptr<RenderTargetView> m_rtv;
 		std::shared_ptr<DepthStencilView> m_dsv;

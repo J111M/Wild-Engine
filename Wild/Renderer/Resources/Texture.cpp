@@ -74,7 +74,7 @@ namespace Wild {
         }
     }
 
-    Texture::Texture(const TextureDesc& desc, ComPtr<ID3D12Resource2> resource)
+    Texture::Texture(const TextureDesc& desc, ComPtr<ID3D12Resource> resource)
     {
         m_desc = desc;
         m_resource = resource;

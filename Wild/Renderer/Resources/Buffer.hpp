@@ -42,7 +42,7 @@ namespace Wild {
 
         void WriteData(void* dataSrc, size_t size = 0);
 
-		ComPtr<ID3D12Resource2> GetBuffer() { return m_buffer; }
+		ComPtr<ID3D12Resource> GetBuffer() { return m_buffer; }
 
         std::shared_ptr<VertexBufferView> GetVBView() const;
         std::shared_ptr<IndexBufferView> GetIBView() const;
@@ -51,7 +51,7 @@ namespace Wild {
 	private:
         BufferDesc m_desc;
 
-		ComPtr<ID3D12Resource2> m_buffer;
+		ComPtr<ID3D12Resource> m_buffer;
 
         bool m_dataIsMapped = false;
 
@@ -94,7 +94,7 @@ namespace Wild {
 			m_buffer->SetName(std::wstring(m_desc.name.begin(), m_desc.name.end()).c_str());
 
 			// Upload heap for GPU resources
-			ComPtr<ID3D12Resource2> upload_heap;
+			ComPtr<ID3D12Resource> upload_heap;
 
 			gfxContext->GetDevice()->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), // upload heap

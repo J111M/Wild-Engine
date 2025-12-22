@@ -1,56 +1,112 @@
 #include "Renderer/Passes/DeferredPass.hpp"
 
+#include "Renderer/Resources/Model.hpp"
+
 namespace Wild {
 	DeferredPass::DeferredPass()
 	{
-		m_vertShader = std::make_shared<Shader>("Shaders/vertShader.hlsl");
-		m_fragShader = std::make_shared<Shader>("Shaders/fragShader.hlsl");
+		auto ecs = engine.GetECS();
 
-		m_settings.ShaderState.VertexShader = m_vertShader;
-		m_settings.ShaderState.FragShader = m_fragShader;
-		m_settings.DepthStencilState.DepthEnable = true;
+		auto entity = ecs->CreateEntity();
+		auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+		ecs->AddComponent<Model>(entity, "Assets/Models/DamagedHelmet/glTF/DamagedHelmet.gltf", entity);
+		transform.SetPosition(glm::vec3(0, 0, -15));
 
-		// Setting up the input layout
-		m_settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
-		m_settings.ShaderState.InputLayout.emplace_back(InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
-		m_settings.ShaderState.InputLayout.emplace_back(InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
-		m_settings.ShaderState.InputLayout.emplace_back(InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
+		m_texture = std::make_unique<Texture>("Assets/Models/DamagedHelmet/glTF/Default_albedo.jpg");
+	}
 
-		std::vector<Uniform> uniforms;
-
-		{
-			Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(RootConstant) };
-			uniforms.emplace_back(uni);
-		}
-
-		{
-			Uniform uni{ 0, 0, RootParams::RootResourceType::DescriptorTable };
-			CD3DX12_DESCRIPTOR_RANGE srvRange{};
-			srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
-			uni.Ranges.emplace_back(srvRange);
-			uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-			uniforms.emplace_back(uni);
-		}
-
-		{
-			Uniform uni{ 0, 0, RootParams::RootResourceType::StaticSampler };
-			uniforms.emplace_back(uni);
-		}
-
-		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Graphics, m_settings, uniforms);
+	void DeferredPass::Update(const float dt)
+	{
 	}
 
 	void DeferredPass::Add(Renderer& renderer, RenderGraph& rg)
 	{
 		auto* passData = rg.AllocatePassData<DeferredPassData>();
 
+	
+
 		rg.AddPass<DeferredPassData>(
 			"Deferred pass",
 			PassType::Graphics,
 			[&renderer, this](const DeferredPassData& passData, CommandList& list)
 			{
-				
+				PipelineStateSettings settings{};
+				settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/vertShader.hlsl");
+				settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/fragShader.hlsl");
+				settings.DepthStencilState.DepthEnable = true;
+
+				// Setting up the input layout
+				settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+				settings.ShaderState.InputLayout.emplace_back(InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
+				settings.ShaderState.InputLayout.emplace_back(InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
+				settings.ShaderState.InputLayout.emplace_back(InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
+
+				std::vector<Uniform> uniforms;
+				{
+					Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(RootConstant) };
+					uniforms.emplace_back(uni);
+				}
+
+				{
+					Uniform uni{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+					CD3DX12_DESCRIPTOR_RANGE srvRange{};
+					srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+					uni.Ranges.emplace_back(srvRange);
+					uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+					uniforms.emplace_back(uni);
+				}
+
+				{
+					Uniform uni{ 0, 0, RootParams::RootResourceType::StaticSampler };
+					uniforms.emplace_back(uni);
+				}
+
+				auto& pipeline = renderer.GetOrCreatePipeline("Deferred pass", PipelineStateType::Graphics, settings, uniforms);
+
+				// Rendering
+				auto ecs = engine.GetECS();
+				auto& cameras = ecs->View<Camera>();
+
+				Camera* camera = nullptr;
+				for (auto entity : cameras) {
+					camera = &ecs->GetComponent<Camera>(entity);
+					break;
+				}
+
+				list.SetPipelineState(pipeline);
+				list.BeginRender({}, { ClearOperation::Store }, {}, DSClearOperation::DepthClear);
+
+				auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
+				for (auto&& [entity, trans, mesh] : meshes.each()) {
+					if (camera) {
+						m_rc.matrix = camera->GetProjection() * camera->GetView() * trans.GetWorldMatrix();
+					}
+
+					m_rc.view = m_texture->GetSrv()->View() - 1;
+
+					list.GetList()->SetGraphicsRoot32BitConstants(
+						0,
+						sizeof(RootConstant) / 4,
+						&m_rc,
+						0
+					);
+
+					list.GetList()->SetGraphicsRootDescriptorTable(1, engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
+
+					list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
+
+					if (mesh.HasIndexBuffer()) {
+						list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
+						list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
+					}
+					else {
+						list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
+					}
+				}
+
+				list.EndRender();
+
 			});
 	}
 }

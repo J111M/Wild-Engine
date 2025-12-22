@@ -12,8 +12,8 @@ namespace Wild {
         D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAdress() const { return m_resource->GetGPUVirtualAddress(); }
 
     protected:
-        ViewBase(ComPtr<ID3D12Resource2> resource);
-        ComPtr<ID3D12Resource2> m_resource;
+        ViewBase(ComPtr<ID3D12Resource> resource);
+        ComPtr<ID3D12Resource> m_resource;
         D3D12_GPU_DESCRIPTOR_HANDLE m_gpuHandle{};
         D3D12_CPU_DESCRIPTOR_HANDLE m_cpuHandle{};
     };
@@ -21,7 +21,7 @@ namespace Wild {
     class RenderTargetView : public ViewBase
     {
     public:
-        RenderTargetView(ComPtr<ID3D12Resource2> resource, const D3D12_RENDER_TARGET_VIEW_DESC& desc);
+        RenderTargetView(ComPtr<ID3D12Resource> resource, const D3D12_RENDER_TARGET_VIEW_DESC& desc);
         ~RenderTargetView();
 
         uint32_t View() const { return m_viewIndex; }
@@ -34,7 +34,7 @@ namespace Wild {
     class DepthStencilView : public ViewBase
     {
     public:
-        DepthStencilView(ComPtr<ID3D12Resource2> resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& desc);
+        DepthStencilView(ComPtr<ID3D12Resource> resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& desc);
         ~DepthStencilView();
 
         uint32_t View() const { return m_viewIndex; }
@@ -47,7 +47,7 @@ namespace Wild {
     class ShaderResourceView : public ViewBase
     {
     public:
-        ShaderResourceView(ComPtr<ID3D12Resource2> resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& desc);
+        ShaderResourceView(ComPtr<ID3D12Resource> resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& desc);
         ~ShaderResourceView();
 
         uint32_t View() const { return m_viewIndex; }
@@ -60,7 +60,7 @@ namespace Wild {
     class ConstantBufferView : public ViewBase
     {
     public:
-        ConstantBufferView(ComPtr<ID3D12Resource2> resource, uint32_t sizeInBytes);
+        ConstantBufferView(ComPtr<ID3D12Resource> resource, uint32_t sizeInBytes);
         ~ConstantBufferView();
 
         uint32_t View() const { return m_viewIndex; }
@@ -73,7 +73,7 @@ namespace Wild {
     class UnorderedAccessView : public ViewBase
     {
     public:
-        UnorderedAccessView(ComPtr<ID3D12Resource2> resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc);
+        UnorderedAccessView(ComPtr<ID3D12Resource> resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc);
         ~UnorderedAccessView();
 
         uint32_t View() const { return m_viewIndex; }
@@ -102,7 +102,7 @@ namespace Wild {
     class IndexBufferView : public ViewBase
     {
     public:
-        IndexBufferView(ComPtr<ID3D12Resource2> resource, uint32_t sizeInBytes, DXGI_FORMAT format);
+        IndexBufferView(ComPtr<ID3D12Resource> resource, uint32_t sizeInBytes, DXGI_FORMAT format);
 
         D3D12_INDEX_BUFFER_VIEW View() const { return m_view; }
 
@@ -114,7 +114,7 @@ namespace Wild {
     class VertexBufferView : public ViewBase
     {
     public:
-        VertexBufferView(ComPtr<ID3D12Resource2> resource, uint32_t sizeInBytes, uint32_t stride);
+        VertexBufferView(ComPtr<ID3D12Resource> resource, uint32_t sizeInBytes, uint32_t stride);
 
         D3D12_VERTEX_BUFFER_VIEW View() const { return m_view; }
 

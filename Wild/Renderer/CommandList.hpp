@@ -38,6 +38,13 @@ namespace Wild {
 
 		void EndRender();
 
+		// TODO Implement for platform abstraction
+		void SetBuffer() {};
+		void SetVertexBuffer() {};
+		void SetIndexBuffer() {};
+		void Draw(uint32_t size) {};
+
+
 	private:
 		ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		ComPtr<ID3D12CommandAllocator> m_allocator;

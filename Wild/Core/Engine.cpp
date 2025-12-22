@@ -13,6 +13,7 @@ namespace Wild {
 
 		m_ecs = std::make_shared<EntityComponentSystem>();
 		m_imguiCore = std::make_shared<ImguiCore>(m_window);
+		m_shaderTracker = std::make_shared<ShaderTracker>();
 
 		m_renderer = std::make_shared<Renderer>();
 	}
@@ -40,7 +41,7 @@ namespace Wild {
 			m_imguiCore->Prepare();
 
 			// Update and render all the passes
-			m_renderer->Update(*m_gfxContext->GetCommandList().get());
+			m_renderer->Update(deltaTime);
 			m_renderer->Render(*m_gfxContext->GetCommandList().get(), deltaTime);
 
 			m_imguiCore->Draw();

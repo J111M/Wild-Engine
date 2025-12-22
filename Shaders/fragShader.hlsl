@@ -25,5 +25,6 @@ float4 main(PSInput input) : SV_TARGET
         albedoColor = albedo.Sample(anisotropySampler, input.uv);
     }
 
-    return float4(albedoColor.xyz, 1.0f);
+   // return float4(albedoColor.xyz, 1.0f);
+    return float4(float3(1,1,0), 1.0f);
 }

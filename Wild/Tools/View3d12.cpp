@@ -1,13 +1,13 @@
 #include "Tools/View3d12.hpp"
 
 namespace Wild {
-	ViewBase::ViewBase(ComPtr<ID3D12Resource2> resource) : m_resource(resource) {}
+	ViewBase::ViewBase(ComPtr<ID3D12Resource> resource) : m_resource(resource) {}
 
 	///
 	/// RenderTargetView
 	///
 
-	RenderTargetView::RenderTargetView(ComPtr<ID3D12Resource2> resource, const D3D12_RENDER_TARGET_VIEW_DESC& desc) : m_desc(desc), ViewBase(resource)
+	RenderTargetView::RenderTargetView(ComPtr<ID3D12Resource> resource, const D3D12_RENDER_TARGET_VIEW_DESC& desc) : m_desc(desc), ViewBase(resource)
 	{
 		m_viewIndex = engine.GetGfxContext()->GetRtvAllocator()->CreateRtv(resource, &desc);
 		m_cpuHandle = engine.GetGfxContext()->GetRtvAllocator()->CpuHandle(m_viewIndex);
@@ -22,7 +22,7 @@ namespace Wild {
 	/// DepthStencilView
 	///
 
-	DepthStencilView::DepthStencilView(ComPtr<ID3D12Resource2> resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& desc) : m_desc(desc), ViewBase(resource)
+	DepthStencilView::DepthStencilView(ComPtr<ID3D12Resource> resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& desc) : m_desc(desc), ViewBase(resource)
 	{
 		m_viewIndex = engine.GetGfxContext()->GetDsvAllocator()->CreateDsv(resource, &desc);
 		m_cpuHandle = engine.GetGfxContext()->GetDsvAllocator()->CpuHandle(m_viewIndex);
@@ -37,7 +37,7 @@ namespace Wild {
 	/// ShaderResourceView
 	///
 
-	ShaderResourceView::ShaderResourceView(ComPtr<ID3D12Resource2> resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& desc) : m_desc(desc), ViewBase(resource)
+	ShaderResourceView::ShaderResourceView(ComPtr<ID3D12Resource> resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& desc) : m_desc(desc), ViewBase(resource)
 	{
 		m_viewIndex = engine.GetGfxContext()->GetCbvSrvUavAllocator()->CreateSRV(resource, &desc);
 		m_gpuHandle = engine.GetGfxContext()->GetCbvSrvUavAllocator()->GpuHandle(m_viewIndex);
@@ -53,7 +53,7 @@ namespace Wild {
 	/// ConstantBufferView
 	///
 
-	ConstantBufferView::ConstantBufferView(ComPtr<ID3D12Resource2> resource, uint32_t sizeInBytes) : m_sizeInBytes(sizeInBytes), ViewBase(resource)
+	ConstantBufferView::ConstantBufferView(ComPtr<ID3D12Resource> resource, uint32_t sizeInBytes) : m_sizeInBytes(sizeInBytes), ViewBase(resource)
 	{
 		m_viewIndex = engine.GetGfxContext()->GetCbvSrvUavAllocator()->CreateCBV(sizeInBytes, resource);
 		m_gpuHandle = engine.GetGfxContext()->GetCbvSrvUavAllocator()->GpuHandle(m_viewIndex);
@@ -69,7 +69,7 @@ namespace Wild {
 	/// UnorderedAccessView
 	///
 
-	UnorderedAccessView::UnorderedAccessView(ComPtr<ID3D12Resource2> resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc) : m_desc(desc), ViewBase(resource)
+	UnorderedAccessView::UnorderedAccessView(ComPtr<ID3D12Resource> resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc) : m_desc(desc), ViewBase(resource)
 	{
 		m_viewIndex = engine.GetGfxContext()->GetCbvSrvUavAllocator()->CreateUAV(resource, &desc);
 		m_gpuHandle = engine.GetGfxContext()->GetCbvSrvUavAllocator()->GpuHandle(m_viewIndex);
@@ -81,14 +81,14 @@ namespace Wild {
 		engine.GetGfxContext()->GetCbvSrvUavAllocator()->FreeHandle(m_viewIndex);
 	}
 
-	IndexBufferView::IndexBufferView(ComPtr<ID3D12Resource2> resource, uint32_t sizeInBytes, DXGI_FORMAT format) : ViewBase(resource)
+	IndexBufferView::IndexBufferView(ComPtr<ID3D12Resource> resource, uint32_t sizeInBytes, DXGI_FORMAT format) : ViewBase(resource)
 	{
 		m_view.BufferLocation = resource->GetGPUVirtualAddress();
 		m_view.SizeInBytes = sizeInBytes;
 		m_view.Format = format;
 	}
 
-	VertexBufferView::VertexBufferView(ComPtr<ID3D12Resource2> resource, uint32_t sizeInBytes, uint32_t stride) : ViewBase(resource)
+	VertexBufferView::VertexBufferView(ComPtr<ID3D12Resource> resource, uint32_t sizeInBytes, uint32_t stride) : ViewBase(resource)
 	{
 		m_view.BufferLocation = resource->GetGPUVirtualAddress();
 		m_view.SizeInBytes = sizeInBytes;

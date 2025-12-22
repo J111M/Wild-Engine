@@ -90,7 +90,14 @@ namespace Wild {
 			}
 		}
 
-		std::vector<int> sortedIndices = TopologicalSort(numPasses, passes);
+		std::vector<int> sortedIndices{};
+		if (passes.size() > 0) {
+			sortedIndices = TopologicalSort(numPasses, passes);
+		}
+		else {
+			sortedIndices.push_back(0);
+		}
+		
 
 		// Add the sorted passes to the render graph
 		m_graph->SortedPasses.reserve(numPasses);

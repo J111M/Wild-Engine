@@ -77,6 +77,7 @@ namespace Wild {
         auto currentCommandList = m_directCommandList[m_backBufferIndex];
         auto backBuffer = m_renderTargets[m_backBufferIndex];
 
+        // TODO change resource abstraction to properly support transitions
         // Set the rt to the render target state for clearing
         CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
             backBuffer->GetResource().Get(),
@@ -273,7 +274,7 @@ namespace Wild {
         desc.usage = TextureDesc::gpuOnly;
         desc.flag = TextureDesc::renderTarget;
 
-        ID3D12Resource2* scBuffer = nullptr;
+        ID3D12Resource* scBuffer = nullptr;
         m_swapchain->GetBuffer(index, IID_PPV_ARGS(&scBuffer));
 
         m_renderTargets[index] = std::make_shared<Texture>(desc, scBuffer);

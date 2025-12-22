@@ -52,7 +52,7 @@ namespace Wild {
 	{
 	}
 
-	uint32_t DescriptorAllocatorRtv::CreateRtv(const ComPtr<ID3D12Resource2> resource, const D3D12_RENDER_TARGET_VIEW_DESC* desc)
+	uint32_t DescriptorAllocatorRtv::CreateRtv(const ComPtr<ID3D12Resource> resource, const D3D12_RENDER_TARGET_VIEW_DESC* desc)
 	{
 		if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors))
 			WD_FATAL("Rtv heap has overflown.");
@@ -75,7 +75,7 @@ namespace Wild {
 	{
 	}
 
-	uint32_t DescriptorAllocatorDsv::CreateDsv(const ComPtr<ID3D12Resource2> resource, const D3D12_DEPTH_STENCIL_VIEW_DESC* desc)
+	uint32_t DescriptorAllocatorDsv::CreateDsv(const ComPtr<ID3D12Resource> resource, const D3D12_DEPTH_STENCIL_VIEW_DESC* desc)
 	{
 		if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors))
 			WD_FATAL("Rtv heap has overflown.");
@@ -99,7 +99,7 @@ namespace Wild {
 	{
 	}
 
-	uint32_t DescriptorAllocatorCbvSrvUav::CreateCBV(uint32_t numBytes, const ComPtr<ID3D12Resource2> resource)
+	uint32_t DescriptorAllocatorCbvSrvUav::CreateCBV(uint32_t numBytes, const ComPtr<ID3D12Resource> resource)
 	{
 		if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors))
 			WD_FATAL("Heap has overflown.");
@@ -120,7 +120,7 @@ namespace Wild {
 		return nextFreeHandle;
 	}
 
-	uint32_t DescriptorAllocatorCbvSrvUav::CreateSRV(const ComPtr<ID3D12Resource2> resource, const D3D12_SHADER_RESOURCE_VIEW_DESC* desc)
+	uint32_t DescriptorAllocatorCbvSrvUav::CreateSRV(const ComPtr<ID3D12Resource> resource, const D3D12_SHADER_RESOURCE_VIEW_DESC* desc)
 	{
 		if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors))
 			WD_FATAL("Heap has overflown.");
@@ -135,7 +135,7 @@ namespace Wild {
 		return nextFreeHandle;
 	}
 
-	uint32_t DescriptorAllocatorCbvSrvUav::CreateUAV(const ComPtr<ID3D12Resource2> resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* desc)
+	uint32_t DescriptorAllocatorCbvSrvUav::CreateUAV(const ComPtr<ID3D12Resource> resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* desc)
 	{
 		if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors))
 			WD_FATAL("Heap has overflown.");

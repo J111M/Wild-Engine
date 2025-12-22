@@ -20,17 +20,18 @@ namespace Wild {
 
 		ComPtr<ID3DBlob> m_shaderBlob;
 	};
-	
+
 	class ShaderTracker
 	{
 	public:
 		ShaderTracker() = default;
 		~ShaderTracker() = default;
 
-		void AddOrUpdateShader() {};
+		std::shared_ptr<Shader> GetOrCreateShader(const std::string& key);
 
+		void RemoveShader(const std::string& key);
+		void ClearAllShaders();
 	private:
-		std::unordered_map<std::string, Shader> m_trackedShaders;
+		std::unordered_map<std::string, std::shared_ptr<Shader>> m_trackedShaders;
 	};
-
 }
