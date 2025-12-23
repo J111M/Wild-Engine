@@ -42,10 +42,10 @@ namespace Wild {
 	}
 
 	void CommandList::BeginRender(const std::vector<Texture*>& renderTargets,
-								  const std::vector<ClearOperation>& clearRt,
-								  Texture* depthStencil,
-								  DSClearOperation clearDs,
-								  const std::string& passName)
+		const std::vector<ClearOperation>& clearRt,
+		Texture* depthStencil,
+		DSClearOperation clearDs,
+		const std::string& passName)
 	{
 		if (!m_pipelineIsSet)
 		{
@@ -53,14 +53,25 @@ namespace Wild {
 			return;
 		}
 
+		if (m_frameInFlight)
+		{
+			WD_WARN("A frame is already in flight on this commandlist call end render first in: %s", passName.c_str());
+			return;
+		}
+
+		m_frameInFlight = true;
 		m_pipelineIsSet = false;
+
+		//m_commandList->BeginEvent(1u, passName.c_str(), static_cast<uint32_t>(passName.size() + 1));
+
+		
 
 		auto gfxContext = engine.GetGfxContext();
 
 		m_commandList->SetPipelineState(m_pipelineState->GetPso().Get());
 		m_commandList->SetGraphicsRootSignature(m_pipelineState->GetRootSignature().Get());
 
-		ID3D12DescriptorHeap* heaps[] = { engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get()};
+		ID3D12DescriptorHeap* heaps[] = { engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get() };
 		m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
 
 		D3D12_VIEWPORT viewPort{};
@@ -75,14 +86,40 @@ namespace Wild {
 
 		m_commandList->RSSetScissorRects(1, &scissorRect);
 		m_commandList->RSSetViewports(1, &viewPort);
-		
+
 		m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		m_commandList->OMSetRenderTargets(1, &gfxContext->GetRenderTarget()->GetRtv()->GetCpuHandle(), FALSE, &gfxContext->GetDepthTarget()->GetDsv()->GetCpuHandle());
+		SetRenderTargets(renderTargets, depthStencil);
 	}
 
 	void CommandList::EndRender()
 	{
+		//m_commandList->EndEvent();
+		m_frameInFlight = false;
+	}
+
+	void CommandList::SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil)
+	{
+		const uint32_t numRenderTargets = static_cast<uint32_t>(renderTargets.size());
+		if (numRenderTargets >= 8)
+			WD_ERROR("Trying to bind more render targets than possible.");
+
+		// Render targets
+		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> handles;
+		handles.reserve(numRenderTargets);
+		for (size_t i = 0; i < numRenderTargets; i++)
+		{
+			handles.push_back(renderTargets[i]->GetRtv()->GetCpuHandle());
+		}
+
+		// Depth stencil
+		const D3D12_CPU_DESCRIPTOR_HANDLE* dsvHandle = nullptr;
+		if (depthStencil)
+		{
+			dsvHandle = &depthStencil->GetDsv()->GetCpuHandle();
+		}
+
+		m_commandList->OMSetRenderTargets(numRenderTargets, handles.data(), FALSE, dsvHandle);
 	}
 
 }

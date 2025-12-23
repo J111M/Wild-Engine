@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Renderer/Renderer.hpp"
+#include "Renderer/RenderGraph/RenderGraph.hpp"
+
 #include "Core/ECS.hpp"
 
 #include <memory>
@@ -24,28 +27,31 @@ namespace Wild {
 		uint32_t foo3;
 	};
 
-	class GrassManager
+	struct GrassPassData
+	{
+		Texture* FinalTexture;
+		Texture* DepthTexture;
+	};
+
+	class GrassManager : public RenderFeature
 	{
 	public:
-		GrassManager();
+		GrassManager(std::shared_ptr<Buffer> GrassData);
 		~GrassManager();
 
-		void Update();
-		void Render(CommandList& list, std::shared_ptr<Buffer> GrassData, float deltaTime);
+		virtual void Add(Renderer& renderer, RenderGraph& rg) override;
+		virtual void Update(const float dt) override;
 	private:
-		std::shared_ptr<Shader> m_vertShader;
-		std::shared_ptr<Shader> m_fragShader;
 
 		std::shared_ptr<Buffer> m_grassBuffer;
 		std::shared_ptr<Buffer> m_sceneData[BACK_BUFFER_COUNT];
+
+		std::shared_ptr<Buffer> m_grassDataBuffer;
 
 		float m_accumulatedTime{};
 
 		GrassRC m_rc{};
 		Entity m_chunkEntity;
-
-		PipelineStateSettings m_settings;
-		std::shared_ptr<PipelineState> m_pipeline{};
 	};
 
 }

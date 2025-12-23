@@ -23,7 +23,28 @@ namespace Wild {
 	{
 		auto* passData = rg.AllocatePassData<DeferredPassData>();
 
-	
+		// Final Texture
+		{
+			TextureDesc desc;
+			desc.width = engine.GetGfxContext()->GetWidth();
+			desc.Height = engine.GetGfxContext()->GetHeight();
+			desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			desc.name = "Final Texture";
+			desc.usage = TextureDesc::gpuOnly;
+			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
+			passData->FinalTexture = rg.CreateTransientTexture("FinalTexture", desc);
+		}
+
+		// DepthStencil texture.
+		{
+			TextureDesc desc;
+			desc.width = engine.GetGfxContext()->GetWidth();
+			desc.Height = engine.GetGfxContext()->GetHeight();
+			desc.name = "DepthStencil Texture";
+			desc.usage = TextureDesc::gpuOnly;
+			desc.flag = TextureDesc::depthStencil; // Automatically uses depth stencil format
+			passData->DepthTexture = rg.CreateTransientTexture("DepthStencil", desc);
+		}
 
 		rg.AddPass<DeferredPassData>(
 			"Deferred pass",
@@ -75,7 +96,7 @@ namespace Wild {
 				}
 
 				list.SetPipelineState(pipeline);
-				list.BeginRender({}, { ClearOperation::Store }, {}, DSClearOperation::DepthClear);
+				list.BeginRender({ passData.FinalTexture }, { ClearOperation::Clear }, { passData.DepthTexture }, DSClearOperation::DepthClear);
 
 				auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
 				for (auto&& [entity, trans, mesh] : meshes.each()) {

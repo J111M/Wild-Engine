@@ -1,44 +1,12 @@
 #include "Systems/GrassManager.hpp"
+#include "Renderer/Passes/DeferredPass.hpp"
 
 #include <vector>
 
 namespace Wild {
-	GrassManager::GrassManager()
+	GrassManager::GrassManager(std::shared_ptr<Buffer> GrassData)
 	{
-		auto device = engine.GetGfxContext();
-
-		m_vertShader = std::make_shared<Shader>("Shaders/vertGrassShader.hlsl");
-		m_fragShader = std::make_shared<Shader>("Shaders/fragGrassShader.hlsl");
-
-		m_settings.ShaderState.VertexShader = m_vertShader;
-		m_settings.ShaderState.FragShader = m_fragShader;
-		m_settings.DepthStencilState.DepthEnable = true;
-
-		// Setting up the input layout
-		m_settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
-		m_settings.ShaderState.InputLayout.emplace_back(InputElement("COORDS", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3)));
-		m_settings.ShaderState.InputLayout.emplace_back(InputElement("SWAY", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3) + sizeof(float)));
-
-		m_settings.RasterizerState.CullMode = CullMode::None;
-
-		std::vector<Uniform> uniforms;
-		{
-			Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(GrassRC) };
-			uniforms.emplace_back(uni);
-		}
-
-		{
-			Uniform uni{ 0, 0, RootParams::RootResourceType::ShaderResourceView, 0, D3D12_SHADER_VISIBILITY_VERTEX };
-			uniforms.emplace_back(uni);
-		}
-
-		{
-			Uniform uni{ 1, 0, RootParams::RootResourceType::ConstantBufferView, 0 };
-			uniforms.emplace_back(uni);
-		}
-
-		m_pipeline = std::make_shared<PipelineState>(PipelineStateType::Graphics, m_settings, uniforms);
-
+		m_grassDataBuffer = GrassData;
 		std::vector<GrassVertex> grassBlade{};
 
 		// Grass blade vertice data | position, 1D coordinates and sway
@@ -89,16 +57,17 @@ namespace Wild {
 
 	GrassManager::~GrassManager()
 	{
-		
+
 	}
 
-	void GrassManager::Update() {
+	void GrassManager::Update(const float dt)
+	{
 		auto& device = engine.GetGfxContext();
 		auto& ecs = engine.GetECS();
 
 		SceneData SceneCbv{};
 		auto& cameras = ecs->View<Camera>();
-		
+
 		// TODO change to support multiple cameras I only have 1 for now
 		for (auto& cameraEntity : cameras) {
 			if (ecs->HasComponent<Camera>(cameraEntity)) {
@@ -110,47 +79,92 @@ namespace Wild {
 		}
 
 		m_sceneData[device->GetBackBufferIndex()]->WriteData(&SceneCbv);
-	}
 
-	void GrassManager::Render(CommandList& list, std::shared_ptr<Buffer> GrassData, float deltaTime) {
-		auto& gfxContext = engine.GetGfxContext();
-
-		auto& transform = engine.GetECS()->GetComponent<Transform>(m_chunkEntity);
-
-		m_rc.Matrix = transform.GetWorldMatrix();
-
-		list.GetList()->SetPipelineState(m_pipeline->GetPso().Get());
-
-		list.GetList()->SetGraphicsRootSignature(m_pipeline->GetRootSignature().Get());
-
-		list.GetList()->SetGraphicsRootShaderResourceView(
-			1,
-			GrassData->GetBuffer()->GetGPUVirtualAddress()
-		);
-
-		list.GetList()->SetGraphicsRootConstantBufferView(
-			2,
-			m_sceneData[gfxContext->GetBackBufferIndex()]->GetBuffer()->GetGPUVirtualAddress()
-		);
-
-		m_rc.bladeId = 0;
-		m_accumulatedTime += deltaTime * 1;
+		m_accumulatedTime += dt * 1;
 		m_rc.time = m_accumulatedTime;
-
-		list.GetList()->SetGraphicsRoot32BitConstants(
-			0,
-			sizeof(GrassRC) / 4,
-			&m_rc,
-			0
-		);
-
-		list.GetList()->IASetVertexBuffers(0, 1, &m_grassBuffer->GetVBView()->View());
-		list.GetList()->DrawInstanced(15, MAXGRASSBLADES, 0, 0);
-
-		/*for (size_t i = 0; i < ; i++)
-		{
-			
-		}*/
-		
 	}
+
+	void GrassManager::Add(Renderer& renderer, RenderGraph& rg)
+	{
+		auto* grassPassData = rg.AllocatePassData<GrassPassData>();
+		auto* deferredData = rg.GetPassData<GrassPassData, DeferredPassData>();
+
+		grassPassData->FinalTexture = deferredData->FinalTexture;
+		grassPassData->DepthTexture = deferredData->DepthTexture;
+
+		rg.AddPass<GrassPassData>(
+			"Grass Pass",
+			PassType::Graphics,
+			[&renderer, this](const GrassPassData& passData, CommandList& list)
+			{
+				PipelineStateSettings settings{};
+				settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/vertGrassShader.hlsl");
+				settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/fragGrassShader.hlsl");
+				settings.DepthStencilState.DepthEnable = true;
+
+				settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+				settings.ShaderState.InputLayout.emplace_back(InputElement("COORDS", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3)));
+				settings.ShaderState.InputLayout.emplace_back(InputElement("SWAY", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3) + sizeof(float)));
+
+				settings.RasterizerState.CullMode = CullMode::None;
+
+				std::vector<Uniform> uniforms;
+				{
+					Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(GrassRC) };
+					uniforms.emplace_back(uni);
+				}
+
+				{
+					Uniform uni{ 0, 0, RootParams::RootResourceType::ShaderResourceView, 0, D3D12_SHADER_VISIBILITY_VERTEX };
+					uniforms.emplace_back(uni);
+				}
+
+				{
+					Uniform uni{ 1, 0, RootParams::RootResourceType::ConstantBufferView, 0 };
+					uniforms.emplace_back(uni);
+				}
+
+				auto& pipeline = renderer.GetOrCreatePipeline("Grass Pass", PipelineStateType::Graphics, settings, uniforms);
+
+				list.SetPipelineState(pipeline);
+				list.BeginRender({ passData.FinalTexture },
+					{ ClearOperation::Store },
+					passData.DepthTexture,
+					DSClearOperation::Store,
+					"Grass Pass");
+
+				auto& gfxContext = engine.GetGfxContext();
+
+				auto& transform = engine.GetECS()->GetComponent<Transform>(m_chunkEntity);
+				m_rc.Matrix = transform.GetWorldMatrix();
+
+				list.GetList()->SetGraphicsRootShaderResourceView(
+					1,
+					m_grassDataBuffer->GetBuffer()->GetGPUVirtualAddress()
+				);
+
+				list.GetList()->SetGraphicsRootConstantBufferView(
+					2,
+					m_sceneData[gfxContext->GetBackBufferIndex()]->GetBuffer()->GetGPUVirtualAddress()
+				);
+
+				m_rc.bladeId = 0;
+
+
+				list.GetList()->SetGraphicsRoot32BitConstants(
+					0,
+					sizeof(GrassRC) / 4,
+					&m_rc,
+					0
+				);
+
+				list.GetList()->IASetVertexBuffers(0, 1, &m_grassBuffer->GetVBView()->View());
+				list.GetList()->DrawInstanced(15, MAXGRASSBLADES, 0, 0);
+
+				renderer.CompositeTexture = passData.FinalTexture;
+
+				list.EndRender();
+			});
+	}
+	
 }

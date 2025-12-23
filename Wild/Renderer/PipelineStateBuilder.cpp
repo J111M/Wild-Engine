@@ -98,8 +98,10 @@ namespace Wild {
             psoDesc.BlendState.RenderTarget[i].SrcBlendAlpha = GetBlendState(m_settings.RasterizerState.BlendDesc.RenderTarget->SrcBlendAlpha);
             psoDesc.BlendState.RenderTarget[i].DestBlendAlpha = GetBlendState(m_settings.RasterizerState.BlendDesc.RenderTarget->DestBlendAlpha);
             psoDesc.BlendState.RenderTarget[i].BlendOpAlpha = GetBlendOpState(m_settings.RasterizerState.BlendDesc.RenderTarget->BlendOperationAlpha);
+            psoDesc.BlendState.RenderTarget[i].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
         }
 
+        // TODO change dynamically to the amount of rendertargets
         psoDesc.NumRenderTargets = 1;
         psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
         psoDesc.SampleDesc.Count = 1;

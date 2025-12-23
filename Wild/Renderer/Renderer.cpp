@@ -4,6 +4,7 @@
 #include "Renderer/RenderGraph/TransientResourceCache.hpp"
 
 #include "Renderer/Passes/DeferredPass.hpp"
+#include "Systems/GrassManager.hpp"
 
 #include "Core/Camera.hpp"
 
@@ -15,12 +16,11 @@ namespace Wild {
 
 		m_resourceCache = std::make_shared<TransientResourceCache>();
 
-		m_renderFeatures.emplace_back(std::make_unique<DeferredPass>());
-
-		m_grassManager = std::make_unique<GrassManager>();
 		m_grassPreCompute = std::make_unique<GrassCompute>();
-
 		m_grassPreCompute->Render(*engine.GetGfxContext()->GetCommandList());
+
+		m_renderFeatures.emplace_back(std::make_unique<DeferredPass>());
+		m_renderFeatures.emplace_back(std::make_unique<GrassManager>(m_grassPreCompute->GetGrassData()));	
 	}
 
 	void Renderer::Update(const float dt)
@@ -29,15 +29,10 @@ namespace Wild {
 		{
 			feature->Update(dt);
 		}
-
-		// TODO collect all passes and update them
-		m_grassManager->Update();
 	}
 
 	void Renderer::Render(CommandList& list, float deltaTime) {
 		auto gfxContext = engine.GetGfxContext();
-
-		ImGui::Text("Testtext");
 
 		D3D12_VIEWPORT viewPort{};
 		viewPort.TopLeftX = 0.0f;
@@ -60,14 +55,36 @@ namespace Wild {
 		rg.Compile();
 		rg.Execute();
 
-		m_grassManager->Render(list, m_grassPreCompute->GetGrassData(), deltaTime);
+		// Copy final image over
+		PipelineStateSettings settings{};
+		settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/vertCopyRT.hlsl");
+		settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/fragCopyRT.hlsl");
+		settings.DepthStencilState.DepthEnable = false;
 
-		/*list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
-			m_grassPreCompute->GetGrassData()->GetBuffer().Get(),
-			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
-			D3D12_RESOURCE_STATE_COMMON
-		));*/
+		std::vector<Uniform> uniforms;
 
+		{
+			Uniform uni{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+
+			CD3DX12_DESCRIPTOR_RANGE srvRange{};
+			srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0);
+			uni.Ranges.emplace_back(srvRange);
+
+			uniforms.emplace_back(uni);
+		}
+
+		{
+			Uniform uni{ 0, 0, RootParams::RootResourceType::StaticSampler };
+			uniforms.emplace_back(uni);
+		}
+
+		auto& pipeline = GetOrCreatePipeline("Copy pass", PipelineStateType::Graphics, settings, uniforms);
+
+		list.SetPipelineState(pipeline);
+		list.BeginRender({ gfxContext->GetRenderTarget().get() }, {ClearOperation::Store}, {}, DSClearOperation::Store);
+		list.GetList()->SetGraphicsRootDescriptorTable(0, CompositeTexture->GetSrv()->GetGpuHandle());
+		list.GetList()->DrawInstanced(3, 1, 0, 0);
+		list.EndRender();
 	}
 
 	bool Renderer::HasPipelineInCache(const std::string& key)

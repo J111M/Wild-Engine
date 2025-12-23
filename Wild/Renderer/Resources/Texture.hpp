@@ -20,7 +20,7 @@ namespace Wild {
 
 		enum ViewFlag : uint32_t
 		{
-			default = 1 << 0,
+			none = 0,
 			shaderResource = 1 << 1,
 			renderTarget = 1 << 2,
 			depthStencil = 1 << 3,
@@ -37,7 +37,7 @@ namespace Wild {
 		// TODO make abstracted format type
 		DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
-		ViewFlag flag = default;
+		ViewFlag flag = none;
 
 		std::string name = "default";
 	};

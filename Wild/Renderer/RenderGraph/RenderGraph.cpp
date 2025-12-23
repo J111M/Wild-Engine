@@ -40,35 +40,57 @@ namespace Wild {
 	// Function from https://www.geeksforgeeks.org/dsa/topological-sorting-indegree-based-solution/
 	std::vector<int> RenderGraph::TopologicalSort(int num, std::vector<std::vector<int>>& adj)
 	{
-		int n = num;
-		std::vector<int> indegree(n, 0);
-		std::queue<int> q;
-		std::vector<int> list;
+		// Create an adjacency list representation of the graph
+		std::vector<std::vector<int>> graph(num);
 
-		// Compute indegrees
-		for (int i = 0; i < n; i++) {
-			for (int next : adj[i])
-				indegree[next]++;
+		// Array to store the indegree (number of incoming edges) of each node
+		std::vector<int> indegree(num, 0);
+
+		// Build the graph and calculate indegrees
+		for (auto& edge : adj)
+		{
+			graph[edge[0]].push_back(edge[1]);  // Directed edge from edge[0] to edge[1]
+			indegree[edge[1]]++;                // Increment indegree of the destination node
 		}
 
-		// Add all nodes with no dependency into the queue
-		for (int i = 0; i < n; i++)
-			if (indegree[i] == 0)
-				q.push(i);
+		// Queue to store nodes with indegree 0 (ready to be processed)
+		std::queue<int> q;
 
-		// Kahn’s Algorithm (BFS)
-		while (!q.empty()) {
-			int top = q.front();
-			q.pop();
-			list.push_back(top);
-			for (int next : adj[top]) {
-				indegree[next]--;
-				if (indegree[next] == 0)
-					q.push(next);
+		// Add all nodes with indegree 0 to the queue
+		for (int i = 0; i < num; i++)
+		{
+			if (indegree[i] == 0)
+			{
+				q.push(i);
 			}
 		}
 
-		return list;
+		[[maybe_unused]] int processedCount = 0;  // To track the number of processed nodes
+
+		// Vector to store the topological order
+		std::vector<int> topoOrder;
+
+		// Process nodes in the queue
+		while (!q.empty())
+		{
+			int node = q.front();  // Get the front node
+			q.pop();
+			topoOrder.push_back(node);  // Add the node to the topological order
+			processedCount++;           // Increment the count of processed nodes
+
+			// Reduce the indegree of its neighbors
+			for (int neighbor : graph[node])
+			{
+				indegree[neighbor]--;  // Remove the edge to the neighbor
+				if (indegree[neighbor] == 0)
+				{
+					q.push(neighbor);  // Add neighbor to the queue
+				}
+			}
+		}
+
+		//CheckMsg(processedCount == n, "Cycle detected: topological sort not possible.");
+		return topoOrder;  // Return the valid topological order
 	}
 
 	void RenderGraph::SortRenderPasses()

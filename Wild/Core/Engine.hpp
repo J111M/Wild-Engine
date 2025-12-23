@@ -8,7 +8,7 @@
 #include "Core/ECS.hpp"
 #include "Core/Transform.hpp"
 #include "Core/Camera.hpp"
-#include "Core/ImGuiCore.hpp"
+#include "Core/ImGui/ImGuiCore.hpp"
 
 #include <memory>
 #include <stdexcept>

@@ -125,7 +125,7 @@ namespace Wild {
 
 		// Grab other pass and return it's parameter
 		RenderPass<PassData>* pass = PassFromType<PassData>();
-		return &pass->m_parameters;
+		return &pass->m_passData;
 	}
 
 	template<typename PassData>

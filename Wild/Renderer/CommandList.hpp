@@ -43,9 +43,9 @@ namespace Wild {
 		void SetVertexBuffer() {};
 		void SetIndexBuffer() {};
 		void Draw(uint32_t size) {};
-
-
 	private:
+		void SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil);
+
 		ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		ComPtr<ID3D12CommandAllocator> m_allocator;
 
