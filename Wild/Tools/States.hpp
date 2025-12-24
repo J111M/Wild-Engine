@@ -184,14 +184,15 @@ namespace Wild {
 	enum class ClearOperation
 	{
 		Clear = 0,
-		Store = 1 // No clear
+		Store = 1
 	};
 
 	enum class DSClearOperation
 	{
 		DepthClear = 0,
 		StencilClear = 1,
-		Store = 2
+		Store = 2,
+		ClearAll = 3
 	};
 }
 

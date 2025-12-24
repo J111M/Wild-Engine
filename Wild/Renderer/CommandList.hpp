@@ -38,6 +38,9 @@ namespace Wild {
 
 		void EndRender();
 
+		void ClearDepthStencil(Texture& depthStencil, const DSClearOperation clear, const float depth = 1.0, const uint8_t stencil = 0);
+		void ClearRenderTarget(Texture& renderTarget, const glm::vec4& color = { 0.0f, 0.0f, 0.0f, 1.0f });
+
 		// TODO Implement for platform abstraction
 		void SetBuffer() {};
 		void SetVertexBuffer() {};

@@ -7,7 +7,8 @@ struct VSOutput
     float2 uv : TEXCOORD0;
 };
 
-float4 main(VSOutput input) : SV_TARGET
+float4 main(VSOutput input) : SV_TARGET0
 {
     return srcTexture.Sample(linearSampler, input.uv);
+
 }

@@ -62,10 +62,6 @@ namespace Wild {
 		m_frameInFlight = true;
 		m_pipelineIsSet = false;
 
-		//m_commandList->BeginEvent(1u, passName.c_str(), static_cast<uint32_t>(passName.size() + 1));
-
-		
-
 		auto gfxContext = engine.GetGfxContext();
 
 		m_commandList->SetPipelineState(m_pipelineState->GetPso().Get());
@@ -89,13 +85,51 @@ namespace Wild {
 
 		m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+		// Set all reder targets and depth target
 		SetRenderTargets(renderTargets, depthStencil);
+
+		// Check if render target's need to be cleared
+		for (uint32_t i = 0; i < clearRt.size(); i++)
+		{
+			if (clearRt[i] == ClearOperation::Clear)
+			{
+				ClearRenderTarget(*renderTargets[i]);
+			}
+		}
+
+		// Clear the depth stencil texture depending on the clear flag
+		ClearDepthStencil(*depthStencil, clearDs);
 	}
 
 	void CommandList::EndRender()
 	{
 		//m_commandList->EndEvent();
 		m_frameInFlight = false;
+	}
+
+	void CommandList::ClearDepthStencil(Texture& depthStencil, const DSClearOperation clear, const float depth, const uint8_t stencil)
+	{
+		switch (clear)
+		{
+		case DSClearOperation::DepthClear:
+			m_commandList->ClearDepthStencilView(depthStencil.GetDsv()->GetCpuHandle(), D3D12_CLEAR_FLAG_DEPTH, depth, stencil, 0, nullptr);
+			break;
+		case DSClearOperation::StencilClear:
+			m_commandList->ClearDepthStencilView(depthStencil.GetDsv()->GetCpuHandle(), D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
+			break;
+		case DSClearOperation::ClearAll:
+			m_commandList->ClearDepthStencilView(depthStencil.GetDsv()->GetCpuHandle(), D3D12_CLEAR_FLAG_DEPTH, depth, stencil, 0, nullptr);
+			m_commandList->ClearDepthStencilView(depthStencil.GetDsv()->GetCpuHandle(), D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
+			break;
+		default:
+			break;
+		}
+	}
+
+	void CommandList::ClearRenderTarget(Texture& renderTarget, const glm::vec4& color)
+	{
+		renderTarget.Transition(*this, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		m_commandList->ClearRenderTargetView(renderTarget.GetRtv()->GetCpuHandle(), &color[0], 0, nullptr);
 	}
 
 	void CommandList::SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil)
@@ -109,6 +143,7 @@ namespace Wild {
 		handles.reserve(numRenderTargets);
 		for (size_t i = 0; i < numRenderTargets; i++)
 		{
+			renderTargets[i]->Transition(*this, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			handles.push_back(renderTargets[i]->GetRtv()->GetCpuHandle());
 		}
 
@@ -116,8 +151,10 @@ namespace Wild {
 		const D3D12_CPU_DESCRIPTOR_HANDLE* dsvHandle = nullptr;
 		if (depthStencil)
 		{
+			depthStencil->Transition(*this, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 			dsvHandle = &depthStencil->GetDsv()->GetCpuHandle();
 		}
+
 
 		m_commandList->OMSetRenderTargets(numRenderTargets, handles.data(), FALSE, dsvHandle);
 	}

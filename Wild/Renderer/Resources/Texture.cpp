@@ -25,7 +25,7 @@ namespace Wild {
 			break;
 		}
 
-		m_resource->SetName(StringToWString(m_desc.name).c_str());
+		m_resource->Handle()->SetName(StringToWString(m_desc.name).c_str());
 	}
 
 	Texture::Texture(const TextureDesc& desc)
@@ -54,20 +54,23 @@ namespace Wild {
 			clearValue.Color[2] = 0.0f;
 			clearValue.Color[3] = 1.0f;
 
+			// Create resource with initial state
+			m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_RENDER_TARGET);
+
 			gfxContext->GetDevice()->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 				D3D12_HEAP_FLAG_NONE,
 				&textureDesc,
 				D3D12_RESOURCE_STATE_RENDER_TARGET,
 				&clearValue,
-				IID_PPV_ARGS(&m_resource)
+				IID_PPV_ARGS(&m_resource->Handle())
 			);
 
-				D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 			rtvDesc.Format = m_desc.format;
 			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
-			m_rtv = std::make_shared<RenderTargetView>(m_resource, rtvDesc);
+			m_rtv = std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc);
 		}
 
 		if (desc.flag & TextureDesc::depthStencil) {
@@ -87,20 +90,23 @@ namespace Wild {
 			clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 			clearValue.DepthStencil = { 1.0f, 0 };
 
+			// Create resource with initial state
+			m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
 			gfxContext->GetDevice()->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 				D3D12_HEAP_FLAG_NONE,
 				&depthDesc,
 				D3D12_RESOURCE_STATE_DEPTH_WRITE,
 				&clearValue,
-				IID_PPV_ARGS(&m_resource)
+				IID_PPV_ARGS(&m_resource->Handle())
 			);
 
 			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 			dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
-			m_dsv = std::make_shared<DepthStencilView>(m_resource, dsvDesc);
+			m_dsv = std::make_shared<DepthStencilView>(m_resource->Handle(), dsvDesc);
 		}
 
 		if (m_desc.flag & TextureDesc::ViewFlag::shaderResource) {
@@ -111,23 +117,24 @@ namespace Wild {
 			srvDesc.Texture2D.MipLevels = 1;
 			srvDesc.Texture2D.MostDetailedMip = 0;
 
-			m_srv = std::make_shared<ShaderResourceView>(m_resource, srvDesc);
+			m_srv = std::make_shared<ShaderResourceView>(m_resource->Handle(), srvDesc);
 		}
 
-		m_resource->SetName(StringToWString(m_desc.name).c_str());
+		m_resource->Handle()->SetName(StringToWString(m_desc.name).c_str());
 	}
 
-	Texture::Texture(const TextureDesc& desc, ComPtr<ID3D12Resource> resource)
+	Texture::Texture(const TextureDesc& desc, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES initialState)
 	{
 		m_desc = desc;
-		m_resource = resource;
+		m_resource = std::make_unique<Resource>(initialState);
+		m_resource->SetResource(resource);
 
 		if (desc.flag & TextureDesc::renderTarget) {
 			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 			rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
-			m_rtv = std::make_shared<RenderTargetView>(m_resource, rtvDesc);
+			m_rtv = std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc);
 		}
 
 		if (desc.flag & TextureDesc::depthStencil) {
@@ -135,8 +142,12 @@ namespace Wild {
 			dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
-			m_dsv = std::make_shared<DepthStencilView>(m_resource, dsvDesc);
+			m_dsv = std::make_shared<DepthStencilView>(m_resource->Handle(), dsvDesc);
 		}
+	}
+
+	void Texture::Transition(CommandList& list, D3D12_RESOURCE_STATES newState) {
+		m_resource->Transition(list, newState);
 	}
 
 	std::shared_ptr<RenderTargetView> Texture::GetRtv() const
@@ -195,16 +206,19 @@ namespace Wild {
 			static_cast<UINT16>(m_desc.Layers),
 			static_cast<UINT16>(m_desc.mips));
 
+		// Create resource with copy dest since update subresource will transition it to that
+		m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
+
 		ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 			D3D12_HEAP_FLAG_NONE,
 			&textureDesc,
 			D3D12_RESOURCE_STATE_COMMON,
 			nullptr,
-			IID_PPV_ARGS(&m_resource)));
+			IID_PPV_ARGS(&m_resource->Handle())));
 
 		// Create Upload heap
-		UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_resource.Get(), 0, 1);
+		UINT64 uploadBufferSize = GetRequiredIntermediateSize(GetResource(), 0, 1);
 
 		ComPtr<ID3D12Resource> uploadHeap;
 		ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(
@@ -222,12 +236,14 @@ namespace Wild {
 
 		CommandList list(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-		UpdateSubresources(list.GetList().Get(), m_resource.Get(), uploadHeap.Get(), 0, 0, 1, &subrsData);
+		UpdateSubresources(list.GetList().Get(), GetResource(), uploadHeap.Get(), 0, 0, 1, &subrsData);
 
-		list.GetList()->ResourceBarrier(1,
-			&CD3DX12_RESOURCE_BARRIER::Transition(m_resource.Get(),
-				D3D12_RESOURCE_STATE_COPY_DEST,
-				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+		m_resource->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		//list.GetList()->ResourceBarrier(1,
+		//	&CD3DX12_RESOURCE_BARRIER::Transition(GetResource(),
+		//		D3D12_RESOURCE_STATE_COPY_DEST,
+		//		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
 		list.Close();
 		engine.GetGfxContext()->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
@@ -241,7 +257,7 @@ namespace Wild {
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		srvDesc.Texture2D.MipLevels = 1;
 
-		m_srv = std::make_shared<ShaderResourceView>(m_resource, srvDesc);
+		m_srv = std::make_shared<ShaderResourceView>(m_resource->Handle(), srvDesc);
 	}
 
 	void Texture::CreateCubeMapTexture(const std::string& filePath)

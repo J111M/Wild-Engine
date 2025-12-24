@@ -49,10 +49,12 @@ namespace Wild {
 		Texture(const std::string& filePath, TextureType type = TextureType::TEXTURE_2D, uint32_t mips = 0);
 		Texture(const TextureDesc& desc);
 		// For swapchain rendertargets
-		Texture(const TextureDesc& desc, ComPtr<ID3D12Resource> resource);
+		Texture(const TextureDesc& desc, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES initialState);
 		~Texture() {};
 
-		ComPtr<ID3D12Resource> GetResource() { return m_resource; }
+		void Transition(CommandList& list, D3D12_RESOURCE_STATES newState);
+
+		ID3D12Resource* GetResource() { return m_resource->Handle().Get(); }
 		TextureDesc GetDesc() { return m_desc; }
 
 		uint32_t Width() const { return m_desc.width; }
@@ -68,7 +70,7 @@ namespace Wild {
 		void CreateTexture(const std::string& filePath);
 		void CreateCubeMapTexture(const std::string& filePath);
 
-		ComPtr<ID3D12Resource> m_resource;
+		std::unique_ptr<Resource> m_resource;
 
 		std::shared_ptr<RenderTargetView> m_rtv;
 		std::shared_ptr<DepthStencilView> m_dsv;

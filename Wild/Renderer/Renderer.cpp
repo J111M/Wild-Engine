@@ -20,7 +20,7 @@ namespace Wild {
 		m_grassPreCompute->Render(*engine.GetGfxContext()->GetCommandList());
 
 		m_renderFeatures.emplace_back(std::make_unique<DeferredPass>());
-		m_renderFeatures.emplace_back(std::make_unique<GrassManager>(m_grassPreCompute->GetGrassData()));	
+		m_renderFeatures.emplace_back(std::make_unique<GrassManager>(m_grassPreCompute->GetGrassData()));
 	}
 
 	void Renderer::Update(const float dt)
@@ -44,7 +44,7 @@ namespace Wild {
 
 		D3D12_RECT scissorRect = { 0u, 0u, static_cast<LONG>(viewPort.Width), static_cast<LONG>(viewPort.Height) };
 
-		
+
 		RenderGraph rg = RenderGraph(*m_resourceCache);
 
 		for (auto& feature : m_renderFeatures)
@@ -55,11 +55,14 @@ namespace Wild {
 		rg.Compile();
 		rg.Execute();
 
+		//CompositeTexture->Transition(list, D3D12_RESOURCE_STATE_COMMON);
+
 		// Copy final image over
 		PipelineStateSettings settings{};
 		settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/vertCopyRT.hlsl");
 		settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/fragCopyRT.hlsl");
 		settings.DepthStencilState.DepthEnable = false;
+		settings.RasterizerState.WindingMode = WindingOrder::Clockwise;
 
 		std::vector<Uniform> uniforms;
 
@@ -80,8 +83,10 @@ namespace Wild {
 
 		auto& pipeline = GetOrCreatePipeline("Copy pass", PipelineStateType::Graphics, settings, uniforms);
 
+		CompositeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
 		list.SetPipelineState(pipeline);
-		list.BeginRender({ gfxContext->GetRenderTarget().get() }, {ClearOperation::Store}, {}, DSClearOperation::Store);
+		list.BeginRender({ gfxContext->GetRenderTarget().get() }, { ClearOperation::Store }, nullptr, DSClearOperation::Store);
 		list.GetList()->SetGraphicsRootDescriptorTable(0, CompositeTexture->GetSrv()->GetGpuHandle());
 		list.GetList()->DrawInstanced(3, 1, 0, 0);
 		list.EndRender();
