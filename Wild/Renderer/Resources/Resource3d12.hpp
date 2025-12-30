@@ -6,6 +6,7 @@ namespace Wild {
 	class Resource
 	{
 	public:
+
 		Resource(D3D12_RESOURCE_STATES initialState);
 		~Resource() {};
 
@@ -18,7 +19,7 @@ namespace Wild {
 		D3D12_RESOURCE_STATES GetCurrentState() const { return m_currentState; }
 
 		void Transition(CommandList& list, D3D12_RESOURCE_STATES newState);
-		void Transition(CommandList& list, D3D12_RESOURCE_STATES oldState, D3D12_RESOURCE_STATES newState);
+		//void Transition(CommandList& list, D3D12_RESOURCE_STATES oldState, D3D12_RESOURCE_STATES newState);
 	private:
 		D3D12_RESOURCE_STATES m_currentState;
 		ComPtr<ID3D12Resource> m_resource;

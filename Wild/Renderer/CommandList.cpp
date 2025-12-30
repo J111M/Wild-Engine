@@ -39,6 +39,8 @@ namespace Wild {
 	{
 		m_pipelineIsSet = true;
 		m_pipelineState = pipeline;
+
+		m_commandList->SetPipelineState(m_pipelineState->GetPso().Get());
 	}
 
 	void CommandList::BeginRender(const std::vector<Texture*>& renderTargets,
@@ -47,24 +49,14 @@ namespace Wild {
 		DSClearOperation clearDs,
 		const std::string& passName)
 	{
-		if (!m_pipelineIsSet)
-		{
-			WD_WARN("Invalid PSO or Root signature supplied pass will not execute.");
+		if (!CanPassExecute(passName))
 			return;
-		}
-
-		if (m_frameInFlight)
-		{
-			WD_WARN("A frame is already in flight on this commandlist call end render first in: %s", passName.c_str());
-			return;
-		}
 
 		m_frameInFlight = true;
 		m_pipelineIsSet = false;
 
 		auto gfxContext = engine.GetGfxContext();
 
-		m_commandList->SetPipelineState(m_pipelineState->GetPso().Get());
 		m_commandList->SetGraphicsRootSignature(m_pipelineState->GetRootSignature().Get());
 
 		ID3D12DescriptorHeap* heaps[] = { engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get() };
@@ -99,6 +91,26 @@ namespace Wild {
 
 		// Clear the depth stencil texture depending on the clear flag
 		ClearDepthStencil(*depthStencil, clearDs);
+	}
+
+	void CommandList::BeginRender(const std::string& passName)
+	{
+		if (!CanPassExecute(passName))
+			return;
+
+		if (!m_pipelineState->IsComputePass())
+		{
+			WD_WARN("Pass is not a compute pass please provide render targets.");
+			return;
+		}
+
+		m_frameInFlight = true;
+		m_pipelineIsSet = false;
+
+		m_commandList->SetComputeRootSignature(m_pipelineState->GetRootSignature().Get());
+
+		ID3D12DescriptorHeap* heaps[] = { engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get() };
+		m_commandList->SetDescriptorHeaps(1, heaps);
 	}
 
 	void CommandList::EndRender()
@@ -157,6 +169,23 @@ namespace Wild {
 
 
 		m_commandList->OMSetRenderTargets(numRenderTargets, handles.data(), FALSE, dsvHandle);
+	}
+
+	const bool CommandList::CanPassExecute(const std::string& passName)
+	{
+		if (!m_pipelineIsSet)
+		{
+			WD_WARN("Invalid PSO or Root signature supplied pass will not execute.");
+			return false;
+		}
+
+		if (m_frameInFlight)
+		{
+			WD_WARN("A frame is already in flight on this commandlist call end render first in: %s", passName.c_str());
+			return false;
+		}
+
+		return true;
 	}
 
 }

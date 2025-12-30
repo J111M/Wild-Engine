@@ -19,6 +19,7 @@ namespace Wild {
             CreateGraphicsPSO();
             break;
         case Wild::PipelineStateType::Compute:
+            m_isComputePass = true;
             CreateComputePSO();
             break;
         default:

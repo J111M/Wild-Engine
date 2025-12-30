@@ -4,7 +4,6 @@
 #include "Tools/States.hpp"
 
 #include "Renderer/ShaderPipeline.hpp"
-#include "Renderer/Resources/Buffer.hpp"
 
 #include <unordered_map>
 
@@ -35,6 +34,7 @@ namespace Wild {
 			Texture* depthStencil,
 			DSClearOperation clearDs,
 			const std::string& passName = {});
+		void BeginRender(const std::string& passName = {});
 
 		void EndRender();
 
@@ -48,6 +48,8 @@ namespace Wild {
 		void Draw(uint32_t size) {};
 	private:
 		void SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil);
+
+		const bool CanPassExecute(const std::string& passName);
 
 		ComPtr<ID3D12GraphicsCommandList> m_commandList;
 		ComPtr<ID3D12CommandAllocator> m_allocator;

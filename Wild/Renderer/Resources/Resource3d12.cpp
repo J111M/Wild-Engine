@@ -1,5 +1,7 @@
 #include "Renderer/Resources/Resource3d12.hpp"
 
+#include "Renderer/CommandList.hpp"
+
 namespace Wild {
 	Resource::Resource(D3D12_RESOURCE_STATES initialState) : m_currentState(initialState) {}
 

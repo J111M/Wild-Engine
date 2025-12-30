@@ -36,7 +36,14 @@ struct GrassData
     float height;
 };
 
+struct CulledInstance
+{
+    uint instanceIndex;
+    float lodBlend;
+};
+
 StructuredBuffer<GrassData> grassBuffer : register(t0);
+StructuredBuffer<CulledInstance> culledInstances : register(t1);
 
 float3x3 rotY(float a)
 {
@@ -85,7 +92,8 @@ float remap1(float value, float inMin, float inMax, float outMin, float outMax)
 VSOutput main(VSInput input)
 {
     VSOutput output;
-    GrassData grassData = grassBuffer[input.instanceID];
+    CulledInstance culled = culledInstances[input.instanceID];
+    GrassData grassData = grassBuffer[culled.instanceIndex];
     
     float3x3 rotationMat = rotY(grassData.rotation);
     
