@@ -7,7 +7,7 @@
 
 namespace Wild {
 	struct GrassCullData {
-		std::shared_ptr<Buffer> CulledData = nullptr;
+		std::shared_ptr<Buffer> CulledBuffer = nullptr;
 	};
 
 	struct RenderGrassData {
@@ -54,6 +54,10 @@ namespace Wild {
 		float foo;
 	};
 
+	struct IndirectCommandsData {
+		float foo;
+	};
+
 	class GrassPass : public RenderFeature
 	{
 	public:
@@ -64,30 +68,44 @@ namespace Wild {
 		virtual void Update(const float dt) override;
 
 	private:
+		// Clear counter pass resets the instance count buffer to 0
 		void AddClearCounterPass(Renderer& renderer, RenderGraph& rg);
 		void AddGrassCulling(Renderer& renderer, RenderGraph& rg);
+		void AddIndirectDrawCommandsPass(Renderer& renderer, RenderGraph& rg);
 		void AddRenderGrass(Renderer& renderer, RenderGraph& rg);
 		void UpdateFrustumData();
 
 		void CreateGrassMeshes();
 
-		// Grass culling buffers
-		std::unique_ptr<Buffer> m_frustumBuffer; // Implement double buffering
+		// Store frustum data
+		std::unique_ptr<Buffer> m_frustumBuffer;
+
+		// Keeps track of all instances that need to be culled
 		std::shared_ptr<Buffer> m_culledInstancesBuffer[BACK_BUFFER_COUNT];
+
+		// Instance count buffer keeps track of the amount of instances that need to be drawn per LOD
 		std::unique_ptr<Buffer> m_instanceCountBuffer[BACK_BUFFER_COUNT];
+
+		// Draw command buffer stores the things that need to be drawn via execute indirect
 		std::unique_ptr<Buffer> m_drawCommandsBuffer[BACK_BUFFER_COUNT];
 
-		std::shared_ptr<Buffer> m_grassBladeInstanceBuffer;
-
+		// Command signature for Execute indirect
 		ComPtr<ID3D12CommandSignature> m_commandSignature;
 
+		// Contains per blade grass data
+		std::shared_ptr<Buffer> m_grassBladeInstanceBuffer;
+
+		// Data for grass render pass
 		GrassRC m_rc{};
 		Entity m_chunkEntity;
-
 		float m_accumulatedTime{};
 		std::shared_ptr<Buffer> m_sceneData[BACK_BUFFER_COUNT];
 
+		// Contains all LOD's inside the same buffer
 		std::unique_ptr<Buffer> m_grassVertices;
 		std::unique_ptr<Buffer> m_grassIndices;
+
+		// 3 grass lod's total
+		uint32_t m_lodAmount = 3;
 	};
 }

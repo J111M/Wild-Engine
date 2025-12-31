@@ -7,26 +7,29 @@ namespace Wild {
 	GrassPass::GrassPass(std::shared_ptr<Buffer> GrassBladeBuffer) {
 		m_grassBladeInstanceBuffer = GrassBladeBuffer;
 
+		// Generate grass mesh data
 		CreateGrassMeshes();
+
+
 
 		// Cull data UAV, u0
 		for (int i = 0; i < BACK_BUFFER_COUNT; i++)
 		{
 			BufferDesc desc{};
+			desc.name = "Cullinstance buffer: " + std::to_string(i);
 			desc.bufferSize = sizeof(CulledInstance);
 			m_culledInstancesBuffer[i] = std::make_shared<Buffer>(desc);
 			m_culledInstancesBuffer[i]->CreateUAVBuffer(MAXGRASSBLADES1);
 		}
 
-		uint32_t lodAmount = 3;
-
 		// Single uint for writing instance count UAV, u1
 		for (int i = 0; i < BACK_BUFFER_COUNT; i++)
 		{
 			BufferDesc desc{};
+			desc.name = "Indirect instance count buffer: " + std::to_string(i);
 			desc.bufferSize = sizeof(uint32_t);
 			m_instanceCountBuffer[i] = std::make_unique<Buffer>(desc);
-			m_instanceCountBuffer[i]->CreateUAVBuffer(lodAmount);
+			m_instanceCountBuffer[i]->CreateUAVBuffer(m_lodAmount);
 		}
 
 		// Frustum constant buffer
@@ -41,9 +44,10 @@ namespace Wild {
 		for (int i = 0; i < BACK_BUFFER_COUNT; i++)
 		{
 			BufferDesc desc{};
+			desc.name = "Indirect commands buffer: " + std::to_string(i);
 			desc.bufferSize = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
 			m_drawCommandsBuffer[i] = std::make_unique<Buffer>(desc);
-			m_drawCommandsBuffer[i]->CreateUAVBuffer(lodAmount);
+			m_drawCommandsBuffer[i]->CreateUAVBuffer(m_lodAmount);
 		}
 
 		D3D12_INDIRECT_ARGUMENT_DESC argumentDesc = {};
@@ -79,8 +83,10 @@ namespace Wild {
 
 	void GrassPass::Add(Renderer& renderer, RenderGraph& rg)
 	{
+		// Adds each pass to the render graph
 		AddClearCounterPass(renderer, rg);
 		AddGrassCulling(renderer, rg);
+		AddIndirectDrawCommandsPass(renderer, rg);
 		AddRenderGrass(renderer, rg);
 	}
 
@@ -109,6 +115,11 @@ namespace Wild {
 		m_rc.time = m_accumulatedTime;
 	}
 
+	/// <summary>
+	/// The reason I clear the instance count via a compute shader is because doing it via clear uav uint had specific
+	/// requirments for how the heap should be created which required me to create another heap specifically for clearing
+	/// compute made it more straight forward without cluttering the code.
+	/// </summary>
 	void GrassPass::AddClearCounterPass(Renderer& renderer, RenderGraph& rg)
 	{
 		auto* passData = rg.AllocatePassData<ClearCounterData>();
@@ -116,7 +127,7 @@ namespace Wild {
 		rg.AddPass<ClearCounterData>(
 			"Clear counter pass",
 			PassType::Compute,
-			[&renderer, this](ClearCounterData& countData, CommandList& list) {
+		[&renderer, this](ClearCounterData& countData, CommandList& list) {
 			PipelineStateSettings settings{};
 			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/computeClearCounter.hlsl");
 
@@ -143,6 +154,12 @@ namespace Wild {
 		});
 	}
 
+	/// <summary>
+	/// GPU frustum culling combined with indirect rendering.
+	/// This pass also calculates which LOD's to use for the grass blades
+	/// and writes the amount of instances to the instance count buffer
+	/// which will be used in the AddIndirectDrawCommandsPass.
+	/// </summary>
 	void GrassPass::AddGrassCulling(Renderer& renderer, RenderGraph& rg)
 	{
 		auto* passData = rg.AllocatePassData<GrassCullData>();
@@ -153,7 +170,7 @@ namespace Wild {
 		rg.AddPass<GrassCullData>(
 			"Grass culling pass",
 			PassType::Compute,
-			[&renderer, this](GrassCullData& grassData, CommandList& list) {
+		[&renderer, this](GrassCullData& cullingData, CommandList& list) {
 
 			auto context = engine.GetGfxContext();
 
@@ -186,12 +203,6 @@ namespace Wild {
 				uniforms.emplace_back(uni);
 			}
 
-			// Draw commands
-			{
-				Uniform uni{ 2, 0, RootParams::RootResourceType::UnorderedAccessView };
-				uniforms.emplace_back(uni);
-			}
-
 			auto& pipeline = renderer.GetOrCreatePipeline("Grass culling pass", PipelineStateType::Compute, settings, uniforms);
 
 			list.SetPipelineState(pipeline);
@@ -204,25 +215,75 @@ namespace Wild {
 			list.GetList()->SetComputeRootShaderResourceView(1, m_grassBladeInstanceBuffer->GetBuffer()->GetGPUVirtualAddress());
 			list.GetList()->SetComputeRootUnorderedAccessView(2, m_culledInstancesBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
 			list.GetList()->SetComputeRootUnorderedAccessView(3, m_instanceCountBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
-			list.GetList()->SetComputeRootUnorderedAccessView(4, m_drawCommandsBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
-
+			
 			list.GetList()->Dispatch(((MAXGRASSBLADES1 + 63) / 64), 1, 1);
+
+			list.EndRender();
+
+			D3D12_RESOURCE_BARRIER barriers[1] = {};
+
+			// Barrier for instance count buffer
+			barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+			barriers[0].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			barriers[0].UAV.pResource = m_instanceCountBuffer[frameIndex]->GetBuffer();
+
+			list.GetList()->ResourceBarrier(1, barriers);
+
+			m_culledInstancesBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+			cullingData.CulledBuffer = m_culledInstancesBuffer[frameIndex];
+
+		});
+	}
+
+	/// <summary>
+	/// Creates N amount of draw commands depending on the amount of LOD's the grass blades.
+	/// </summary>
+	void GrassPass::AddIndirectDrawCommandsPass(Renderer& renderer, RenderGraph& rg)
+	{
+		auto* passData = rg.AllocatePassData<IndirectCommandsData>();
+		auto cullData = rg.GetPassData<IndirectCommandsData, GrassCullData>();
+
+		rg.AddPass<IndirectCommandsData>("Indirect command creation pass",
+			PassType::Compute,
+		[&renderer, this](const IndirectCommandsData& indirectCmds, CommandList& list) {
+			auto context = engine.GetGfxContext();
+
+			PipelineStateSettings settings{};
+			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/computeIndirectCmdCreation.hlsl");
+
+			std::vector<Uniform> uniforms;
+			{
+				Uniform uni{ 0, 0, RootParams::RootResourceType::UnorderedAccessView };
+				uniforms.emplace_back(uni);
+			}
+			{
+				Uniform uni{ 1, 0, RootParams::RootResourceType::UnorderedAccessView };
+				uniforms.emplace_back(uni);
+			}
+
+			auto& pipeline = renderer.GetOrCreatePipeline("Indirect command creation pass", PipelineStateType::Compute, settings, uniforms);
+
+			list.SetPipelineState(pipeline);
+			list.BeginRender();
+			
+			int frameIndex = context->GetBackBufferIndex();
+			list.GetList()->SetComputeRootUnorderedAccessView(0, m_instanceCountBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
+			list.GetList()->SetComputeRootUnorderedAccessView(1, m_drawCommandsBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
+
+			list.GetList()->Dispatch(1, 1, 1);
 
 			list.EndRender();
 
 			m_instanceCountBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
 			m_drawCommandsBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-			m_culledInstancesBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-			grassData.CulledData = m_culledInstancesBuffer[frameIndex];
-
 		});
 	}
 
 	void GrassPass::AddRenderGrass(Renderer& renderer, RenderGraph& rg)
 	{
 		auto* passData = rg.AllocatePassData<RenderGrassData>();
-		auto cullPass = rg.GetPassData<RenderGrassData, GrassCullData>();
+		auto indirectPass = rg.GetPassData<RenderGrassData, IndirectCommandsData>();
 
 		auto* deferredData = rg.GetPassData<RenderGrassData, DeferredPassData>();
 
@@ -232,7 +293,7 @@ namespace Wild {
 		rg.AddPass<RenderGrassData>(
 			"Grass render pass",
 			PassType::Compute,
-			[&renderer, cullPass, this](const RenderGrassData& grassData, CommandList& list) {
+		[&renderer, this](const RenderGrassData& grassData, CommandList& list) {
 
 			PipelineStateSettings settings{};
 			settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/vertGrassShader.hlsl");
@@ -285,8 +346,8 @@ namespace Wild {
 			list.GetList()->SetGraphicsRootShaderResourceView(1, m_grassBladeInstanceBuffer->GetBuffer()->GetGPUVirtualAddress());
 			list.GetList()->SetGraphicsRootConstantBufferView(2, m_sceneData[gfxContext->GetBackBufferIndex()]->GetBuffer()->GetGPUVirtualAddress());
 
-			if (cullPass->CulledData->GetBuffer()) {
-				list.GetList()->SetGraphicsRootShaderResourceView(3, cullPass->CulledData->GetBuffer()->GetGPUVirtualAddress());
+			if (m_culledInstancesBuffer[frameIndex]->GetBuffer()) {
+				list.GetList()->SetGraphicsRootShaderResourceView(3, m_culledInstancesBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
 			}
 
 			list.GetList()->SetGraphicsRoot32BitConstants(
@@ -299,9 +360,10 @@ namespace Wild {
 			list.GetList()->IASetVertexBuffers(0, 1, &m_grassVertices->GetVBView()->View());
 			list.GetList()->IASetIndexBuffer(&m_grassIndices->GetIBView()->View());
 
+			// Indirect drawing to reduce cpu overhead and picking the correct LOD's. It executes a total of 3 draw commands for all LOD's
 			list.GetList()->ExecuteIndirect(
 				m_commandSignature.Get(),
-				MAXGRASSBLADES1,
+				m_lodAmount,
 				m_drawCommandsBuffer[frameIndex]->GetBuffer(),
 				0,
 				m_instanceCountBuffer[frameIndex]->GetBuffer(),
@@ -320,7 +382,7 @@ namespace Wild {
 
 		FrustumBuffer FrustumData{};
 
-		// Loop over all camera's currently always chooses the last since there is only 1
+		// Loop over all camera's TODO make the code run for each camera entity
 		for (auto& cameraEntity : cameras) {
 			if (ecs->HasComponent<Camera>(cameraEntity)) {
 				auto& cam = ecs->GetComponent<Camera>(cameraEntity);
@@ -330,6 +392,7 @@ namespace Wild {
 			}
 		}
 
+		// Extracting the frustum data from the view and proj
 		FrustumData.frustumPlanes[0] = glm::row(FrustumData.viewProj, 3) + glm::row(FrustumData.viewProj, 0); // Left
 		FrustumData.frustumPlanes[1] = glm::row(FrustumData.viewProj, 3) - glm::row(FrustumData.viewProj, 0); // Right
 		FrustumData.frustumPlanes[2] = glm::row(FrustumData.viewProj, 3) + glm::row(FrustumData.viewProj, 1); // Bottom

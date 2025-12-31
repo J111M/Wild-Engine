@@ -38,7 +38,6 @@ struct DrawIndexedCommand
 StructuredBuffer<GrassData> grassInstance : register(t0);
 RWStructuredBuffer<CulledInstance> culledInstances : register(u0);
 RWByteAddressBuffer instanceCount : register(u1);
-RWStructuredBuffer<DrawIndexedCommand> DrawCommands : register(u2);
 
 bool IsInFrustum(float3 position, float radius)
 {
@@ -111,28 +110,22 @@ void main(uint3 id : SV_DispatchThreadID)
     
     uint lodIndexCount = 0;
     uint startIndexLocation = 0;
-    float lodBlend = 0.0f;
+    uint lod = 0;
     if (distance < lod0)
     {
-        lodIndexCount = 21;
-        startIndexLocation = 0;
-        lodBlend = saturate((distance - lod0) / lodBlendRange);
+        lod = 0;
     }
     else if (distance < lod1)
     {
-        lodIndexCount = 15;
-        startIndexLocation = 21;
-        lodBlend = 1.0f + saturate(((distance - lod1) / lodBlendRange));
+        lod = 1;
     }
     else
     {
-        lodIndexCount = 9;
-        startIndexLocation = 36;
-        lodBlend = 2.0f + saturate(((distance - lod2) / lodBlendRange));
+        lod = 2;
     }
     
     uint drawIndex;
-    instanceCount.InterlockedAdd(lodBlend, 1, drawIndex);
+    instanceCount.InterlockedAdd(lod, 1, drawIndex);
     
     if (drawIndex < 5000)
     {
@@ -144,7 +137,7 @@ void main(uint3 id : SV_DispatchThreadID)
 
         CulledInstance culled;
         culled.instanceIndex = id.x;
-        culled.lodBlend = 0;
+        culled.lodBlend = lod;
     
         culledInstances[drawIndex] = culled;
     }

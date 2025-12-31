@@ -28,7 +28,7 @@ namespace Wild {
 			WD_ERROR("Constant buffer invalid data size.");
 			return;
 		}
-		
+
 		m_desc.bufferSize = (m_desc.bufferSize + 255) & ~255;
 
 		m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -82,6 +82,7 @@ namespace Wild {
 		uavDesc.Buffer.StructureByteStride = m_desc.bufferSize;
 
 		m_uaView = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc);
+		m_resource->Handle()->SetName(StringToWString(m_desc.name).c_str());
 	}
 
 	void Buffer::CreateIndexBuffer(std::vector<uint32_t> indices)
@@ -117,7 +118,7 @@ namespace Wild {
 		indexData.RowPitch = m_desc.bufferSize;
 		indexData.SlicePitch = indexData.RowPitch;
 
-		
+
 		auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 		UpdateSubresources(list.GetList().Get(), m_resource->Handle().Get(), uploadHeap.Get(),
@@ -154,7 +155,7 @@ namespace Wild {
 	void Buffer::WriteData(void* dataSrc, size_t size)
 	{
 		// TODO change to just use 1 standard instead of being able to overwrite it
-		if(size > 0)
+		if (size > 0)
 			m_desc.bufferSize = size;
 
 		// Make sure the pointed has allocated data
