@@ -1,6 +1,6 @@
 struct GrassBlade
 {
-    float3 position;
+    float3 worldPosition;
     float rotation; // in radians
     float height;
 };
@@ -9,6 +9,8 @@ RWStructuredBuffer<GrassBlade> GrassData : register(u0);
 
 cbuffer RootConsant : register(b0)
 {
+    float4x4 modelMatrix;
+    float3 chunkPosition;
     float2 minMaxHeight;
     uint seed;
 };
@@ -78,7 +80,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
     
     float2 rHash1 = HashFloat2InRange(DTid.x + 1, 0, 32); // 32 units per chunk for now
 
-    GrassData[DTid.x].position = float3(rHash1.x, 0, rHash1.y);
+    float3 bladePosition = float3(rHash1.x, 0, rHash1.y);
+    
+    GrassData[DTid.x].worldPosition = bladePosition.xyz;
 
     float rHash2 = HashFloatInRange(DTid.x ^ 0x6C8E9CF5u, 0, 16);
     

@@ -28,11 +28,11 @@ namespace Wild {
 
 	void GrassCompute::Render(CommandList& list)
 	{
-		list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
-			m_bladeDataBuffer->GetBuffer().Get(),
-			D3D12_RESOURCE_STATE_COMMON,
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS
-		));
+		// loop over all chunks
+		m_rc.modelMatrix = glm::mat4{1.0f};
+		m_rc.chunkPosition = glm::vec3{};
+
+		m_bladeDataBuffer->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 		list.GetList()->SetPipelineState(m_pipeline->GetPso().Get());
 		list.GetList()->SetComputeRootSignature(m_pipeline->GetRootSignature().Get());
@@ -55,12 +55,8 @@ namespace Wild {
 		// Were using 64 threads
 		list.GetList()->Dispatch(MAXGRASSBLADES / 64, 1, 1);
 
-		list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(m_bladeDataBuffer->GetBuffer().Get()));
+		list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(m_bladeDataBuffer->GetBuffer()));
 
-		list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
-			m_bladeDataBuffer->GetBuffer().Get(),
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
-		));
+		m_bladeDataBuffer->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	}
 }

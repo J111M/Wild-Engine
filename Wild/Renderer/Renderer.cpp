@@ -4,6 +4,7 @@
 #include "Renderer/RenderGraph/TransientResourceCache.hpp"
 
 #include "Renderer/Passes/DeferredPass.hpp"
+#include "Renderer/Passes/GrassPass.hpp"
 #include "Systems/GrassManager.hpp"
 
 #include "Core/Camera.hpp"
@@ -20,7 +21,7 @@ namespace Wild {
 		m_grassPreCompute->Render(*engine.GetGfxContext()->GetCommandList());
 
 		m_renderFeatures.emplace_back(std::make_unique<DeferredPass>());
-		m_renderFeatures.emplace_back(std::make_unique<GrassManager>(m_grassPreCompute->GetGrassData()));
+		m_renderFeatures.emplace_back(std::make_unique<GrassPass>(m_grassPreCompute->GetGrassData()));
 	}
 
 	void Renderer::Update(const float dt)

@@ -8,7 +8,7 @@
 #include <memory>
 
 namespace Wild {
-	struct GrassVertex {
+	/*struct GrassVertex {
 		glm::vec3 Position{};
 		float OneDCoordinates{};
 		float Sway{};
@@ -52,6 +52,6 @@ namespace Wild {
 
 		GrassRC m_rc{};
 		Entity m_chunkEntity;
-	};
+	};*/
 
 }

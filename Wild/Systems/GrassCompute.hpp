@@ -5,12 +5,14 @@ namespace Wild{
 #define MAXGRASSBLADES 5000
 
 	struct GrassBladeData {
-		glm::vec3 position{};
+		glm::vec3 worldPosition{};
 		float rotation{};
 		float height{};
 	};
 
 	struct GrassComputeRC {
+		glm::mat4 modelMatrix{};
+		glm::vec3 chunkPosition{};
 		glm::vec2 minMaxHeight{};
 		uint32_t seed{};
 	};

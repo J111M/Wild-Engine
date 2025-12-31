@@ -28,8 +28,10 @@ namespace Wild {
 			WD_ERROR("Constant buffer invalid data size.");
 			return;
 		}
-		
+
 		m_desc.bufferSize = (m_desc.bufferSize + 255) & ~255;
+
+		m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_GENERIC_READ);
 
 		gfxContext->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
@@ -37,9 +39,9 @@ namespace Wild {
 			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&m_buffer));
+			IID_PPV_ARGS(&m_resource->Handle()));
 
-		m_cbView = std::make_shared<ConstantBufferView>(m_buffer, m_desc.bufferSize);
+		m_cbView = std::make_shared<ConstantBufferView>(m_resource->Handle(), m_desc.bufferSize);
 	}
 
 	void Buffer::CreateUAVBuffer(uint32_t numElements)
@@ -47,7 +49,7 @@ namespace Wild {
 		auto gfxContext = engine.GetGfxContext();
 
 		if (m_desc.bufferSize <= 0) {
-			WD_ERROR("Constant buffer invalid data size.");
+			WD_ERROR("UAV buffer invalid data size.");
 			return;
 		}
 
@@ -61,13 +63,15 @@ namespace Wild {
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
+		m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_COMMON);
+
 		gfxContext->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 			D3D12_HEAP_FLAG_NONE,
 			&desc,
 			D3D12_RESOURCE_STATE_COMMON,
 			nullptr,
-			IID_PPV_ARGS(&m_buffer)
+			IID_PPV_ARGS(&m_resource->Handle())
 		);
 
 		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
@@ -77,7 +81,8 @@ namespace Wild {
 		uavDesc.Buffer.NumElements = numElements;
 		uavDesc.Buffer.StructureByteStride = m_desc.bufferSize;
 
-		m_uaView = std::make_shared<UnorderedAccessView>(m_buffer, uavDesc);
+		m_uaView = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc);
+		m_resource->Handle()->SetName(StringToWString(m_desc.name).c_str());
 	}
 
 	void Buffer::CreateIndexBuffer(std::vector<uint32_t> indices)
@@ -88,13 +93,15 @@ namespace Wild {
 
 		WriteData((void*)indices.data(), m_desc.bufferSize);
 
+		m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
+
 		gfxContext->GetDevice()->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 			D3D12_HEAP_FLAG_NONE,
 			&CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
 			D3D12_RESOURCE_STATE_COMMON,
 			nullptr,
-			IID_PPV_ARGS(&m_buffer));
+			IID_PPV_ARGS(&m_resource->Handle()));
 
 		// Upload buffer
 		ComPtr<ID3D12Resource> uploadHeap;
@@ -111,31 +118,36 @@ namespace Wild {
 		indexData.RowPitch = m_desc.bufferSize;
 		indexData.SlicePitch = indexData.RowPitch;
 
+
 		auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-		UpdateSubresources(list.GetList().Get(), m_buffer.Get(), uploadHeap.Get(),
+		UpdateSubresources(list.GetList().Get(), m_resource->Handle().Get(), uploadHeap.Get(),
 			0, 0, 1, &indexData);
 
-		list.GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
+		m_resource->Transition(list, D3D12_RESOURCE_STATE_INDEX_BUFFER);
 
 		// Execute the command list
 		list.Close();
 		gfxContext->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
 		gfxContext->GetCommandQueue(QueueType::Direct)->WaitForFence();
 
-		m_ibView = std::make_shared<IndexBufferView>(m_buffer, m_desc.bufferSize, DXGI_FORMAT_R32_UINT);
+		m_ibView = std::make_shared<IndexBufferView>(m_resource->Handle(), m_desc.bufferSize, DXGI_FORMAT_R32_UINT);
+	}
+
+	void Buffer::Transition(CommandList& list, D3D12_RESOURCE_STATES newState) {
+		m_resource->Transition(list, newState);
 	}
 
 	void Buffer::Map(CD3DX12_RANGE* readRange)
 	{
 		m_dataIsMapped = true;
-		m_buffer->Map(0, readRange, &m_data);
+		m_resource->Handle()->Map(0, readRange, &m_data);
 	}
 
 	void Buffer::Unmap()
 	{
 		if (m_dataIsMapped) {
-			m_buffer->Unmap(0, nullptr);
+			m_resource->Handle()->Unmap(0, nullptr);
 			m_dataIsMapped = false;
 		}
 	}
@@ -143,7 +155,7 @@ namespace Wild {
 	void Buffer::WriteData(void* dataSrc, size_t size)
 	{
 		// TODO change to just use 1 standard instead of being able to overwrite it
-		if(size > 0)
+		if (size > 0)
 			m_desc.bufferSize = size;
 
 		// Make sure the pointed has allocated data
