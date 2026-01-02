@@ -129,7 +129,7 @@ namespace Wild {
 			PassType::Compute,
 		[&renderer, this](ClearCounterData& countData, CommandList& list) {
 			PipelineStateSettings settings{};
-			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/computeClearCounter.hlsl");
+			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeClearCounter.slang");
 
 			std::vector<Uniform> uniforms;
 			Uniform uni{ 0, 0, RootParams::RootResourceType::UnorderedAccessView };
@@ -175,7 +175,7 @@ namespace Wild {
 			auto context = engine.GetGfxContext();
 
 			PipelineStateSettings settings{};
-			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/computeGrassCull.hlsl");
+			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeGrassCulling.slang");
 
 			std::vector<Uniform> uniforms;
 
@@ -250,7 +250,7 @@ namespace Wild {
 			auto context = engine.GetGfxContext();
 
 			PipelineStateSettings settings{};
-			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/computeIndirectCmdCreation.hlsl");
+			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeIndirectCommands.slang");
 
 			std::vector<Uniform> uniforms;
 			{
@@ -296,8 +296,8 @@ namespace Wild {
 		[&renderer, this](const RenderGrassData& grassData, CommandList& list) {
 
 			PipelineStateSettings settings{};
-			settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/vertGrassShader.hlsl");
-			settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/fragGrassShader.hlsl");
+			settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/VertGrass.slang");
+			settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/FragGrass.slang");
 			settings.DepthStencilState.DepthEnable = true;
 
 			settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));

@@ -52,8 +52,8 @@ namespace Wild {
 			[&renderer, this](const DeferredPassData& passData, CommandList& list)
 			{
 				PipelineStateSettings settings{};
-				settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/vertShader.hlsl");
-				settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/fragShader.hlsl");
+				settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/VertPbr.slang");
+				settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/FragPbr.slang");
 				settings.DepthStencilState.DepthEnable = true;
 
 				// Setting up the input layout

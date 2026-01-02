@@ -111,11 +111,11 @@ void main(uint3 id : SV_DispatchThreadID)
     uint lodIndexCount = 0;
     uint startIndexLocation = 0;
     uint lod = 0;
-    if (distance < lod0)
+    if (distance < 15)
     {
         lod = 0;
     }
-    else if (distance < lod1)
+    else if (distance < 30)
     {
         lod = 1;
     }
@@ -125,20 +125,23 @@ void main(uint3 id : SV_DispatchThreadID)
     }
     
     uint drawIndex;
-    instanceCount.InterlockedAdd(lod, 1, drawIndex);
+    instanceCount.InterlockedAdd(lod * 4, 1, drawIndex);
     
-    if (drawIndex < 5000)
+    uint globalDrawIndex = drawIndex;
+    for (uint i = 0; i < 3; i++)
     {
-        //DrawCommands[drawIndex].IndexCountPerInstance = 21;
-        //DrawCommands[drawIndex].InstanceCount = 1;
-        //DrawCommands[drawIndex].StartIndexLocation = 0;
-        //DrawCommands[drawIndex].BaseVertexLocation = 0;
-        //DrawCommands[drawIndex].StartInstanceLocation = id.x;
-
+        if (i != lod)
+        {
+            globalDrawIndex += instanceCount.Load(i * 4);
+        }
+    }
+    
+    if (globalDrawIndex < 5000)
+    {
         CulledInstance culled;
         culled.instanceIndex = id.x;
         culled.lodBlend = lod;
     
-        culledInstances[drawIndex] = culled;
+        culledInstances[globalDrawIndex] = culled;
     }
 }

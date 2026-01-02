@@ -16,6 +16,7 @@ namespace Wild {
 		m_shaderTracker = std::make_shared<ShaderTracker>();
 
 		m_renderer = std::make_shared<Renderer>();
+
 	}
 
 	void Engine::Run()
@@ -63,6 +64,11 @@ namespace Wild {
 		m_gfxContext->Shutdown();
 		m_gfxContext.reset();
 		m_window.reset();
+	}
+
+	void Engine::SetSystemPath(const std::filesystem::path& path)
+	{
+		m_systemPath = path;
 	}
 
 	Engine engine = {};

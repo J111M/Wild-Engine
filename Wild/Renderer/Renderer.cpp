@@ -60,8 +60,8 @@ namespace Wild {
 
 		// Copy final image over
 		PipelineStateSettings settings{};
-		settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/vertCopyRT.hlsl");
-		settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/fragCopyRT.hlsl");
+		settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/VertCopyRT.slang");
+		settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/FragCopyRT.slang");
 		settings.DepthStencilState.DepthEnable = false;
 		settings.RasterizerState.WindingMode = WindingOrder::Clockwise;
 

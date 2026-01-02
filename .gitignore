@@ -38,6 +38,11 @@ build/
 /out
 spirv/
 
+!vendor/dxc/
+!vendor/dxc/**
+!vendor/slang/
+!vendor/slang/**
+
 /.vs
 .idea/
 

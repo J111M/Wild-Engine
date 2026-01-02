@@ -2,7 +2,7 @@
 
 namespace Wild {
 	GrassCompute::GrassCompute() {
-		m_computeShader = std::make_shared<Shader>("Shaders/computeGrassDataShader.hlsl");
+		m_computeShader = std::make_shared<Shader>("Shaders/Grass/ComputePerGrassData.slang");
 
 		m_settings.ShaderState.ComputeShader = m_computeShader;
 

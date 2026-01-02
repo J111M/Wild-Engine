@@ -38,6 +38,23 @@ FetchContent_MakeAvailable(spdlog)
 
 target_link_libraries(Wild PRIVATE spdlog::spdlog)
 
+# Slang
+set(SLANG_ROOT "${CMAKE_SOURCE_DIR}/Vendor/slang")
+set(SLANG_INCLUDE_DIR "${SLANG_ROOT}/include")
+set(SLANG_LIB_DIR     "${SLANG_ROOT}/lib")
+set(SLANG_BIN_DIR     "${SLANG_ROOT}/bin")
+
+add_library(slang SHARED IMPORTED)
+
+set_target_properties(slang PROPERTIES
+    IMPORTED_IMPLIB "${SLANG_LIB_DIR}/slang.lib"
+    IMPORTED_LOCATION "${SLANG_BIN_DIR}/slang.dll"
+    INTERFACE_INCLUDE_DIRECTORIES "${SLANG_INCLUDE_DIR}"
+)
+
+file(COPY "${SLANG_BIN_DIR}/slang.dll"
+     DESTINATION "${CMAKE_BINARY_DIR}")
+
 # Add ImGui
 set(IMGUI_SRC
     imgui/imgui.cpp
@@ -52,8 +69,8 @@ set(IMGUI_SRC
     imgui/backends/imgui_impl_dx12.cpp
 )
 
-add_library(imgui STATIC ${IMGUI_SRC})
-target_include_directories(imgui PUBLIC 
+add_library(imgui_engine STATIC ${IMGUI_SRC})
+target_include_directories(imgui_engine PUBLIC 
     "./imgui" 
     "./imgui/backends"
     "./imgui/implot"
@@ -78,12 +95,27 @@ add_compile_definitions(IMGUI_DEFINE_MATH_OPERATORS)
 # Include directories for ImGuizmo
 target_include_directories(ImGuizmo PUBLIC ${IMGUIZMO_DIR})
 
-target_link_libraries(ImGuizmo PRIVATE imgui)
+target_link_libraries(ImGuizmo PRIVATE imgui_engine)
 
 # Link ImGuizmo with your executable
-target_link_libraries(Wild PRIVATE ImGuizmo imgui)
+target_link_libraries(Wild PRIVATE ImGuizmo imgui_engine)
 
-target_link_libraries(Wild PRIVATE ImGuizmo imgui d3d12 dxgi dxguid d3dcompiler)
+# DirectX12 shader compiler
+find_library(DXC_LIBRARY dxcompiler 
+    PATHS 
+    "${CMAKE_SOURCE_DIR}/vendor/dxc/lib"
+    NO_DEFAULT_PATH
+)
+
+find_library(DXIL_LIBRARY dxil
+    PATHS 
+    "${CMAKE_SOURCE_DIR}/vendor/dxc/lib"
+    NO_DEFAULT_PATH
+)
+
+target_link_libraries(Wild PRIVATE ${DXC_LIBRARY} ${DXIL_LIBRARY})
+
+target_link_libraries(Wild PRIVATE slang ImGuizmo imgui_engine d3d12 dxgi dxguid)
 
 set(CMAKE_SYSTEM_VERSION 10.0.26100.0 CACHE STRING "" FORCE)
 
