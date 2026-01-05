@@ -105,7 +105,7 @@ void main(uint3 id : SV_DispatchThreadID)
     
     //Distance cull
 
-    float distance = 14; //length(instance.worldPosition - cameraPos);
+    float distance = 13; //length(instance.worldPosition - cameraPos);
     //if (distance > 500)
     //    return;
     
@@ -115,7 +115,7 @@ void main(uint3 id : SV_DispatchThreadID)
     if (distance < 15)
     {
         lod = 0;
-    }
+    }  
     else if (distance < 30)
     {
         lod = 1;
