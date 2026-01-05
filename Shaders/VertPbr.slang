@@ -16,8 +16,8 @@ struct VSOutput
 
 cbuffer Constants : register(b0)
 {
-    matrix model;
-    uint texIndex;
+    column_major float4x4 model;
+    uint4 texIndex;
 };
 
 [shader("vertex")]

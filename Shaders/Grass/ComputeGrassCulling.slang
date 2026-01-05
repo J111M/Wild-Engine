@@ -105,9 +105,9 @@ void main(uint3 id : SV_DispatchThreadID)
     
     //Distance cull
 
-    float distance = length(instance.worldPosition - cameraPos);
-    if (distance > 500)
-        return;
+    float distance = 14; //length(instance.worldPosition - cameraPos);
+    //if (distance > 500)
+    //    return;
     
     uint lodIndexCount = 0;
     uint startIndexLocation = 0;
@@ -142,7 +142,7 @@ void main(uint3 id : SV_DispatchThreadID)
         CulledInstance culled;
         culled.instanceIndex = id.x;
         culled.lodBlend = lod;
-    
+
         culledInstances[globalDrawIndex] = culled;
     }
 }

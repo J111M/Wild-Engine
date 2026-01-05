@@ -19,7 +19,7 @@ namespace Wild {
 	private:
 		D3D12_SHADER_BYTECODE m_shaderBytecode = {};
 
-		ComPtr<slang::IBlob> m_shaderBlob{};
+		ComPtr<slang::IBlob> m_shaderBlob;
 	};
 
 	class ShaderTracker
