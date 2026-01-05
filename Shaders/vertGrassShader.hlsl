@@ -4,6 +4,7 @@ struct VSInput
     float texCoord : COORDS;
     float sway : SWAY;
     uint instanceID : SV_InstanceID;
+    uint drawID : SV_DrawID;
 };
 
 struct VSOutput
@@ -44,6 +45,7 @@ struct CulledInstance
 
 StructuredBuffer<GrassData> grassBuffer : register(t0);
 StructuredBuffer<CulledInstance> culledInstances : register(t1);
+RWByteAddressBuffer instanceCount : register(u0);
 
 float3x3 rotY(float a)
 {
@@ -92,7 +94,15 @@ float remap1(float value, float inMin, float inMax, float outMin, float outMax)
 VSOutput main(VSInput input)
 {
     VSOutput output;
-    CulledInstance culled = culledInstances[input.instanceID];
+
+    uint lodDrawIndex = 0;
+    for (uint i = 0; i < input.drawID; i++)
+    {
+        lodDrawIndex += instanceCount.Load(i * 4);
+    }
+ 
+    
+    CulledInstance culled = culledInstances[input.instanceID + lodDrawIndex];
     GrassData grassData = grassBuffer[culled.instanceIndex];
     
     float3x3 rotationMat = rotY(grassData.rotation);

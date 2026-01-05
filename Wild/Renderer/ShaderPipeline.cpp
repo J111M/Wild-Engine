@@ -3,79 +3,77 @@
 namespace Wild {
 	Shader::Shader(std::string shaderPath)
 	{
-		ComPtr<ID3DBlob> errorBuffer;
+		ComPtr<slang::IGlobalSession> globalSession;
+		slang::createGlobalSession(&globalSession);
 
-        // Determine type of the shader byname
-        std::string shaderTarget;
-        if (shaderPath.find(".vert") != std::string::npos ||
-            shaderPath.find(".vs") != std::string::npos ||
-            shaderPath.find("vert") != std::string::npos) {
-            shaderTarget = "vs_5_1";
-        }
-        else if (shaderPath.find(".frag") != std::string::npos ||
-            shaderPath.find(".ps") != std::string::npos ||
-            shaderPath.find(".pixel") != std::string::npos ||
-            shaderPath.find("frag") != std::string::npos) {
-            shaderTarget = "ps_5_1";
-        }
-        else if (shaderPath.find(".geom") != std::string::npos ||
-            shaderPath.find(".gs") != std::string::npos) {
-            shaderTarget = "gs_5_1";
-        }
-        else if (shaderPath.find(".comp") != std::string::npos ||
-            shaderPath.find(".cs") != std::string::npos ||
-            shaderPath.find("compute") != std::string::npos) {
-            shaderTarget = "cs_5_1";
-        }
-        else {
-            WD_ERROR("Cannot determine shader type from file: " + shaderPath);
-            return;
-        }
+		slang::SessionDesc sessionDesc = {};
+		slang::TargetDesc targetDesc = {};
 
-		HRESULT hr = D3DCompileFromFile(StringToWString(shaderPath).c_str(),
-            nullptr,
-            nullptr,
-            "main",
-            shaderTarget.c_str(),
-            D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
-            0,
-            &m_shaderBlob,
-            &errorBuffer);
+		targetDesc.format = SLANG_DXIL;
+		targetDesc.profile = globalSession->findProfile("sm_6_6");
+		
+		sessionDesc.targets = &targetDesc;
+		sessionDesc.targetCount = 1;
 
-		if (FAILED(hr)) {
-            OutputDebugStringA((char*)errorBuffer->GetBufferPointer());
-            WD_WARN((char*)errorBuffer->GetBufferPointer());
+
+		slang::ISession* session;
+		globalSession->createSession(sessionDesc, &session);
+	
+		ComPtr<slang::IBlob> diagnostics;
+		ComPtr<slang::IModule> module = session->loadModule(shaderPath.c_str(), &diagnostics);
+
+		if (diagnostics && diagnostics->getBufferSize() > 0) {
+			WD_ERROR("Shader: '{}' could not be loaded: {}", shaderPath.c_str(), (const char*)diagnostics->getBufferPointer());
 		}
 
-       
-        m_shaderBytecode.BytecodeLength = m_shaderBlob->GetBufferSize();
-        m_shaderBytecode.pShaderBytecode = m_shaderBlob->GetBufferPointer();
+		ComPtr<slang::IEntryPoint> entryPoint;
+		module->findEntryPointByName("main", &entryPoint);
 
+		if (!entryPoint)
+			WD_ERROR("Failed to find entrypoint for shader: '{}'", shaderPath.c_str());
 
+		slang::IComponentType* components[] = { module.Get(), entryPoint.Get() };
+		ComPtr<slang::IComponentType> program;
+		if (SLANG_FAILED(session->createCompositeComponentType(components, 2, &program, &diagnostics))) {
+			WD_ERROR("Failed to create slang program for shader: '{}'", shaderPath.c_str());
+			if (diagnostics && diagnostics->getBufferSize() > 0) {
+				WD_ERROR("Diagnostics: {}", (const char*)diagnostics->getBufferPointer());
+			}
+		}
+
+		if (SLANG_FAILED(program->getEntryPointCode(0, 0, &m_shaderBlob, &diagnostics))) {
+			WD_ERROR("Failed to get entry point code for shader: '{}'", shaderPath.c_str());
+			if (diagnostics && diagnostics->getBufferSize() > 0) {
+				WD_ERROR("Diagnostics: {}", (const char*)diagnostics->getBufferPointer());
+			}
+		}
+
+		m_shaderBytecode.BytecodeLength = m_shaderBlob->getBufferSize();
+		m_shaderBytecode.pShaderBytecode = m_shaderBlob->getBufferPointer();
 	}
 
-    ///
-    /// Shader tracker
-    ///
+	///
+	/// Shader tracker
+	///
 
-    std::shared_ptr<Shader> ShaderTracker::GetOrCreateShader(const std::string& key)
-    {
-        auto& shader = m_trackedShaders[key];
+	std::shared_ptr<Shader> ShaderTracker::GetOrCreateShader(const std::string& key)
+	{
+		auto& shader = m_trackedShaders[key];
 
-        if (!shader)
-            shader = std::make_shared<Shader>(key);
+		if (!shader)
+			shader = std::make_shared<Shader>(key);
 
-        return shader;
-    }
+		return shader;
+	}
 
-    void ShaderTracker::RemoveShader(const std::string& key)
-    {
-        // To be implemented
-    }
+	void ShaderTracker::RemoveShader(const std::string& key)
+	{
+		// To be implemented
+	}
 
-    void ShaderTracker::ClearAllShaders()
-    {
-        // To be implemented
-    }
+	void ShaderTracker::ClearAllShaders()
+	{
+		// To be implemented
+	}
 
 }

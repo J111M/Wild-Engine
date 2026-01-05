@@ -15,6 +15,7 @@ cbuffer Constants : register(b0)
 Texture2D textures[4096] : register(t0, space0);
 SamplerState anisotropySampler : register(s0);
 
+
 float4 main(PSInput input) : SV_TARGET
 {
     float4 albedoColor = float4(0, 0, 0, 0);

@@ -16,6 +16,7 @@
 #include <iostream>
 
 #include <chrono>
+#include <filesystem>
 
 const uint32_t WIDTH = 1600;
 const uint32_t HEIGHT = 1000;
@@ -27,6 +28,9 @@ namespace Wild {
 		void Initialize();
 		void Run();
 		void Shutdown();
+
+		void SetSystemPath(const std::filesystem::path& path);
+		const std::filesystem::path GetSystemPath()& { return m_systemPath; }
 
 		std::shared_ptr<GfxContext> GetGfxContext() { return m_gfxContext; }
 		std::shared_ptr<EntityComponentSystem> GetECS() { return m_ecs; }
@@ -41,6 +45,8 @@ namespace Wild {
 		std::shared_ptr<EntityComponentSystem> m_ecs;
 		std::shared_ptr<ImguiCore> m_imguiCore;
 		std::shared_ptr<ShaderTracker> m_shaderTracker;
+
+		std::filesystem::path m_systemPath{};
 	};
 
 	extern Engine engine;

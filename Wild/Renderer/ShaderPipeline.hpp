@@ -2,6 +2,7 @@
 
 #include "Tools/Common3d12.hpp"
 
+#include <slang.h>
 #include <d3dcompiler.h>
 
 #include <map>
@@ -18,7 +19,7 @@ namespace Wild {
 	private:
 		D3D12_SHADER_BYTECODE m_shaderBytecode = {};
 
-		ComPtr<ID3DBlob> m_shaderBlob;
+		ComPtr<slang::IBlob> m_shaderBlob;
 	};
 
 	class ShaderTracker

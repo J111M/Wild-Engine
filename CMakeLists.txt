@@ -71,3 +71,12 @@ add_custom_command(TARGET Wild POST_BUILD
             ${CMAKE_SOURCE_DIR}/Shaders $<TARGET_FILE_DIR:Wild>/Shaders
     COMMENT "Copying shader folder to output directory"
 )
+
+# DirectX 12 shader compiler
+add_custom_command(TARGET Wild POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_SOURCE_DIR}/vendor/dxc/bin/"
+    "$<TARGET_FILE_DIR:Wild>/"
+)
+
+#${CMAKE_BINARY_DIR}

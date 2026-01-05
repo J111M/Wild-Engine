@@ -10,7 +10,7 @@ namespace Wild {
 		auto entity = ecs->CreateEntity();
 		auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
 		ecs->AddComponent<Model>(entity, "Assets/Models/DamagedHelmet/glTF/DamagedHelmet.gltf", entity);
-		transform.SetPosition(glm::vec3(0, 0, -15));
+		transform.SetPosition(glm::vec3(0, 0, -10));
 
 		m_texture = std::make_unique<Texture>("Assets/Models/DamagedHelmet/glTF/Default_albedo.jpg");
 	}
@@ -52,8 +52,8 @@ namespace Wild {
 			[&renderer, this](const DeferredPassData& passData, CommandList& list)
 			{
 				PipelineStateSettings settings{};
-				settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/vertShader.hlsl");
-				settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/fragShader.hlsl");
+				settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/VertPbr.slang");
+				settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/FragPbr.slang");
 				settings.DepthStencilState.DepthEnable = true;
 
 				// Setting up the input layout
