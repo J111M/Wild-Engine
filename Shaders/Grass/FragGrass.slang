@@ -1,6 +1,6 @@
 cbuffer Constants : register(b0)
 {
-    matrix model;
+    column_major float4x4 model;
     uint bladeId;
     float time;
     uint foo2;
@@ -9,7 +9,7 @@ cbuffer Constants : register(b0)
 
 cbuffer SceneData : register(b1)
 {
-    float4x4 projView;
+    column_major float4x4 projView;
     float3 cameraPosition;
 };
 
@@ -37,6 +37,7 @@ struct PSInput
     float sway : SWAYIN;
 };
 
+[shader("fragment")]
 float4 main(PSInput input) : SV_TARGET
 {
     float3 Direction = float3(-0.1, -1.0, -0.5);

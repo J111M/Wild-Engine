@@ -39,7 +39,15 @@ FetchContent_MakeAvailable(spdlog)
 target_link_libraries(Wild PRIVATE spdlog::spdlog)
 
 # Slang
-set(SLANG_ROOT "${CMAKE_SOURCE_DIR}/Vendor/slang")
+FetchContent_Declare(
+    slang
+    URL https://github.com/shader-slang/slang/releases/download/v2025.24.2/slang-2025.24.2-windows-x86_64.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+
+FetchContent_MakeAvailable(slang)
+
+set(SLANG_ROOT "${slang_SOURCE_DIR}")
 set(SLANG_INCLUDE_DIR "${SLANG_ROOT}/include")
 set(SLANG_LIB_DIR     "${SLANG_ROOT}/lib")
 set(SLANG_BIN_DIR     "${SLANG_ROOT}/bin")
@@ -52,8 +60,14 @@ set_target_properties(slang PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${SLANG_INCLUDE_DIR}"
 )
 
-file(COPY "${SLANG_BIN_DIR}/slang.dll"
-     DESTINATION "${CMAKE_BINARY_DIR}")
+file(GLOB SLANG_RUNTIME_DLLS
+    "${SLANG_BIN_DIR}/*.dll"
+)
+
+foreach(cfg Debug Release RelWithDebInfo MinSizeRel)
+    file(COPY ${SLANG_RUNTIME_DLLS}
+         DESTINATION "${CMAKE_BINARY_DIR}/${cfg}")
+endforeach()
 
 # Add ImGui
 set(IMGUI_SRC

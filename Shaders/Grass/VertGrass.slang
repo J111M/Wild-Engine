@@ -16,7 +16,7 @@ struct VSOutput
 
 cbuffer Constants : register(b0)
 {
-    matrix model;
+    column_major float4x4 model;
     uint bladeId;
     float time;
     uint foo2;
@@ -25,7 +25,7 @@ cbuffer Constants : register(b0)
 
 cbuffer SceneData : register(b1)
 {
-    float4x4 projView;
+    column_major float4x4 projView;
     float3 cameraPosition;
 };
 
@@ -95,7 +95,7 @@ VSOutput main(VSInput input)
     VSOutput output;
 
     CulledInstance culled = culledInstances[input.instanceID];
-    GrassData grassData = grassBuffer[culled.instanceIndex];
+    GrassData grassData = grassBuffer[input.instanceID];
     
     float3x3 rotationMat = rotY(grassData.rotation);
     

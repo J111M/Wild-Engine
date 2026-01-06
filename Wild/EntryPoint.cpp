@@ -9,4 +9,6 @@ int main(int argc, char* argv[])
 	Wild::engine.Initialize();
 	Wild::engine.Run();
 	Wild::engine.Shutdown();
+
+	return EXIT_SUCCESS;
 }
