@@ -79,7 +79,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 {
     // TODO add bounds for safity
     
-    float2 rHash1 = HashFloat2InRange(DTid.x + 1, 0, 32); // 32 units per chunk for now
+    float2 rHash1 = HashFloat2InRange(DTid.x + 1, 0, 320); // 32 units per chunk for now
 
     float3 bladePosition = float3(rHash1.x, 0, rHash1.y);
     

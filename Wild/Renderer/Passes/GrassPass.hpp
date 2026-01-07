@@ -3,7 +3,7 @@
 #include "Renderer/Renderer.hpp"
 #include "Renderer/RenderGraph/RenderGraph.hpp"
 
-#define MAXGRASSBLADES1 5000
+#define MAXGRASSBLADES1 500000
 
 namespace Wild {
 	struct GrassCullData {
@@ -40,6 +40,13 @@ namespace Wild {
 	struct SceneData {
 		glm::mat4 ProjView{};
 		glm::vec3 CameraPosition{};
+		float windStrength = 4.505f;
+		float octaves = 0.51f;
+		float frequency = 0.05f;
+		float amplitude = 0.385f;
+		alignas(16)glm::vec2 windDirection = glm::vec2(2.5f, 1.3f);
+		float pad0;
+		float pad1;
 	};
 
 	struct GrassRC {
@@ -104,6 +111,8 @@ namespace Wild {
 		// Contains all LOD's inside the same buffer
 		std::unique_ptr<Buffer> m_grassVertices;
 		std::unique_ptr<Buffer> m_grassIndices;
+
+		SceneData m_grassSceneData{};
 
 		// 3 grass lod's total
 		uint32_t m_lodAmount = 3;

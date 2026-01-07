@@ -34,7 +34,7 @@ namespace Wild {
 			previousTime = currentTime;
 
 			camera.Input(*m_window.get(), m_window->GetWidth(), m_window->GetHeight(), deltaTime);
-			camera.UpdateMatrix(glm::radians(70.0f), m_window->AspectRatio(), 0.1f, 100.0f);
+			camera.UpdateMatrix(glm::radians(70.0f), m_window->AspectRatio(), 0.1f, 10000.0f);
 
 			m_gfxContext->ResizeWindow();
 

@@ -1,8 +1,8 @@
 #pragma once
 
-namespace Wild{
+namespace Wild {
 
-#define MAXGRASSBLADES 5000
+#define MAXGRASSBLADES 500000
 
 	struct GrassBladeData {
 		glm::vec3 worldPosition{};

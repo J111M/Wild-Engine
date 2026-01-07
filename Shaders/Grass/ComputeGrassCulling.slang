@@ -92,7 +92,7 @@ float CalculateLOD(float distance)
 [numthreads(64, 1, 1)]
 void main(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= 5000)
+    if (id.x >= 500000)
         return;
     
     GrassData instance = grassInstance[id.x];
@@ -136,8 +136,8 @@ void main(uint3 id : SV_DispatchThreadID)
             globalDrawIndex += instanceCount.Load(i * 4);
         }
     }
-    
-    if (globalDrawIndex < 5000)
+
+    if (globalDrawIndex < 500000)
     {
         CulledInstance culled;
         culled.instanceIndex = id.x;

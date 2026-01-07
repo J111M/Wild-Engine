@@ -96,6 +96,16 @@ namespace Wild {
 		auto& device = engine.GetGfxContext();
 		auto& ecs = engine.GetECS();
 
+		ImGui::Begin("Wind Settings");
+
+		ImGui::SliderFloat("Wind Strength", &m_grassSceneData.windStrength, 0.01f, 20.0f);
+		ImGui::SliderFloat("Octaves", &m_grassSceneData.octaves, 0.1, 1);
+		ImGui::SliderFloat("Frequency", &m_grassSceneData.frequency, 0.01f, 0.4f);
+		ImGui::SliderFloat("Amplitude", &m_grassSceneData.amplitude, 0.01f, 1.0f);
+		ImGui::SliderFloat2("Wind Direction", &m_grassSceneData.windDirection.x, -10.0f, 10.0f);
+
+		ImGui::End();
+
 		SceneData SceneCbv{};
 		auto& cameras = ecs->View<Camera>();
 
@@ -106,10 +116,18 @@ namespace Wild {
 
 				SceneCbv.ProjView = cam.GetProjection() * cam.GetView();
 				SceneCbv.CameraPosition = cam.GetPosition();
+
+				SceneCbv.windStrength = m_grassSceneData.windStrength;
+				SceneCbv.octaves = m_grassSceneData.octaves;
+				SceneCbv.frequency = m_grassSceneData.frequency;
+				SceneCbv.amplitude = m_grassSceneData.amplitude;
+				SceneCbv.windDirection = m_grassSceneData.windDirection;
 			}
 		}
 
+		m_sceneData[device->GetBackBufferIndex()]->Map();
 		m_sceneData[device->GetBackBufferIndex()]->WriteData(&SceneCbv);
+		m_sceneData[device->GetBackBufferIndex()]->Unmap();
 
 		m_accumulatedTime += dt * 1;
 		m_rc.time = m_accumulatedTime;
@@ -127,7 +145,7 @@ namespace Wild {
 		rg.AddPass<ClearCounterData>(
 			"Clear counter pass",
 			PassType::Compute,
-		[&renderer, this](ClearCounterData& countData, CommandList& list) {
+			[&renderer, this](ClearCounterData& countData, CommandList& list) {
 			PipelineStateSettings settings{};
 			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeClearCounter.slang");
 
@@ -170,7 +188,7 @@ namespace Wild {
 		rg.AddPass<GrassCullData>(
 			"Grass culling pass",
 			PassType::Compute,
-		[&renderer, this](GrassCullData& cullingData, CommandList& list) {
+			[&renderer, this](GrassCullData& cullingData, CommandList& list) {
 
 			auto context = engine.GetGfxContext();
 
@@ -215,7 +233,7 @@ namespace Wild {
 			list.GetList()->SetComputeRootShaderResourceView(1, m_grassBladeInstanceBuffer->GetBuffer()->GetGPUVirtualAddress());
 			list.GetList()->SetComputeRootUnorderedAccessView(2, m_culledInstancesBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
 			list.GetList()->SetComputeRootUnorderedAccessView(3, m_instanceCountBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
-			
+
 			list.GetList()->Dispatch(((MAXGRASSBLADES1 + 63) / 64), 1, 1);
 
 			list.EndRender();
@@ -246,7 +264,7 @@ namespace Wild {
 
 		rg.AddPass<IndirectCommandsData>("Indirect command creation pass",
 			PassType::Compute,
-		[&renderer, this](const IndirectCommandsData& indirectCmds, CommandList& list) {
+			[&renderer, this](const IndirectCommandsData& indirectCmds, CommandList& list) {
 			auto context = engine.GetGfxContext();
 
 			PipelineStateSettings settings{};
@@ -266,7 +284,7 @@ namespace Wild {
 
 			list.SetPipelineState(pipeline);
 			list.BeginRender();
-			
+
 			int frameIndex = context->GetBackBufferIndex();
 			list.GetList()->SetComputeRootUnorderedAccessView(0, m_instanceCountBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
 			list.GetList()->SetComputeRootUnorderedAccessView(1, m_drawCommandsBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
@@ -293,7 +311,7 @@ namespace Wild {
 		rg.AddPass<RenderGrassData>(
 			"Grass render pass",
 			PassType::Compute,
-		[&renderer, this](const RenderGrassData& grassData, CommandList& list) {
+			[&renderer, this](const RenderGrassData& grassData, CommandList& list) {
 
 			PipelineStateSettings settings{};
 			settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/VertGrass.slang");
@@ -428,12 +446,12 @@ namespace Wild {
 		/// First lod grass blade
 		grassVertices.push_back({ {-0.06f, 0.0f, 0.0f}, 0.0f, 0.0f });
 		grassVertices.push_back({ {0.06f, 0.0f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {-0.06f, 0.2f, 0.0f}, 0.0f, 0.4f });
-		grassVertices.push_back({ {0.06f, 0.2f, 0.0f}, 0.0f, 0.0f });
+		grassVertices.push_back({ {-0.06f, 0.2f, 0.0f}, 0.0f, 0.2f });
+		grassVertices.push_back({ {0.06f, 0.2f, 0.0f}, 0.0f, 0.2f });
 		grassVertices.push_back({ {-0.06f, 0.4f, 0.0f}, 0.0f, 0.4f });
-		grassVertices.push_back({ {0.06f, 0.4f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {-0.06f, 0.6f, 0.0f}, 0.0f, 0.4f });
-		grassVertices.push_back({ {0.06f, 0.6f, 0.0f}, 0.0f, 0.4f });
+		grassVertices.push_back({ {0.06f, 0.4f, 0.0f}, 0.0f, 0.4f });
+		grassVertices.push_back({ {-0.06f, 0.6f, 0.0f}, 0.0f, 0.6f });
+		grassVertices.push_back({ {0.06f, 0.6f, 0.0f}, 0.0f, 0.6f });
 		grassVertices.push_back({ {0.0f, 0.75f, 0.0f}, 0.0f, 1.0f });
 
 		grassIndices.insert(grassIndices.end(), { 0, 1, 2, 1, 3, 2 }); // First quad
@@ -444,10 +462,10 @@ namespace Wild {
 		/// Second lod grass blade
 		grassVertices.push_back({ {-0.06f, 0.0f, 0.0f}, 0.0f, 0.0f });
 		grassVertices.push_back({ {0.06f, 0.0f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {-0.06f, 0.3f, 0.0f}, 0.0f, 0.4f });
-		grassVertices.push_back({ {0.06f, 0.3f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {-0.06f, 0.6f, 0.0f}, 0.0f, 0.4f });
-		grassVertices.push_back({ {0.06f, 0.6f, 0.0f}, 0.0f, 0.4f });
+		grassVertices.push_back({ {-0.06f, 0.3f, 0.0f}, 0.0f, 0.3f });
+		grassVertices.push_back({ {0.06f, 0.3f, 0.0f}, 0.0f, 0.3f });
+		grassVertices.push_back({ {-0.06f, 0.6f, 0.0f}, 0.0f, 0.6f });
+		grassVertices.push_back({ {0.06f, 0.6f, 0.0f}, 0.0f, 0.6f });
 		grassVertices.push_back({ {0.0f, 0.75f, 0.0f}, 0.0f, 1.0f });
 
 		grassIndices.insert(grassIndices.end(), { 0, 1, 2, 1, 3, 2 }); // First quad
@@ -457,8 +475,8 @@ namespace Wild {
 		/// Third lod grass blade 
 		grassVertices.push_back({ {-0.06f, 0.0f, 0.0f}, 0.0f, 0.0f });
 		grassVertices.push_back({ {0.06f, 0.0f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {-0.06f, 0.5f, 0.0f}, 0.0f, 0.4f });
-		grassVertices.push_back({ {0.06f, 0.5f, 0.0f}, 0.0f, 0.4f });
+		grassVertices.push_back({ {-0.06f, 0.5f, 0.0f}, 0.0f, 0.5f });
+		grassVertices.push_back({ {0.06f, 0.5f, 0.0f}, 0.0f, 0.5f });
 		grassVertices.push_back({ {0.0f, 0.75f, 0.0f}, 0.0f, 1.0f });
 
 		grassIndices.insert(grassIndices.end(), { 0, 1, 2, 1, 3, 2 }); // Quad
