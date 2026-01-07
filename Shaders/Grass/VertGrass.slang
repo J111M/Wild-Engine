@@ -150,8 +150,8 @@ VSOutput main(VSInput input)
 
     float3x3 rotationMat = rotY(grassData.rotation);
 
-    float3 bladePosition = input.position + grassData.position.xyz;
-    // bladePosition = mul(rotationMat, bladePosition);
+    float3 initialBladeHeight = mul(rotationMat, input.position) + grassData.position.xyz;
+    float3 bladePosition = initialBladeHeight;
 
     float2 bladeDirection = float2(cos(grassData.rotation), sin(grassData.rotation));
 
@@ -172,12 +172,12 @@ VSOutput main(VSInput input)
 
     // MakePersistentLength(v0, v1, v2, input.position.y);
 
-    bladePosition = bezier(v0, v1, v2, bladePosition.y);
+    bladePosition = bezier(v0, v1, v2, initialBladeHeight.y);
 
-    float3 up = normalize(bezierDerivitive(v0, v1, v2, bladePosition.y));
+    float3 up = normalize(bezierDerivitive(v0, v1, v2, initialBladeHeight.y));
     float3 right = normalize(float3(bladeDirection.y, 0.0f, -bladeDirection.x));
 
-    float3 normal = cross(up, right);
+    float3 normal = cross(right, up);
 
     float4 vertexWorldPos = mul(model, float4(bladePosition, 1.0f));
 

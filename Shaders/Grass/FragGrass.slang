@@ -11,14 +11,6 @@ cbuffer SceneData : register(b1)
 {
     column_major float4x4 projView;
     float3 cameraPosition;
-    float pad;
-    float windStrength;
-    float octaves;
-    float frequency;
-    float amplitude;
-    float2 windDirection;
-    float pad1;
-    float pad2;
 };
 
 struct GrassData
@@ -54,7 +46,7 @@ float4 main(PSInput input) : SV_TARGET
     float3 Specular = float3(1, 0.96, 0.93);
 
     float3 viewDir = normalize(cameraPosition - input.fragPosition);
-    float3 normal = input.normal;
+    float3 normal = normalize(input.normal);
     
     float3 lightDir = normalize(-Direction);
     float3 halfwayDir = normalize(lightDir + viewDir);
