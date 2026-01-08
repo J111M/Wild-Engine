@@ -178,6 +178,8 @@ namespace Wild {
 		RasterizerState RasterizerState{};
 		DepthStencilState DepthStencilState{};
 
+		std::vector<DXGI_FORMAT> renderTargetsFormat{};
+
         std::string PipelineName{};
     };
 

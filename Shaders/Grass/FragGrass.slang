@@ -62,5 +62,5 @@ float4 main(PSInput input) : SV_TARGET
 
     float3 outColor = (ambient + diffuse + specular) * grassColor;
 
-    return float4(outColor, 1.0f);
+    return float4(normal, 1.0f);
 }

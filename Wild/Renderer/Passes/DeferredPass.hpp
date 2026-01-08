@@ -6,7 +6,8 @@
 namespace Wild {
 	struct DeferredPassData
 	{
-		Texture* FinalTexture;
+		Texture* AlbedoTexture;
+		Texture* NormalTexture;
 		Texture* DepthTexture;
 	};
 
@@ -19,10 +20,6 @@ namespace Wild {
 		virtual void Add(Renderer& renderer, RenderGraph& rg) override;
 		virtual void Update(const float dt) override;
 	private:
-
-		std::shared_ptr<Shader> m_vertShader;
-		std::shared_ptr<Shader> m_fragShader;
-
 		RootConstant m_rc;
 		std::shared_ptr<PipelineState> m_pipeline{};
 

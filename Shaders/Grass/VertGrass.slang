@@ -177,13 +177,13 @@ VSOutput main(VSInput input)
     float3 up = normalize(bezierDerivitive(v0, v1, v2, initialBladeHeight.y));
     float3 right = normalize(float3(bladeDirection.y, 0.0f, -bladeDirection.x));
 
-    float3 normal = cross(right, up);
+    float3 worldSpaceNormal = cross(right, up);
 
     float4 vertexWorldPos = mul(model, float4(bladePosition, 1.0f));
 
     output.position = mul(projView, vertexWorldPos);
     output.fragPosition = vertexWorldPos.xyz;
-    output.normal = normal;
+    output.normal = worldSpaceNormal;
     output.sway = input.sway;
     return output;
 }

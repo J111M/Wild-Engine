@@ -1,5 +1,5 @@
 #include "Renderer/Passes/GrassPass.hpp"
-#include "Renderer/Passes/DeferredPass.hpp"
+#include "Renderer/Passes/PbrPass.hpp"
 
 #include <glm/gtc/matrix_access.hpp>
 
@@ -9,8 +9,6 @@ namespace Wild {
 
 		// Generate grass mesh data
 		CreateGrassMeshes();
-
-
 
 		// Cull data UAV, u0
 		for (int i = 0; i < BACK_BUFFER_COUNT; i++)
@@ -303,15 +301,15 @@ namespace Wild {
 		auto* passData = rg.AllocatePassData<RenderGrassData>();
 		auto indirectPass = rg.GetPassData<RenderGrassData, IndirectCommandsData>();
 
-		auto* deferredData = rg.GetPassData<RenderGrassData, DeferredPassData>();
+		auto* pbrData = rg.GetPassData<RenderGrassData, PbrPassData>();
 
-		passData->FinalTexture = deferredData->FinalTexture;
-		passData->DepthTexture = deferredData->DepthTexture;
+		passData->FinalTexture = pbrData->FinalTexture;
+		passData->DepthTexture = pbrData->DepthTexture;
 
 		rg.AddPass<RenderGrassData>(
 			"Grass render pass",
 			PassType::Compute,
-			[&renderer, this](const RenderGrassData& grassData, CommandList& list) {
+		[&renderer, this](const RenderGrassData& grassData, CommandList& list) {
 
 			PipelineStateSettings settings{};
 			settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/VertGrass.slang");

@@ -1,32 +1,18 @@
-struct VSInput
-{
-    float3 position : POSITION;
-    float3 color : COLOR;
-    float3 normal : NORMAL;
-    float2 uv : TEXCOORD;
-};
-
+// Full screen triangle
 struct VSOutput
 {
     float4 position : SV_POSITION;
-    float3 color : COLOR;
-    float3 normal : NORMAL;
-    float2 uv : TEXCOORD;
-};
-
-cbuffer Constants : register(b0)
-{
-    column_major float4x4 model;
-    uint4 texIndex;
+    float2 uv : TEXCOORD0;
 };
 
 [shader("vertex")]
-VSOutput main(VSInput input)
+VSOutput main(uint vertexID: SV_VertexID)
 {
     VSOutput output;
-    output.position = mul(model, float4(input.position, 1.0f));
-    output.color = input.color;
-    output.normal = input.normal;
-    output.uv = input.uv;
+
+    float2 uv = float2((vertexID << 1) & 2, vertexID & 2);
+    output.position = float4(uv * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), 0.0f, 1.0f);
+    output.uv = uv;
+
     return output;
 }

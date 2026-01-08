@@ -57,14 +57,14 @@ namespace Wild {
 			// Create resource with initial state
 			m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-			gfxContext->GetDevice()->CreateCommittedResource(
+			ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 				D3D12_HEAP_FLAG_NONE,
 				&textureDesc,
 				D3D12_RESOURCE_STATE_RENDER_TARGET,
 				&clearValue,
 				IID_PPV_ARGS(&m_resource->Handle())
-			);
+			), "Failed to create RTV");
 
 			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 			rtvDesc.Format = m_desc.format;
@@ -107,6 +107,8 @@ namespace Wild {
 			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
 			m_dsv = std::make_shared<DepthStencilView>(m_resource->Handle(), dsvDesc);
+
+			m_desc.format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 		}
 
 		if (m_desc.flag & TextureDesc::ViewFlag::shaderResource) {
