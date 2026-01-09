@@ -133,8 +133,8 @@ namespace Wild {
 
 	/// <summary>
 	/// The reason I clear the instance count via a compute shader is because doing it via clear uav uint had specific
-	/// requirments for how the heap should be created which required me to create another heap specifically for clearing
-	/// compute made it more straight forward without cluttering the code.
+	/// requirments for how the heap should be created which required me to create another heap specifically for clearing.
+	/// Compute made it straight forward and simple without cluttering the code.
 	/// </summary>
 	void GrassPass::AddClearCounterPass(Renderer& renderer, RenderGraph& rg)
 	{
@@ -143,7 +143,7 @@ namespace Wild {
 		rg.AddPass<ClearCounterData>(
 			"Clear counter pass",
 			PassType::Compute,
-			[&renderer, this](ClearCounterData& countData, CommandList& list) {
+		[&renderer, this](ClearCounterData& countData, CommandList& list) {
 			PipelineStateSettings settings{};
 			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeClearCounter.slang");
 
@@ -442,14 +442,14 @@ namespace Wild {
 
 		// Grass blade vertice data | position, 1D coordinates and sway
 		/// First lod grass blade
-		grassVertices.push_back({ {-0.06f, 0.0f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {0.06f, 0.0f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {-0.06f, 0.2f, 0.0f}, 0.0f, 0.2f });
-		grassVertices.push_back({ {0.06f, 0.2f, 0.0f}, 0.0f, 0.2f });
-		grassVertices.push_back({ {-0.06f, 0.4f, 0.0f}, 0.0f, 0.4f });
-		grassVertices.push_back({ {0.06f, 0.4f, 0.0f}, 0.0f, 0.4f });
-		grassVertices.push_back({ {-0.06f, 0.6f, 0.0f}, 0.0f, 0.6f });
-		grassVertices.push_back({ {0.06f, 0.6f, 0.0f}, 0.0f, 0.6f });
+		grassVertices.push_back({ {-0.03f, 0.0f, 0.0f}, 0.0f, 0.0f });
+		grassVertices.push_back({ {0.03f, 0.0f, 0.0f}, 0.0f, 0.0f });
+		grassVertices.push_back({ {-0.03f, 0.2f, 0.0f}, 0.0f, 0.2f });
+		grassVertices.push_back({ {0.03f, 0.2f, 0.0f}, 0.0f, 0.2f });
+		grassVertices.push_back({ {-0.03f, 0.4f, 0.0f}, 0.0f, 0.4f });
+		grassVertices.push_back({ {0.03f, 0.4f, 0.0f}, 0.0f, 0.4f });
+		grassVertices.push_back({ {-0.03f, 0.6f, 0.0f}, 0.0f, 0.6f });
+		grassVertices.push_back({ {0.03f, 0.6f, 0.0f}, 0.0f, 0.6f });
 		grassVertices.push_back({ {0.0f, 0.75f, 0.0f}, 0.0f, 1.0f });
 
 		grassIndices.insert(grassIndices.end(), { 0, 1, 2, 1, 3, 2 }); // First quad
@@ -458,12 +458,12 @@ namespace Wild {
 		grassIndices.insert(grassIndices.end(), { 6, 7, 8 }); // Top triangle
 
 		/// Second lod grass blade
-		grassVertices.push_back({ {-0.06f, 0.0f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {0.06f, 0.0f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {-0.06f, 0.3f, 0.0f}, 0.0f, 0.3f });
-		grassVertices.push_back({ {0.06f, 0.3f, 0.0f}, 0.0f, 0.3f });
-		grassVertices.push_back({ {-0.06f, 0.6f, 0.0f}, 0.0f, 0.6f });
-		grassVertices.push_back({ {0.06f, 0.6f, 0.0f}, 0.0f, 0.6f });
+		grassVertices.push_back({ {-0.03f, 0.0f, 0.0f}, 0.0f, 0.0f });
+		grassVertices.push_back({ {0.03f, 0.0f, 0.0f}, 0.0f, 0.0f });
+		grassVertices.push_back({ {-0.03f, 0.3f, 0.0f}, 0.0f, 0.3f });
+		grassVertices.push_back({ {0.03f, 0.3f, 0.0f}, 0.0f, 0.3f });
+		grassVertices.push_back({ {-0.03f, 0.6f, 0.0f}, 0.0f, 0.6f });
+		grassVertices.push_back({ {0.03f, 0.6f, 0.0f}, 0.0f, 0.6f });
 		grassVertices.push_back({ {0.0f, 0.75f, 0.0f}, 0.0f, 1.0f });
 
 		grassIndices.insert(grassIndices.end(), { 0, 1, 2, 1, 3, 2 }); // First quad
@@ -471,10 +471,10 @@ namespace Wild {
 		grassIndices.insert(grassIndices.end(), { 4, 5, 6 }); // Top triangle
 
 		/// Third lod grass blade 
-		grassVertices.push_back({ {-0.06f, 0.0f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {0.06f, 0.0f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {-0.06f, 0.5f, 0.0f}, 0.0f, 0.5f });
-		grassVertices.push_back({ {0.06f, 0.5f, 0.0f}, 0.0f, 0.5f });
+		grassVertices.push_back({ {-0.03f, 0.0f, 0.0f}, 0.0f, 0.0f });
+		grassVertices.push_back({ {0.03f, 0.0f, 0.0f}, 0.0f, 0.0f });
+		grassVertices.push_back({ {-0.03f, 0.5f, 0.0f}, 0.0f, 0.5f });
+		grassVertices.push_back({ {0.03f, 0.5f, 0.0f}, 0.0f, 0.5f });
 		grassVertices.push_back({ {0.0f, 0.75f, 0.0f}, 0.0f, 1.0f });
 
 		grassIndices.insert(grassIndices.end(), { 0, 1, 2, 1, 3, 2 }); // Quad

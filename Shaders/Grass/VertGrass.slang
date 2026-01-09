@@ -11,7 +11,7 @@ struct VSOutput
     float4 position : SV_POSITION;
     float3 fragPosition : FRAGPOSITION;
     float3 normal : NORMAL;
-    float sway : SWAYIN;
+    float bladeHeight : BHEIGHT;
 };
 
 cbuffer Constants : register(b0)
@@ -184,6 +184,6 @@ VSOutput main(VSInput input)
     output.position = mul(projView, vertexWorldPos);
     output.fragPosition = vertexWorldPos.xyz;
     output.normal = worldSpaceNormal;
-    output.sway = input.sway;
+    output.bladeHeight = initialBladeHeight.y;
     return output;
 }

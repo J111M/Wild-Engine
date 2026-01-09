@@ -37,6 +37,15 @@ namespace Wild {
 		m_inverseCamera[frameIndex]->Map();
 		m_inverseCamera[frameIndex]->WriteData(&inverseCamData);
 		m_inverseCamera[frameIndex]->Unmap();
+
+		ImGui::Begin("RenderMode");
+
+		int mode = m_rc.debugView;
+		ImGui::SliderInt("Mode", &mode, 0, 3);
+
+		m_rc.debugView = mode;
+
+		ImGui::End();
 	}
 
 	void PbrPass::Add(Renderer& renderer, RenderGraph& rg)
