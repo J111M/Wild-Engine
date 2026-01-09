@@ -14,12 +14,6 @@ namespace Wild {
 		Unmap();
 	}
 
-	void Buffer::CreateCpuResource(BufferDesc desc)
-	{
-		auto gfxContext = engine.GetGfxContext();
-		WD_ERROR("CPU resources creation not unimplemented!");
-	}
-
 	void Buffer::CreateConstantBuffer()
 	{
 		auto gfxContext = engine.GetGfxContext();

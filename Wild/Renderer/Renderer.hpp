@@ -17,7 +17,11 @@
 namespace Wild {
 	struct RootConstant {
 		glm::mat4 matrix{};
-		uint32_t view{};
+		uint32_t albedoView{};
+		uint32_t normalView{};
+		uint32_t metallicView{};
+		uint32_t roughnessView{};
+		uint32_t emissiveView{};
 		uint32_t pad[3];
 	};
 
@@ -53,17 +57,7 @@ namespace Wild {
 		std::vector<std::unique_ptr<RenderFeature>> m_renderFeatures;
 		std::shared_ptr<TransientResourceCache> m_resourceCache;
 
-		//std::shared_ptr<Buffer> m_vertBuffer;
-
-		//RootConstant m_rc;
-
-		//PipelineStateSettings m_settings;
-
-		//ComPtr<ID3D12RootSignature> m_rootSignature;
-
-		//ComPtr<ID3D12PipelineState> m_pso;
 		std::unique_ptr<GrassCompute> m_grassPreCompute;
-		//std::shared_ptr<Buffer> m_grassBuffer;
 
 		std::unordered_map<std::string, std::shared_ptr<PipelineState>> m_pipelineCache;
 

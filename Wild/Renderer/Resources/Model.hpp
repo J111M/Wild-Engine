@@ -2,6 +2,8 @@
 
 #include "Renderer/Device.hpp"
 #include "Renderer/Resources/Mesh.hpp"
+#include "Renderer/Resources/Material.hpp"
+
 #include "Core/Transform.hpp"
 
 #include <fastgltf/core.hpp>
@@ -22,7 +24,7 @@ namespace Wild {
 		void LoadNode(fastgltf::Asset& model, uint32_t nodeIndex, Entity parent);
 		void LoadPrimitive(fastgltf::Asset& model, fastgltf::Primitive& primitive, Entity parent);
 		void LoadMeshData(fastgltf::Asset& model, fastgltf::Primitive& primitive, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData);
-		//void LoadMaterials(fastgltf::Asset& model, fastgltf::Primitive& primitive, Material& materials);
+		Material LoadMaterials(fastgltf::Asset& model, fastgltf::Primitive& primitive);
 
 		std::vector<Mesh> m_childMeshes{};
 

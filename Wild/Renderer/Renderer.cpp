@@ -58,8 +58,6 @@ namespace Wild {
 		rg.Compile();
 		rg.Execute();
 
-		//CompositeTexture->Transition(list, D3D12_RESOURCE_STATE_COMMON);
-
 		// Copy final image over
 		PipelineStateSettings settings{};
 		settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/VertCopyRT.slang");

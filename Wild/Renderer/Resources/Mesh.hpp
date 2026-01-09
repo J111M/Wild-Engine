@@ -2,10 +2,13 @@
 
 #include "Core/Transform.hpp"
 
+#include "Renderer/Resources/Material.hpp"
+
 #include <glm/glm.hpp>
 #include <memory>
 
 class Buffer;
+//struct Material;
 
 namespace Wild {
 	struct Vertex {
@@ -28,9 +31,14 @@ namespace Wild {
 
 		uint32_t GetDrawCount() const { return m_drawCount; }
 
+		const Material& GetMaterial() const { return m_material; }
+		void SetMaterial(Material& material) { m_material = material; }
+
 	private:
 		std::shared_ptr<Buffer> m_vertexBuffer;
 		std::shared_ptr<Buffer> m_indexBuffer;
+
+		Material m_material{};
 
 		bool m_hasIndexBuffer = false;
 		uint32_t m_drawCount{};

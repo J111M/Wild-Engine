@@ -2,6 +2,7 @@
 
 #include "Renderer/Resources/Buffer.hpp"
 
+
 #include "Tools/Log.hpp"
 
 namespace Wild {

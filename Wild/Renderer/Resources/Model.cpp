@@ -56,7 +56,7 @@ namespace Wild {
 		auto& node = model.nodes[nodeIndex];
 		auto nodeEntity = engine.GetECS()->CreateEntity();
 
-		auto& transform = engine.GetECS()->AddComponent<Transform>(nodeEntity, glm::vec3(0,0,0), nodeEntity);
+		auto& transform = engine.GetECS()->AddComponent<Transform>(nodeEntity, glm::vec3(0, 0, 0), nodeEntity);
 		transform.Name = node.name;
 
 		if (parent != entt::null)
@@ -87,14 +87,8 @@ namespace Wild {
 
 				LoadMeshData(model, primitive, meshVertex, meshIndices);
 
-				//Material mat;
-
-				//LoadMaterials(model, primitive, mat);
-
-
 				auto& meshModel = engine.GetECS()->AddComponent<Mesh>(nodeEntity, meshVertex, meshIndices);
-
-				//meshModel.SetMaterial(mat);
+				meshModel.SetMaterial(LoadMaterials(model, primitive));
 
 				meshVertex.clear();
 				meshIndices.clear();
@@ -121,22 +115,11 @@ namespace Wild {
 
 		LoadMeshData(model, primitive, meshVertex, meshIndices);
 
-		//Material mat;
-
-		//LoadMaterials(model, primitive, mat);
-
-		//mat.CreateMaterialPool(m_device);
-
 		auto& meshModel = engine.GetECS()->AddComponent<Mesh>(primitiveEntity, meshVertex, meshIndices);
-
-		//meshModel.SetMaterial(mat);
+		meshModel.SetMaterial(LoadMaterials(model, primitive));
 
 		meshVertex.clear();
 		meshIndices.clear();
-
-		//auto matrix = fastgltf::getTransformMatrix(node);
-
-		//transform.SetFromMatrix(glm::make_mat4(matrix.data()));
 	}
 
 	void Model::LoadMeshData(fastgltf::Asset& model, fastgltf::Primitive& primitive, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData)
@@ -235,117 +218,80 @@ namespace Wild {
 		}
 	}
 
-	//void Model::LoadMaterials(fastgltf::Asset& model, fastgltf::Primitive& primitive, Material& materials)
-	//{
-	//	if (!primitive.materialIndex.has_value()) {
-	//		printf("No material found!");
-	//	}
+	Material Model::LoadMaterials(fastgltf::Asset& model, fastgltf::Primitive& primitive)
+	{
+		if (!primitive.materialIndex.has_value()) {
+			WD_WARN("No material found.");
+		}
 
-	//	auto& material = model.materials[primitive.materialIndex.value()];
-	//	
-	//	model.extensionsUsed.push_back( "KHR_materials_volume");
+		Material materials;
 
-	//	materials.roughness = material.pbrData.roughnessFactor;
-	//	materials.metallic = material.pbrData.metallicFactor;
-	//	materials.ior = material.ior;
-	//	materials.dispersion = material.dispersion;
-	//	materials.emissiveStrenght = material.emissiveStrength;
+		auto& material = model.materials[primitive.materialIndex.value()];
 
-	//	auto& bindlessManager = engine.GetBindlessManager();
+		materials.roughness = material.pbrData.roughnessFactor;
+		materials.metallic = material.pbrData.metallicFactor;
+		materials.emissiveStrenght = material.emissiveStrength;
 
-	//	// Glass
-	//	if (material.volume) {
-	//		materials.attenuationFactor = material.volume->thicknessFactor;
-	//		materials.attenuationDistance = material.volume->attenuationDistance;
-	//		materials.attenuationColor.x = material.volume->attenuationColor[0];
-	//		materials.attenuationColor.y = material.volume->attenuationColor[1];
-	//		materials.attenuationColor.z = material.volume->attenuationColor[2];
-	//	}
-	//	
-	//	if (material.volume) {
-	//		if (material.volume->thicknessTexture.has_value()) {
-	//			auto& gltfTexture = model.textures[material.volume->thicknessTexture->textureIndex];
-	//			size_t imageIndex = gltfTexture.imageIndex.value();
-	//			auto& image = model.images[imageIndex];
+		if (material.pbrData.baseColorTexture.has_value()) {
+			auto& gltfTexture = model.textures[material.pbrData.baseColorTexture->textureIndex];
+			size_t imageIndex = gltfTexture.imageIndex.value();
+			auto& image = model.images[imageIndex];
 
-	//			auto& uri = std::get<fastgltf::sources::URI>(image.data);
+			auto& uri = std::get<fastgltf::sources::URI>(image.data);
 
-	//			std::string file = m_filePath + (std::string)uri.uri.string();
+			std::string file = m_filePath + (std::string)uri.uri.string();
 
-	//			materials.m_thickness = std::make_shared<Dragos::Texture>(m_device, file, TextureType::Texture2D);
+			materials.m_albedo = std::make_unique<Texture>(file, TextureType::TEXTURE_2D);
+		}
 
-	//			bindlessManager.AddTextureToQueue(materials.m_thickness->GetImageInfo());
-	//		}
-	//	}
+		if (material.pbrData.metallicRoughnessTexture.has_value()) {
+			auto& gltfTexture = model.textures[material.pbrData.metallicRoughnessTexture->textureIndex];
+			size_t imageIndex = gltfTexture.imageIndex.value();
+			auto& image = model.images[imageIndex];
 
-	//	if (material.pbrData.baseColorTexture.has_value()) {
-	//		auto& gltfTexture = model.textures[material.pbrData.baseColorTexture->textureIndex];
-	//		size_t imageIndex = gltfTexture.imageIndex.value();
-	//		auto& image = model.images[imageIndex];
+			auto& uri = std::get<fastgltf::sources::URI>(image.data);
 
-	//		auto& uri = std::get<fastgltf::sources::URI>(image.data);
+			std::string file = m_filePath + (std::string)uri.uri.string();
 
-	//		std::string file = m_filePath + (std::string)uri.uri.string();
+			materials.m_roughnessMetallic = std::make_unique<Texture>(file, TextureType::TEXTURE_2D);
+		}
 
-	//		materials.m_albedo = std::make_shared<Dragos::Texture>(m_device, file, TextureType::Texture2D);
+		if (material.emissiveTexture.has_value()) {
+			auto& gltfTexture = model.textures[material.emissiveTexture->textureIndex];
+			size_t imageIndex = gltfTexture.imageIndex.value();
+			auto& image = model.images[imageIndex];
 
-	//		bindlessManager.AddTextureToQueue(materials.m_albedo->GetImageInfo());
-	//	}
+			auto& uri = std::get<fastgltf::sources::URI>(image.data);
 
-	//	if (material.pbrData.metallicRoughnessTexture.has_value()) {
-	//		auto& gltfTexture = model.textures[material.pbrData.metallicRoughnessTexture->textureIndex];
-	//		size_t imageIndex = gltfTexture.imageIndex.value();
-	//		auto& image = model.images[imageIndex];
+			std::string file = m_filePath + (std::string)uri.uri.string();
 
-	//		auto& uri = std::get<fastgltf::sources::URI>(image.data);
+			materials.m_emissive = std::make_unique<Texture>(file, TextureType::TEXTURE_2D);
+		}
 
-	//		std::string file = m_filePath + (std::string)uri.uri.string();
+		if (material.occlusionTexture.has_value()) {
+			auto& gltfTexture = model.textures[material.occlusionTexture->textureIndex];
+			size_t imageIndex = gltfTexture.imageIndex.value();
+			auto& image = model.images[imageIndex];
 
-	//		materials.m_roughnessMetallic = std::make_shared<Dragos::Texture>(m_device, file, TextureType::Texture2D);
+			auto& uri = std::get<fastgltf::sources::URI>(image.data);
 
-	//		bindlessManager.AddTextureToQueue(materials.m_roughnessMetallic->GetImageInfo());
-	//	}
+			std::string file = m_filePath + (std::string)uri.uri.string();
 
-	//	if (material.emissiveTexture.has_value()) {
-	//		auto& gltfTexture = model.textures[material.emissiveTexture->textureIndex];
-	//		size_t imageIndex = gltfTexture.imageIndex.value();
-	//		auto& image = model.images[imageIndex];
+			materials.m_occlusion = std::make_unique<Texture>(file, TextureType::TEXTURE_2D);
+		}
 
-	//		auto& uri = std::get<fastgltf::sources::URI>(image.data);
+		if (material.normalTexture.has_value()) {
+			auto& gltfTexture = model.textures[material.normalTexture->textureIndex];
+			size_t imageIndex = gltfTexture.imageIndex.value();
+			auto& image = model.images[imageIndex];
 
-	//		std::string file = m_filePath + (std::string)uri.uri.string();
+			auto& uri = std::get<fastgltf::sources::URI>(image.data);
 
-	//		materials.m_emissive = std::make_shared<Dragos::Texture>(m_device, file, TextureType::Texture2D);
+			std::string file = m_filePath + (std::string)uri.uri.string();
 
-	//		bindlessManager.AddTextureToQueue(materials.m_emissive->GetImageInfo());
-	//	}
+			materials.m_normal = std::make_unique<Texture>(file, TextureType::TEXTURE_2D);
+		}
 
-	//	if (material.occlusionTexture.has_value()) {
-	//		auto& gltfTexture = model.textures[material.occlusionTexture->textureIndex];
-	//		size_t imageIndex = gltfTexture.imageIndex.value();
-	//		auto& image = model.images[imageIndex];
-
-	//		auto& uri = std::get<fastgltf::sources::URI>(image.data);
-
-	//		std::string file = m_filePath + (std::string)uri.uri.string();
-
-	//		materials.m_occlusion = std::make_shared<Dragos::Texture>(m_device, file, TextureType::Texture2D);
-
-	//		bindlessManager.AddTextureToQueue(materials.m_occlusion->GetImageInfo());
-	//	}
-
-	//	if (material.normalTexture.has_value()) {
-	//		auto& gltfTexture = model.textures[material.normalTexture->textureIndex];
-	//		size_t imageIndex = gltfTexture.imageIndex.value();
-	//		auto& image = model.images[imageIndex];
-
-	//		auto& uri = std::get<fastgltf::sources::URI>(image.data);
-
-	//		std::string file = m_filePath + (std::string)uri.uri.string();
-
-	//		materials.m_normal = std::make_shared<Dragos::Texture>(m_device, file, TextureType::Texture2D);
-
-	//		bindlessManager.AddTextureToQueue(materials.m_normal->GetImageInfo());
-	//	}
-	//}
+		return materials;
+	}
 }

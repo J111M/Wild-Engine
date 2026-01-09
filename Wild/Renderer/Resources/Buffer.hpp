@@ -32,8 +32,6 @@ namespace Wild {
 		Buffer(BufferDesc desc);
 		~Buffer();
 
-		void CreateCpuResource(BufferDesc desc);
-
 		void CreateConstantBuffer();
 		void CreateUAVBuffer(uint32_t numElements);
 		void CreateIndexBuffer(std::vector<uint32_t> indices);
