@@ -119,7 +119,11 @@ namespace Wild {
 					m_rc.matrix = camera->GetProjection() * camera->GetView() * trans.GetWorldMatrix();
 				}
 
-				m_rc.view = m_texture->GetSrv()->View() - 1;
+				m_rc.albedoView = m_texture->GetSrv()->View() - 1;
+				m_rc.normalView = m_texture->GetSrv()->View() - 1;
+				m_rc.metallicView = m_texture->GetSrv()->View() - 1;
+				m_rc.roughnessView = m_texture->GetSrv()->View() - 1;
+				m_rc.emissiveView = m_texture->GetSrv()->View() - 1;
 
 				list.GetList()->SetGraphicsRoot32BitConstants(
 					0,

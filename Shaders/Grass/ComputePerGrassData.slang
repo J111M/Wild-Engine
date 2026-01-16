@@ -87,8 +87,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
     float rHash2 = HashFloatInRange(DTid.x ^ 0x6C8E9CF5u, 0, 16);
     
-    GrassData[DTid.x].rotation = rescale(uhash11(DTid.x), 0, 4) * 2 * 3.141592653589793f; // To radiance
+    GrassData[DTid.x].rotation = rescale(uhash11(DTid.x + 1), 0, 4) * 2 * 3.141592653589793f; // To radiance
 
-    GrassData[DTid.x].height = HashFloatInRange(DTid.x ^ 0x6C8EFE5u, 0.4, 1.1);
+    GrassData[DTid.x].height = HashFloatInRange(DTid.x + 1 ^ 0x6C8EFE5u, 0.4, 1.1);
 
 }

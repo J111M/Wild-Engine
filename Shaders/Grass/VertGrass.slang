@@ -157,7 +157,7 @@ VSOutput main(VSInput input)
 
     // Wind calculation
     float2 windDir = normalize(windDirection);
-    float2 windUV = (bladePosition.xz) * frequency + windDirection * time;
+    float2 windUV = (bladePosition.xz) * frequency + windDir * time;
     float windNoise = noise(windUV * octaves) * amplitude;
     float3 windOffset = float3(windDir.x, 0, windDir.y) * windNoise * windStrength; // ((windNoise - 0.5f) * 2.0f)
 
@@ -168,9 +168,6 @@ VSOutput main(VSInput input)
     float3 v2 = v1 + float3(bladeDirection.x, grassData.height, bladeDirection.y) * leaning;
 
     v2 += windOffset;
-    // v2 += GetWindOffset(p0.xy, DynamicConst.shaderTime);
-
-    // MakePersistentLength(v0, v1, v2, input.position.y);
 
     bladePosition = bezier(v0, v1, v2, initialBladeHeight.y);
 
