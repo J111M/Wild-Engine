@@ -6,8 +6,9 @@
 namespace Wild {
 	struct DeferredPassData
 	{
-		Texture* AlbedoTexture;
-		Texture* NormalTexture;
+		Texture* AlbedoRoughnessTexture;
+		Texture* NormalMetallicTexture;
+		Texture* EmissiveTexture;
 		Texture* DepthTexture;
 	};
 

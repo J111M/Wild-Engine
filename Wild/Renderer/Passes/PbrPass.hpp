@@ -15,8 +15,15 @@ namespace Wild {
 		glm::mat4 inverseProj{};
 	};
 
+	struct PBRData {
+		glm::vec3 cameraPosition{};
+		float pad{};
+		glm::vec3 lightDirection{};
+		float pad1{};
+	};
+
 	struct PbrRootConstant {
-		uint32_t debugView{};
+		uint32_t emissiveView{};
 		uint32_t albedoView{};
 		uint32_t normalView{};
 		uint32_t depthView{};
@@ -34,5 +41,6 @@ namespace Wild {
 	private:
 		PbrRootConstant m_rc{};
 		std::unique_ptr<Buffer> m_inverseCamera[BACK_BUFFER_COUNT];
+		std::unique_ptr<Buffer> m_pbrData[BACK_BUFFER_COUNT];
 	};	
 }

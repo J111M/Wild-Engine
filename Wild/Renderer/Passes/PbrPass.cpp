@@ -6,13 +6,26 @@
 namespace Wild {
 	PbrPass::PbrPass()
 	{
-		BufferDesc desc{};
-		desc.bufferSize = sizeof(InverseCamera);
-		for (int i = 0; i < BACK_BUFFER_COUNT; i++)
 		{
-			m_inverseCamera[i] = std::make_unique<Buffer>(desc);
-			m_inverseCamera[i]->CreateConstantBuffer();
+			BufferDesc desc{};
+			desc.bufferSize = sizeof(InverseCamera);
+			for (int i = 0; i < BACK_BUFFER_COUNT; i++)
+			{
+				m_inverseCamera[i] = std::make_unique<Buffer>(desc);
+				m_inverseCamera[i]->CreateConstantBuffer();
+			}
 		}
+
+		{
+			BufferDesc desc{};
+			desc.bufferSize = sizeof(PBRData);
+			for (int i = 0; i < BACK_BUFFER_COUNT; i++)
+			{
+				m_pbrData[i] = std::make_unique<Buffer>(desc);
+				m_pbrData[i]->CreateConstantBuffer();
+			}
+		}
+
 	}
 
 	void PbrPass::Update(const float dt)
@@ -21,6 +34,7 @@ namespace Wild {
 		auto ecs = engine.GetECS();
 		auto& cameras = ecs->View<Camera>();
 
+		PBRData pbrData{};
 		InverseCamera inverseCamData{};
 
 		// Loop over all camera's TODO make the code run for each camera entity
@@ -30,6 +44,7 @@ namespace Wild {
 
 				inverseCamData.inverseView = glm::inverse(cam.GetView());
 				inverseCamData.inverseProj = glm::inverse(cam.GetProjection());
+				pbrData.cameraPosition = cam.GetPosition();
 			}
 		}
 
@@ -38,14 +53,12 @@ namespace Wild {
 		m_inverseCamera[frameIndex]->WriteData(&inverseCamData);
 		m_inverseCamera[frameIndex]->Unmap();
 
-		ImGui::Begin("RenderMode");
+		pbrData.lightDirection = glm::vec3(-0.3, -6.0, -2.5);
 
-		int mode = m_rc.debugView;
-		ImGui::SliderInt("Mode", &mode, 0, 3);
+		m_pbrData[frameIndex]->Map();
+		m_pbrData[frameIndex]->WriteData(&pbrData);
+		m_pbrData[frameIndex]->Unmap();
 
-		m_rc.debugView = mode;
-
-		ImGui::End();
 	}
 
 	void PbrPass::Add(Renderer& renderer, RenderGraph& rg)
@@ -70,7 +83,7 @@ namespace Wild {
 		rg.AddPass<PbrPassData>(
 			"Pbr assembly pass",
 			PassType::Graphics,
-		[&renderer, deferredData, this](const PbrPassData& passData, CommandList& list) {
+			[&renderer, deferredData, this](const PbrPassData& passData, CommandList& list) {
 			PipelineStateSettings settings{};
 			settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/VertPbr.slang");
 			settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/FragPbr.slang");
@@ -88,6 +101,12 @@ namespace Wild {
 			// Inverse camera buffer
 			{
 				Uniform uni{ 1, 0, RootParams::RootResourceType::ConstantBufferView };
+				uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+				uniforms.emplace_back(uni);
+			}
+
+			{
+				Uniform uni{ 2, 0, RootParams::RootResourceType::ConstantBufferView };
 				uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 				uniforms.emplace_back(uni);
 			}
@@ -114,13 +133,15 @@ namespace Wild {
 			list.SetPipelineState(pipeline);
 			list.BeginRender({ passData.FinalTexture }, { ClearOperation::Store }, nullptr, DSClearOperation::Store, "Pbr assembly pass");
 
-			deferredData->AlbedoTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-			deferredData->NormalTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			deferredData->AlbedoRoughnessTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			deferredData->NormalMetallicTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			deferredData->EmissiveTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			deferredData->DepthTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-			m_rc.albedoView = deferredData->AlbedoTexture->GetSrv()->View() - 1;
-			m_rc.normalView = deferredData->NormalTexture->GetSrv()->View() - 1;
-			m_rc.depthView = deferredData->DepthTexture->GetSrv()->View() - 1;
+			m_rc.albedoView = deferredData->AlbedoRoughnessTexture->GetSrv()->BindlessView();
+			m_rc.normalView = deferredData->NormalMetallicTexture->GetSrv()->BindlessView();
+			m_rc.emissiveView = deferredData->EmissiveTexture->GetSrv()->BindlessView();
+			m_rc.depthView = deferredData->DepthTexture->GetSrv()->BindlessView();
 
 			list.GetList()->SetGraphicsRoot32BitConstants(0, sizeof(PbrRootConstant) / 4, &m_rc, 0);
 
@@ -128,7 +149,8 @@ namespace Wild {
 			int frameIndex = context->GetBackBufferIndex();
 
 			list.GetList()->SetGraphicsRootConstantBufferView(1, m_inverseCamera[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
-			list.GetList()->SetGraphicsRootDescriptorTable(2, context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
+			list.GetList()->SetGraphicsRootConstantBufferView(2, m_pbrData[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
+			list.GetList()->SetGraphicsRootDescriptorTable(3, context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
 
 			list.GetList()->DrawInstanced(3, 1, 0, 0);
 			list.EndRender();

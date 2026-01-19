@@ -50,6 +50,7 @@ namespace Wild {
         ShaderResourceView(ComPtr<ID3D12Resource> resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& desc);
         ~ShaderResourceView();
 
+        uint32_t BindlessView() const { return m_viewIndex - 1; }
         uint32_t View() const { return m_viewIndex; }
 
     private:

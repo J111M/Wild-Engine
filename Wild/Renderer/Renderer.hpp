@@ -17,12 +17,11 @@
 namespace Wild {
 	struct RootConstant {
 		glm::mat4 matrix{};
+		glm::mat4 invMatrix{};
 		uint32_t albedoView{};
 		uint32_t normalView{};
-		uint32_t metallicView{};
-		uint32_t roughnessView{};
+		uint32_t roughnessMetallicView{};
 		uint32_t emissiveView{};
-		uint32_t pad[3];
 	};
 
 	class Renderer;

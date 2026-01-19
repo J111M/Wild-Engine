@@ -32,7 +32,7 @@ namespace Wild {
 			desc.name = "Albedo render target";
 			desc.usage = TextureDesc::gpuOnly;
 			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
-			passData->AlbedoTexture = rg.CreateTransientTexture("AlbedoTexture", desc);
+			passData->AlbedoRoughnessTexture = rg.CreateTransientTexture("AlbedoRoughnessTexture", desc);
 		}
 
 		// Normals
@@ -44,7 +44,19 @@ namespace Wild {
 			desc.name = "Normal render target";
 			desc.usage = TextureDesc::gpuOnly;
 			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
-			passData->NormalTexture = rg.CreateTransientTexture("NormalTexture", desc);
+			passData->NormalMetallicTexture = rg.CreateTransientTexture("NormalMetallicTexture", desc);
+		}
+
+		// emissive
+		{
+			TextureDesc desc;
+			desc.width = engine.GetGfxContext()->GetWidth();
+			desc.Height = engine.GetGfxContext()->GetHeight();
+			desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			desc.name = "Emissive render target";
+			desc.usage = TextureDesc::gpuOnly;
+			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
+			passData->EmissiveTexture = rg.CreateTransientTexture("EmissiveTexture", desc);
 		}
 
 		// DepthStencil
@@ -61,7 +73,7 @@ namespace Wild {
 		rg.AddPass<DeferredPassData>(
 			"Deferred pass",
 			PassType::Graphics,
-		[&renderer, this](const DeferredPassData& passData, CommandList& list)
+			[&renderer, this](const DeferredPassData& passData, CommandList& list)
 		{
 			PipelineStateSettings settings{};
 			settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/VertDeferred.slang");
@@ -76,6 +88,7 @@ namespace Wild {
 
 			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Albedo
 			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Normal
+			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Emissive
 
 			std::vector<Uniform> uniforms;
 			{
@@ -111,19 +124,27 @@ namespace Wild {
 			}
 
 			list.SetPipelineState(pipeline);
-			list.BeginRender({ passData.AlbedoTexture, passData.NormalTexture }, { ClearOperation::Clear, ClearOperation::Clear }, { passData.DepthTexture }, DSClearOperation::DepthClear);
+			list.BeginRender({ passData.AlbedoRoughnessTexture, passData.NormalMetallicTexture, passData.EmissiveTexture }, { ClearOperation::Clear, ClearOperation::Clear, ClearOperation::Clear }, { passData.DepthTexture }, DSClearOperation::DepthClear);
 
 			auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
 			for (auto&& [entity, trans, mesh] : meshes.each()) {
 				if (camera) {
 					m_rc.matrix = camera->GetProjection() * camera->GetView() * trans.GetWorldMatrix();
+					m_rc.invMatrix = glm::transpose(glm::inverse(glm::mat3(trans.GetWorldMatrix())));
 				}
 
-				m_rc.albedoView = m_texture->GetSrv()->View() - 1;
-				m_rc.normalView = m_texture->GetSrv()->View() - 1;
-				m_rc.metallicView = m_texture->GetSrv()->View() - 1;
-				m_rc.roughnessView = m_texture->GetSrv()->View() - 1;
-				m_rc.emissiveView = m_texture->GetSrv()->View() - 1;
+				auto material = mesh.GetMaterial();
+				if(material.m_albedo)
+					m_rc.albedoView = material.m_albedo->GetSrv()->BindlessView();
+
+				if (material.m_normal)
+					m_rc.normalView = material.m_normal->GetSrv()->BindlessView();
+
+				if(material.m_roughnessMetallic)
+					m_rc.roughnessMetallicView = material.m_roughnessMetallic->GetSrv()->BindlessView();
+
+				if(material.m_emissive)
+					m_rc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
 
 				list.GetList()->SetGraphicsRoot32BitConstants(
 					0,

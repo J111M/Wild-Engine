@@ -45,7 +45,7 @@ float4 main(PSInput input) : SV_TARGET
 
     float3 grassColor = lerp(baseColor, tipColor, input.bladeHeight);
 
-    float3 Direction = float3(-0.3, 1.0, -0.5);
+    float3 Direction = float3(-0.3, -1.0, -0.5);
     float3 Ambient = float3(0.61, 0.32, 0.1);
     float3 Diffuse = float3(1, 0.86, 0.73);
     float3 Specular = float3(1, 0.96, 0.93);
@@ -53,7 +53,8 @@ float4 main(PSInput input) : SV_TARGET
     float3 viewDir = normalize(cameraPosition - input.fragPosition);
     float3 normal = normalize(input.normal);
 
-    normal = normalize(lerp(float3(0, 0, 1), normal, 0.25));
+    // Mix with ground normal
+    normal = normalize(lerp(float3(0, 1, 0), normal, 0.25));
 
     float3 lightDir = normalize(-Direction);
     float3 halfwayDir = normalize(lightDir + viewDir);
