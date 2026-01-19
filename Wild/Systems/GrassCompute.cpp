@@ -22,8 +22,8 @@ namespace Wild {
 
 		BufferDesc desc{};
 		desc.bufferSize = sizeof(GrassBladeData);
-		m_bladeDataBuffer = std::make_shared<Buffer>(desc);
-		m_bladeDataBuffer->CreateUAVBuffer(MAXGRASSBLADES);
+		desc.numOfElements = MAXGRASSBLADES;
+		m_bladeDataBuffer = std::make_shared<Buffer>(desc, BufferType::uav);
 	}
 
 	void GrassCompute::Render(CommandList& list)

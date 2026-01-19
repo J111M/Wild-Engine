@@ -4,9 +4,21 @@
 #include "Renderer/Resources/Mesh.hpp"
 
 namespace Wild {
-	Buffer::Buffer(BufferDesc desc)
+	Buffer::Buffer(BufferDesc desc, BufferType type)
 	{
 		m_desc = desc;
+
+		switch (type)
+		{
+		case BufferType::constant:
+			CreateConstantBuffer();
+			break;
+		case BufferType::uav:
+			CreateUAVBuffer();
+			break;
+		default:
+			break;
+		}
 	}
 
 	Buffer::~Buffer()
@@ -38,21 +50,21 @@ namespace Wild {
 		m_cbView = std::make_shared<ConstantBufferView>(m_resource->Handle(), m_desc.bufferSize);
 	}
 
-	void Buffer::CreateUAVBuffer(uint32_t numElements)
+	void Buffer::CreateUAVBuffer()
 	{
 		auto gfxContext = engine.GetGfxContext();
 
-		if (m_desc.bufferSize <= 0) {
-			WD_ERROR("UAV buffer invalid data size.");
+		if (m_desc.bufferSize <= 0 || m_desc.numOfElements <= 0) {
+			WD_ERROR("UAV buffer invalid data size or elements not specified.");
 			return;
 		}
 
 		D3D12_RESOURCE_DESC desc = {};
 		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		desc.Width = m_desc.bufferSize * numElements;
+		desc.Width = m_desc.bufferSize * m_desc.numOfElements;
 		desc.Height = m_desc.height;
 		desc.DepthOrArraySize = m_desc.depth;
-		desc.MipLevels = m_desc.mip_levels;
+		desc.MipLevels = m_desc.mipLevels;
 		desc.SampleDesc.Count = 1;
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
@@ -72,7 +84,7 @@ namespace Wild {
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 		uavDesc.Format = DXGI_FORMAT_UNKNOWN;
 		uavDesc.Buffer.FirstElement = 0;
-		uavDesc.Buffer.NumElements = numElements;
+		uavDesc.Buffer.NumElements = m_desc.numOfElements;
 		uavDesc.Buffer.StructureByteStride = m_desc.bufferSize;
 
 		m_uaView = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc);
@@ -126,6 +138,13 @@ namespace Wild {
 		gfxContext->GetCommandQueue(QueueType::Direct)->WaitForFence();
 
 		m_ibView = std::make_shared<IndexBufferView>(m_resource->Handle(), m_desc.bufferSize, DXGI_FORMAT_R32_UINT);
+	}
+
+	void Buffer::Allocate(void* dataSrc, size_t size)
+	{
+		Map();
+		WriteData(dataSrc, size);
+		Unmap();
 	}
 
 	void Buffer::Transition(CommandList& list, D3D12_RESOURCE_STATES newState) {

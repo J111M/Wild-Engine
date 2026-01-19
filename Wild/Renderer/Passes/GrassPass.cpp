@@ -16,8 +16,8 @@ namespace Wild {
 			BufferDesc desc{};
 			desc.name = "Cullinstance buffer: " + std::to_string(i);
 			desc.bufferSize = sizeof(CulledInstance);
-			m_culledInstancesBuffer[i] = std::make_shared<Buffer>(desc);
-			m_culledInstancesBuffer[i]->CreateUAVBuffer(MAXGRASSBLADES1);
+			desc.numOfElements = MAXGRASSBLADES1;
+			m_culledInstancesBuffer[i] = std::make_shared<Buffer>(desc, BufferType::uav);
 		}
 
 		// Single uint for writing instance count UAV, u1
@@ -26,16 +26,15 @@ namespace Wild {
 			BufferDesc desc{};
 			desc.name = "Indirect instance count buffer: " + std::to_string(i);
 			desc.bufferSize = sizeof(uint32_t);
-			m_instanceCountBuffer[i] = std::make_unique<Buffer>(desc);
-			m_instanceCountBuffer[i]->CreateUAVBuffer(m_lodAmount);
+			desc.numOfElements = m_lodAmount;
+			m_instanceCountBuffer[i] = std::make_unique<Buffer>(desc, BufferType::uav);
 		}
 
 		// Frustum constant buffer
 		{
 			BufferDesc desc{};
 			desc.bufferSize = sizeof(FrustumBuffer);
-			m_frustumBuffer = std::make_unique<Buffer>(desc);
-			m_frustumBuffer->CreateConstantBuffer();
+			m_frustumBuffer = std::make_unique<Buffer>(desc, BufferType::constant);
 		}
 
 		// We need to create the commands on the gpu we do that in this buffer
@@ -44,8 +43,8 @@ namespace Wild {
 			BufferDesc desc{};
 			desc.name = "Indirect commands buffer: " + std::to_string(i);
 			desc.bufferSize = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
-			m_drawCommandsBuffer[i] = std::make_unique<Buffer>(desc);
-			m_drawCommandsBuffer[i]->CreateUAVBuffer(m_lodAmount);
+			desc.numOfElements = m_lodAmount;
+			m_drawCommandsBuffer[i] = std::make_unique<Buffer>(desc, BufferType::uav);
 		}
 
 		D3D12_INDIRECT_ARGUMENT_DESC argumentDesc = {};
@@ -66,8 +65,7 @@ namespace Wild {
 
 			for (int i = 0; i < BACK_BUFFER_COUNT; i++)
 			{
-				m_sceneData[i] = std::make_shared<Buffer>(desc);
-				m_sceneData[i]->CreateConstantBuffer();
+				m_sceneData[i] = std::make_shared<Buffer>(desc, BufferType::constant);
 
 				// Keep buffer data mapped for cpu write access
 				CD3DX12_RANGE readRange(0, 0);
@@ -143,7 +141,7 @@ namespace Wild {
 		rg.AddPass<ClearCounterData>(
 			"Clear counter pass",
 			PassType::Compute,
-		[&renderer, this](ClearCounterData& countData, CommandList& list) {
+			[&renderer, this](ClearCounterData& countData, CommandList& list) {
 			PipelineStateSettings settings{};
 			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeClearCounter.slang");
 
@@ -309,7 +307,7 @@ namespace Wild {
 		rg.AddPass<RenderGrassData>(
 			"Grass render pass",
 			PassType::Compute,
-		[&renderer, this](const RenderGrassData& grassData, CommandList& list) {
+			[&renderer, this](const RenderGrassData& grassData, CommandList& list) {
 
 			PipelineStateSettings settings{};
 			settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/VertGrass.slang");

@@ -12,16 +12,34 @@
 namespace Wild {
 	struct Vertex;
 
+	enum BufferFlag : uint32_t
+	{
+		none = 0,
+		shaderResource = 1 << 1,
+		readWrite = 1 << 2,
+		cpuResource = 1 << 3,
+	};
+
+	enum BufferType : uint32_t
+	{
+		default = 0,
+		constant = 1 << 1,
+		uav = 1 << 2,
+	};
+
 	struct BufferDesc {
+		BufferFlag flag = BufferFlag::shaderResource;
+		//BufferType type = BufferType::default;
+
+		uint32_t bufferSize{};
+		uint32_t numOfElements{};
+
 		UINT64 width{ 1 };
 		UINT height{ 1 };
 		UINT16 depth{ 1 };
-		UINT16 mip_levels{ 1 };
+		UINT16 mipLevels{ 1 };
 		DXGI_FORMAT format;
-		D3D12_RESOURCE_FLAGS flags;
-
-		int bufferSize{};
-		UINT stride{};
+		//D3D12_RESOURCE_FLAGS flags;
 
 		std::string name = "default";
 	};
@@ -29,12 +47,12 @@ namespace Wild {
 	class Buffer
 	{
 	public:
-		Buffer(BufferDesc desc);
+		Buffer(BufferDesc desc, BufferType type = BufferType::default);
 		~Buffer();
 
-		void CreateConstantBuffer();
-		void CreateUAVBuffer(uint32_t numElements);
 		void CreateIndexBuffer(std::vector<uint32_t> indices);
+
+		void Allocate(void* dataSrc, size_t size = 0);
 
 		void Map(CD3DX12_RANGE* readRange = nullptr);
 		void Unmap();
@@ -50,6 +68,9 @@ namespace Wild {
 		std::shared_ptr<UnorderedAccessView> GetUAView() const;
 	private:
 		BufferDesc m_desc;
+
+		void CreateConstantBuffer();
+		void CreateUAVBuffer();
 
 		std::unique_ptr<Resource> m_resource;
 
@@ -73,10 +94,10 @@ namespace Wild {
 				return;
 			}
 
-			m_desc.stride = sizeof(T);
-			m_desc.bufferSize = vertices.size() * sizeof(T);
+			uint32_t stride = static_cast<uint32_t>(sizeof(T));
+			m_desc.bufferSize = vertices.size() * stride;
 
-			if (m_desc.stride == 0) {
+			if (stride == 0) {
 				WD_ERROR("No valid stride supplied at resource creation for vertex buffer!");
 				return;
 			}
@@ -129,7 +150,7 @@ namespace Wild {
 			gfxContext->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
 			gfxContext->GetCommandQueue(QueueType::Direct)->WaitForFence();
 
-			m_vbView = std::make_shared<VertexBufferView>(m_resource->Handle(), m_desc.bufferSize, m_desc.stride);
+			m_vbView = std::make_shared<VertexBufferView>(m_resource->Handle(), m_desc.bufferSize, stride);
 		}
 	};
 }

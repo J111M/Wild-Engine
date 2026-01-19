@@ -11,8 +11,7 @@ namespace Wild {
 			desc.bufferSize = sizeof(InverseCamera);
 			for (int i = 0; i < BACK_BUFFER_COUNT; i++)
 			{
-				m_inverseCamera[i] = std::make_unique<Buffer>(desc);
-				m_inverseCamera[i]->CreateConstantBuffer();
+				m_inverseCamera[i] = std::make_unique<Buffer>(desc, BufferType::constant);
 			}
 		}
 
@@ -21,8 +20,7 @@ namespace Wild {
 			desc.bufferSize = sizeof(PBRData);
 			for (int i = 0; i < BACK_BUFFER_COUNT; i++)
 			{
-				m_pbrData[i] = std::make_unique<Buffer>(desc);
-				m_pbrData[i]->CreateConstantBuffer();
+				m_pbrData[i] = std::make_unique<Buffer>(desc, BufferType::constant);
 			}
 		}
 
@@ -49,16 +47,10 @@ namespace Wild {
 		}
 
 		int frameIndex = context->GetBackBufferIndex();
-		m_inverseCamera[frameIndex]->Map();
-		m_inverseCamera[frameIndex]->WriteData(&inverseCamData);
-		m_inverseCamera[frameIndex]->Unmap();
+		m_inverseCamera[frameIndex]->Allocate(&inverseCamData);
 
 		pbrData.lightDirection = glm::vec3(-0.3, -6.0, -2.5);
-
-		m_pbrData[frameIndex]->Map();
-		m_pbrData[frameIndex]->WriteData(&pbrData);
-		m_pbrData[frameIndex]->Unmap();
-
+		m_pbrData[frameIndex]->Allocate(&pbrData);
 	}
 
 	void PbrPass::Add(Renderer& renderer, RenderGraph& rg)
