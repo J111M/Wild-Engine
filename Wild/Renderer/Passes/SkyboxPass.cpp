@@ -73,35 +73,25 @@ namespace Wild {
 			settings.ShaderState.InputLayout.emplace_back(InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
 			settings.ShaderState.InputLayout.emplace_back(InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
 
+			// Uniforms
 			std::vector<Uniform> uniforms;
 
-			{
-				Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(SkyRootConstant) };
-				uniforms.emplace_back(uni);
-			}
+			Uniform rootConstant{ 0, 0, RootParams::RootResourceType::Constants, sizeof(SkyRootConstant) };
+			uniforms.emplace_back(rootConstant);
 
-			// Camera buffer
-			{
-				Uniform uni{ 1, 0, RootParams::RootResourceType::ConstantBufferView };
-				uniforms.emplace_back(uni);
-			}
+			Uniform cameraBuffer{ 1, 0, RootParams::RootResourceType::ConstantBufferView };
+			uniforms.emplace_back(cameraBuffer);
 
-			// Bindless heap
-			{
-				Uniform uni{ 0, 0, RootParams::RootResourceType::DescriptorTable };
-				CD3DX12_DESCRIPTOR_RANGE srvRange{};
-				srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
-				uni.Ranges.emplace_back(srvRange);
-				uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+			Uniform bindless{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+			CD3DX12_DESCRIPTOR_RANGE srvRange{};
+			srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+			bindless.Ranges.emplace_back(srvRange);
+			bindless.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+			uniforms.emplace_back(bindless);
 
-				uniforms.emplace_back(uni);
-			}
-
-			{
-				Uniform uni{ 0, 0, RootParams::RootResourceType::StaticSampler };
-				uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-				uniforms.emplace_back(uni);
-			}
+			Uniform staticSampler{ 0, 0, RootParams::RootResourceType::StaticSampler };
+			staticSampler.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+			uniforms.emplace_back(staticSampler);
 
 			auto& pipeline = renderer.GetOrCreatePipeline("Skybox pass", PipelineStateType::Graphics, settings, uniforms);
 
@@ -114,12 +104,12 @@ namespace Wild {
 			SkyRootConstant rc{};
 			rc.view = m_skyboxTexture->GetSrv()->BindlessView();
 
-			list.GetList()->SetGraphicsRoot32BitConstants(0, sizeof(SkyRootConstant) / 4, &rc, 0);
+			list.SetRootConstant<SkyRootConstant>(rc);
 
-			list.GetList()->SetGraphicsRootConstantBufferView(1, m_cameraProjection[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
+			list.SetConstantBufferView(1, m_cameraProjection[frameIndex].get());
 
-			m_skyboxTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-			list.GetList()->SetGraphicsRootDescriptorTable(2, context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
+			//m_skyboxTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			list.SetBindlessHeap(2);
 
 			list.GetList()->IASetVertexBuffers(0, 1, &m_cubeVertexBuffer->GetVBView()->View());
 

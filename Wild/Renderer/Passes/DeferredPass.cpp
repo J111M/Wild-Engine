@@ -91,25 +91,19 @@ namespace Wild {
 			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Emissive
 
 			std::vector<Uniform> uniforms;
-			{
-				Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(RootConstant) };
-				uniforms.emplace_back(uni);
-			}
+			Uniform rootConstant{ 0, 0, RootParams::RootResourceType::Constants, sizeof(RootConstant) };
+			uniforms.emplace_back(rootConstant);
 
-			{
-				Uniform uni{ 0, 0, RootParams::RootResourceType::DescriptorTable };
-				CD3DX12_DESCRIPTOR_RANGE srvRange{};
-				srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
-				uni.Ranges.emplace_back(srvRange);
-				uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+			Uniform bindlessUni{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+			CD3DX12_DESCRIPTOR_RANGE srvRange{};
+			srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+			bindlessUni.Ranges.emplace_back(srvRange);
+			bindlessUni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-				uniforms.emplace_back(uni);
-			}
+			uniforms.emplace_back(bindlessUni);
 
-			{
-				Uniform uni{ 0, 0, RootParams::RootResourceType::StaticSampler };
-				uniforms.emplace_back(uni);
-			}
+			Uniform staticSampler{ 0, 0, RootParams::RootResourceType::StaticSampler };
+			uniforms.emplace_back(staticSampler);
 
 			auto& pipeline = renderer.GetOrCreatePipeline("Deferred pass", PipelineStateType::Graphics, settings, uniforms);
 
@@ -134,26 +128,21 @@ namespace Wild {
 				}
 
 				auto material = mesh.GetMaterial();
-				if(material.m_albedo)
+				if (material.m_albedo)
 					m_rc.albedoView = material.m_albedo->GetSrv()->BindlessView();
 
 				if (material.m_normal)
 					m_rc.normalView = material.m_normal->GetSrv()->BindlessView();
 
-				if(material.m_roughnessMetallic)
+				if (material.m_roughnessMetallic)
 					m_rc.roughnessMetallicView = material.m_roughnessMetallic->GetSrv()->BindlessView();
 
-				if(material.m_emissive)
+				if (material.m_emissive)
 					m_rc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
 
-				list.GetList()->SetGraphicsRoot32BitConstants(
-					0,
-					sizeof(RootConstant) / 4,
-					&m_rc,
-					0
-				);
+				list.SetRootConstant<RootConstant>(m_rc);
 
-				list.GetList()->SetGraphicsRootDescriptorTable(1, engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
+				list.SetBindlessHeap(1);
 
 				list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
 

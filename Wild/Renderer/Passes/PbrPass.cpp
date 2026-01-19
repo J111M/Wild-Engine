@@ -135,14 +135,14 @@ namespace Wild {
 			m_rc.emissiveView = deferredData->EmissiveTexture->GetSrv()->BindlessView();
 			m_rc.depthView = deferredData->DepthTexture->GetSrv()->BindlessView();
 
-			list.GetList()->SetGraphicsRoot32BitConstants(0, sizeof(PbrRootConstant) / 4, &m_rc, 0);
+			list.SetRootConstant<PbrRootConstant>(m_rc);
 
 			auto context = engine.GetGfxContext();
 			int frameIndex = context->GetBackBufferIndex();
 
-			list.GetList()->SetGraphicsRootConstantBufferView(1, m_inverseCamera[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
-			list.GetList()->SetGraphicsRootConstantBufferView(2, m_pbrData[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
-			list.GetList()->SetGraphicsRootDescriptorTable(3, context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
+			list.SetConstantBufferView(1, m_inverseCamera[frameIndex].get());
+			list.SetConstantBufferView(2, m_pbrData[frameIndex].get());
+			list.SetBindlessHeap(3);
 
 			list.GetList()->DrawInstanced(3, 1, 0, 0);
 			list.EndRender();

@@ -12,6 +12,7 @@
 namespace Wild {
 	class Texture;
 	class PipelineState;
+	class Buffer;
 
 	class CommandList : private NonCopyable
 	{
@@ -43,9 +44,12 @@ namespace Wild {
 
 		// TODO Implement for platform abstraction
 
-		//void SetRootConstant();
-
-		void SetBuffer() {};
+		template<typename rc>
+		void SetRootConstant(rc& rootConstant);
+		void SetBindlessHeap(uint32_t rootIndex);
+		void SetConstantBufferView(uint32_t rootIndex, Buffer* buffer);
+		void SetUnorderedAccessView(uint32_t rootIndex, Buffer* buffer);
+		void SetShaderResourceView(uint32_t rootIndex, Buffer* buffer);
 		void SetVertexBuffer() {};
 		void SetIndexBuffer() {};
 		void Draw(uint32_t size) {};
@@ -67,4 +71,15 @@ namespace Wild {
 		bool m_pipelineIsSet = false;
 		//std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> m_psoCache{};
 	};
+
+	template<typename rc>
+	inline void CommandList::SetRootConstant(rc& rootConstant)
+	{
+		if (m_pipelineState->IsComputePass()) {
+			m_commandList->SetComputeRoot32BitConstants(0, sizeof(rc) / 4, &rootConstant, 0);
+		}
+		else {
+			m_commandList->SetGraphicsRoot32BitConstants(0, sizeof(rc) / 4, &rootConstant, 0);
+		}
+	}
 }

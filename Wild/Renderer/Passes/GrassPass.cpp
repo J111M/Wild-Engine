@@ -146,8 +146,8 @@ namespace Wild {
 			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeClearCounter.slang");
 
 			std::vector<Uniform> uniforms;
-			Uniform uni{ 0, 0, RootParams::RootResourceType::UnorderedAccessView };
-			uniforms.emplace_back(uni);
+			Uniform instanceCountBuffer{ 0, 0, RootParams::RootResourceType::UnorderedAccessView };
+			uniforms.emplace_back(instanceCountBuffer);
 
 			auto& pipeline = renderer.GetOrCreatePipeline("Clear counter pass", PipelineStateType::Compute, settings, uniforms);
 			list.SetPipelineState(pipeline);
@@ -155,7 +155,7 @@ namespace Wild {
 
 			auto context = engine.GetGfxContext();
 			UINT frameIndex = context->GetBackBufferIndex();
-			list.GetList()->SetComputeRootUnorderedAccessView(0, m_instanceCountBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
+			list.SetUnorderedAccessView(0, m_instanceCountBuffer[frameIndex].get());
 
 			list.GetList()->Dispatch(1, 1, 1);
 			list.EndRender();
@@ -194,28 +194,20 @@ namespace Wild {
 			std::vector<Uniform> uniforms;
 
 			// Per frame frustum data
-			{
-				Uniform uni{ 0, 0, RootParams::RootResourceType::ConstantBufferView };
-				uniforms.emplace_back(uni);
-			}
+			Uniform frustumData{ 0, 0, RootParams::RootResourceType::ConstantBufferView };
+			uniforms.emplace_back(frustumData);
 
 			// Grass instance data
-			{
-				Uniform uni{ 0, 0, RootParams::RootResourceType::ShaderResourceView };
-				uniforms.emplace_back(uni);
-			}
+			Uniform grassInstanceData{ 0, 0, RootParams::RootResourceType::ShaderResourceView };
+			uniforms.emplace_back(grassInstanceData);
 
 			// Culled read write data
-			{
-				Uniform uni{ 0, 0, RootParams::RootResourceType::UnorderedAccessView };
-				uniforms.emplace_back(uni);
-			}
+			Uniform cullingDataBuffer{ 0, 0, RootParams::RootResourceType::UnorderedAccessView };
+			uniforms.emplace_back(cullingDataBuffer);
 
 			// Byte adress buffer for instance count
-			{
-				Uniform uni{ 1, 0, RootParams::RootResourceType::UnorderedAccessView };
-				uniforms.emplace_back(uni);
-			}
+			Uniform instanceCounter{ 1, 0, RootParams::RootResourceType::UnorderedAccessView };
+			uniforms.emplace_back(instanceCounter);
 
 			auto& pipeline = renderer.GetOrCreatePipeline("Grass culling pass", PipelineStateType::Compute, settings, uniforms);
 
@@ -225,10 +217,10 @@ namespace Wild {
 			UINT frameIndex = context->GetBackBufferIndex();
 
 			// Set frame data
-			list.GetList()->SetComputeRootConstantBufferView(0, m_frustumBuffer->GetBuffer()->GetGPUVirtualAddress());
-			list.GetList()->SetComputeRootShaderResourceView(1, m_grassBladeInstanceBuffer->GetBuffer()->GetGPUVirtualAddress());
-			list.GetList()->SetComputeRootUnorderedAccessView(2, m_culledInstancesBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
-			list.GetList()->SetComputeRootUnorderedAccessView(3, m_instanceCountBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
+			list.SetConstantBufferView(0, m_frustumBuffer.get());
+			list.SetShaderResourceView(1, m_grassBladeInstanceBuffer.get());
+			list.SetUnorderedAccessView(2, m_culledInstancesBuffer[frameIndex].get());
+			list.SetUnorderedAccessView(3, m_instanceCountBuffer[frameIndex].get());
 
 			list.GetList()->Dispatch(((MAXGRASSBLADES1 + 63) / 64), 1, 1);
 
@@ -267,14 +259,11 @@ namespace Wild {
 			settings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeIndirectCommands.slang");
 
 			std::vector<Uniform> uniforms;
-			{
-				Uniform uni{ 0, 0, RootParams::RootResourceType::UnorderedAccessView };
-				uniforms.emplace_back(uni);
-			}
-			{
-				Uniform uni{ 1, 0, RootParams::RootResourceType::UnorderedAccessView };
-				uniforms.emplace_back(uni);
-			}
+			Uniform instanceCountBuffer{ 0, 0, RootParams::RootResourceType::UnorderedAccessView };
+			uniforms.emplace_back(instanceCountBuffer);
+
+			Uniform drawCommandBuffer{ 1, 0, RootParams::RootResourceType::UnorderedAccessView };
+			uniforms.emplace_back(drawCommandBuffer);
 
 			auto& pipeline = renderer.GetOrCreatePipeline("Indirect command creation pass", PipelineStateType::Compute, settings, uniforms);
 
@@ -282,8 +271,8 @@ namespace Wild {
 			list.BeginRender();
 
 			int frameIndex = context->GetBackBufferIndex();
-			list.GetList()->SetComputeRootUnorderedAccessView(0, m_instanceCountBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
-			list.GetList()->SetComputeRootUnorderedAccessView(1, m_drawCommandsBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
+			list.SetUnorderedAccessView(0, m_instanceCountBuffer[frameIndex].get());
+			list.SetUnorderedAccessView(1, m_drawCommandsBuffer[frameIndex].get());
 
 			list.GetList()->Dispatch(1, 1, 1);
 
@@ -321,25 +310,18 @@ namespace Wild {
 			settings.RasterizerState.CullMode = CullMode::None;
 
 			std::vector<Uniform> uniforms;
-			{
-				Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(GrassRC) };
-				uniforms.emplace_back(uni);
-			}
 
-			{
-				Uniform uni{ 0, 0, RootParams::RootResourceType::ShaderResourceView, 0, D3D12_SHADER_VISIBILITY_VERTEX };
-				uniforms.emplace_back(uni);
-			}
+			Uniform rootConstant{ 0, 0, RootParams::RootResourceType::Constants, sizeof(GrassRC) };
+			uniforms.emplace_back(rootConstant);
 
-			{
-				Uniform uni{ 1, 0, RootParams::RootResourceType::ConstantBufferView, 0 };
-				uniforms.emplace_back(uni);
-			}
+			Uniform grassBladeData{ 0, 0, RootParams::RootResourceType::ShaderResourceView, 0, D3D12_SHADER_VISIBILITY_VERTEX };
+			uniforms.emplace_back(grassBladeData);
 
-			{
-				Uniform uni{ 1, 0, RootParams::RootResourceType::ShaderResourceView };
-				uniforms.emplace_back(uni);
-			}
+			Uniform sceneData{ 1, 0, RootParams::RootResourceType::ConstantBufferView, 0 };
+			uniforms.emplace_back(sceneData);
+
+			Uniform culledInstanceData{ 1, 0, RootParams::RootResourceType::ShaderResourceView };
+			uniforms.emplace_back(culledInstanceData);
 
 			auto& pipeline = renderer.GetOrCreatePipeline("Grass render pass", PipelineStateType::Graphics, settings, uniforms);
 
@@ -357,19 +339,14 @@ namespace Wild {
 			m_rc.Matrix = transform.GetWorldMatrix();
 			m_rc.bladeId = 0;
 
-			list.GetList()->SetGraphicsRootShaderResourceView(1, m_grassBladeInstanceBuffer->GetBuffer()->GetGPUVirtualAddress());
-			list.GetList()->SetGraphicsRootConstantBufferView(2, m_sceneData[gfxContext->GetBackBufferIndex()]->GetBuffer()->GetGPUVirtualAddress());
+			list.SetShaderResourceView(1, m_grassBladeInstanceBuffer.get());
+			list.SetConstantBufferView(2, m_sceneData[gfxContext->GetBackBufferIndex()].get());
 
 			if (m_culledInstancesBuffer[frameIndex]->GetBuffer()) {
-				list.GetList()->SetGraphicsRootShaderResourceView(3, m_culledInstancesBuffer[frameIndex]->GetBuffer()->GetGPUVirtualAddress());
+				list.SetShaderResourceView(3, m_culledInstancesBuffer[frameIndex].get());
 			}
 
-			list.GetList()->SetGraphicsRoot32BitConstants(
-				0,
-				sizeof(GrassRC) / 4,
-				&m_rc,
-				0
-			);
+			list.SetRootConstant<GrassRC>(m_rc);
 
 			list.GetList()->IASetVertexBuffers(0, 1, &m_grassVertices->GetVBView()->View());
 			list.GetList()->IASetIndexBuffer(&m_grassIndices->GetIBView()->View());

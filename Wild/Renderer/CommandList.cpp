@@ -2,6 +2,7 @@
 
 #include "Renderer/PipelineStateBuilder.hpp"
 #include "Renderer/Resources/Texture.hpp"
+#include "Renderer/Resources/Buffer.hpp"
 
 namespace Wild {
 	CommandList::CommandList(D3D12_COMMAND_LIST_TYPE listType)
@@ -41,6 +42,47 @@ namespace Wild {
 		m_pipelineState = pipeline;
 
 		m_commandList->SetPipelineState(m_pipelineState->GetPso().Get());
+	}
+
+	void CommandList::SetBindlessHeap(uint32_t rootIndex) {
+		auto context = engine.GetGfxContext();
+		if (m_pipelineState->IsComputePass()) {
+			m_commandList->SetComputeRootDescriptorTable(static_cast<UINT>(rootIndex), context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
+		}
+		else {
+			m_commandList->SetGraphicsRootDescriptorTable(static_cast<UINT>(rootIndex), context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
+		}
+
+	}
+
+	void CommandList::SetConstantBufferView(uint32_t rootIndex, Buffer* buffer)
+	{
+		if (m_pipelineState->IsComputePass()) {
+			m_commandList->SetComputeRootConstantBufferView(static_cast<UINT>(rootIndex), buffer->GetBuffer()->GetGPUVirtualAddress());
+		}
+		else {
+			m_commandList->SetGraphicsRootConstantBufferView(static_cast<UINT>(rootIndex), buffer->GetBuffer()->GetGPUVirtualAddress());
+		}
+	}
+
+	void CommandList::SetUnorderedAccessView(uint32_t rootIndex, Buffer* buffer)
+	{
+		if (m_pipelineState->IsComputePass()) {
+			m_commandList->SetComputeRootUnorderedAccessView(static_cast<UINT>(rootIndex), buffer->GetBuffer()->GetGPUVirtualAddress());
+		}
+		else {
+			m_commandList->SetGraphicsRootUnorderedAccessView(static_cast<UINT>(rootIndex), buffer->GetBuffer()->GetGPUVirtualAddress());
+		}
+	}
+
+	void CommandList::SetShaderResourceView(uint32_t rootIndex, Buffer* buffer)
+	{
+		if (m_pipelineState->IsComputePass()) {
+			m_commandList->SetComputeRootShaderResourceView(static_cast<UINT>(rootIndex), buffer->GetBuffer()->GetGPUVirtualAddress());
+		}
+		else {
+			m_commandList->SetGraphicsRootShaderResourceView(static_cast<UINT>(rootIndex), buffer->GetBuffer()->GetGPUVirtualAddress());
+		}
 	}
 
 	void CommandList::BeginRender(const std::vector<Texture*>& renderTargets,
