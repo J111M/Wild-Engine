@@ -135,7 +135,7 @@ namespace Wild {
 			m_rc.emissiveView = deferredData->EmissiveTexture->GetSrv()->BindlessView();
 			m_rc.depthView = deferredData->DepthTexture->GetSrv()->BindlessView();
 
-			list.SetRootConstant<PbrRootConstant>(m_rc);
+			list.SetRootConstant<PbrRootConstant>(0, m_rc);
 
 			auto context = engine.GetGfxContext();
 			int frameIndex = context->GetBackBufferIndex();

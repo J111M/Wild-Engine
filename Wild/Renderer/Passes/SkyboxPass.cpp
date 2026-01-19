@@ -104,7 +104,7 @@ namespace Wild {
 			SkyRootConstant rc{};
 			rc.view = m_skyboxTexture->GetSrv()->BindlessView();
 
-			list.SetRootConstant<SkyRootConstant>(rc);
+			list.SetRootConstant<SkyRootConstant>(0, rc);
 
 			list.SetConstantBufferView(1, m_cameraProjection[frameIndex].get());
 

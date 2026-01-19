@@ -346,7 +346,7 @@ namespace Wild {
 				list.SetShaderResourceView(3, m_culledInstancesBuffer[frameIndex].get());
 			}
 
-			list.SetRootConstant<GrassRC>(m_rc);
+			list.SetRootConstant<GrassRC>(0, m_rc);
 
 			list.GetList()->IASetVertexBuffers(0, 1, &m_grassVertices->GetVBView()->View());
 			list.GetList()->IASetIndexBuffer(&m_grassIndices->GetIBView()->View());

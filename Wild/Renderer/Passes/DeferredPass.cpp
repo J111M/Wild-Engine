@@ -140,7 +140,7 @@ namespace Wild {
 				if (material.m_emissive)
 					m_rc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
 
-				list.SetRootConstant<RootConstant>(m_rc);
+				list.SetRootConstant<RootConstant>(0, m_rc);
 
 				list.SetBindlessHeap(1);
 

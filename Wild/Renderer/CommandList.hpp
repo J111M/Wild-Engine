@@ -45,7 +45,7 @@ namespace Wild {
 		// TODO Implement for platform abstraction
 
 		template<typename rc>
-		void SetRootConstant(rc& rootConstant);
+		void SetRootConstant(uint32_t rootIndex, rc& rootConstant);
 		void SetBindlessHeap(uint32_t rootIndex);
 		void SetConstantBufferView(uint32_t rootIndex, Buffer* buffer);
 		void SetUnorderedAccessView(uint32_t rootIndex, Buffer* buffer);
@@ -73,13 +73,13 @@ namespace Wild {
 	};
 
 	template<typename rc>
-	inline void CommandList::SetRootConstant(rc& rootConstant)
+	inline void CommandList::SetRootConstant(uint32_t rootIndex, rc& rootConstant)
 	{
 		if (m_pipelineState->IsComputePass()) {
-			m_commandList->SetComputeRoot32BitConstants(0, sizeof(rc) / 4, &rootConstant, 0);
+			m_commandList->SetComputeRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
 		}
 		else {
-			m_commandList->SetGraphicsRoot32BitConstants(0, sizeof(rc) / 4, &rootConstant, 0);
+			m_commandList->SetGraphicsRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
 		}
 	}
 }
