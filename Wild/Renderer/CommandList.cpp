@@ -144,6 +144,7 @@ namespace Wild {
 		m_commandList->ClearRenderTargetView(renderTarget.GetRtv()->GetCpuHandle(), &color[0], 0, nullptr);
 	}
 
+
 	void CommandList::SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil)
 	{
 		const uint32_t numRenderTargets = static_cast<uint32_t>(renderTargets.size());

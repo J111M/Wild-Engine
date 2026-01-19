@@ -13,7 +13,8 @@ namespace Wild {
     {
         TEXTURE_2D,
 		TEXTURE_1D,
-        CUBEMAP
+        CUBEMAP,
+		SKYBOX
     };
 
 	enum class PrimitiveTopology : uint8_t

@@ -1,5 +1,5 @@
 #include "Renderer/Passes/GrassPass.hpp"
-#include "Renderer/Passes/PbrPass.hpp"
+#include "Renderer/Passes/SkyboxPass.hpp"
 
 #include <glm/gtc/matrix_access.hpp>
 
@@ -299,10 +299,10 @@ namespace Wild {
 		auto* passData = rg.AllocatePassData<RenderGrassData>();
 		auto indirectPass = rg.GetPassData<RenderGrassData, IndirectCommandsData>();
 
-		auto* pbrData = rg.GetPassData<RenderGrassData, PbrPassData>();
+		auto* skyboxData = rg.GetPassData<RenderGrassData, SkyPassData>();
 
-		passData->FinalTexture = pbrData->FinalTexture;
-		passData->DepthTexture = pbrData->DepthTexture;
+		passData->FinalTexture = skyboxData->FinalTexture;
+		passData->DepthTexture = skyboxData->DepthTexture;
 
 		rg.AddPass<RenderGrassData>(
 			"Grass render pass",

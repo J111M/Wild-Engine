@@ -42,6 +42,9 @@ namespace Wild {
 		void ClearRenderTarget(Texture& renderTarget, const glm::vec4& color = { 0.0f, 0.0f, 0.0f, 1.0f });
 
 		// TODO Implement for platform abstraction
+
+		//void SetRootConstant();
+
 		void SetBuffer() {};
 		void SetVertexBuffer() {};
 		void SetIndexBuffer() {};

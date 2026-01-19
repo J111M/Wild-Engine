@@ -77,8 +77,8 @@ namespace Wild {
 			PassType::Graphics,
 			[&renderer, deferredData, this](const PbrPassData& passData, CommandList& list) {
 			PipelineStateSettings settings{};
-			settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/VertPbr.slang");
-			settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/FragPbr.slang");
+			settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/PbrVert.slang");
+			settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/PbrFrag.slang");
 			settings.DepthStencilState.DepthEnable = false;
 			settings.RasterizerState.WindingMode = WindingOrder::Clockwise;
 

@@ -4,26 +4,30 @@
 #include <stb_image.h>
 
 namespace Wild {
-	Texture::Texture(const std::string& filePath, TextureType type, uint32_t mips)
+	Texture::Texture(const std::string& filePath, TextureType type, uint32_t mips, DXGI_FORMAT format)
 	{
 		m_desc.name = filePath;
 		m_desc.type = type;
+		m_desc.format = format;
 
-		switch (type)
-		{
-		case Wild::TextureType::TEXTURE_2D:
-			CreateTexture(filePath);
-			break;
-		case Wild::TextureType::TEXTURE_1D:
-			WD_WARN("Not supported yet.");
-			// CreateTexture(filePath);
-			break;
-		case Wild::TextureType::CUBEMAP:
-			CreateCubeMapTexture(filePath);
-			break;
-		default:
-			break;
-		}
+			switch (type)
+			{
+			case Wild::TextureType::TEXTURE_2D:
+				CreateTexture(filePath);
+				break;
+			case Wild::TextureType::TEXTURE_1D:
+				WD_WARN("Not supported yet.");
+				// CreateTexture(filePath);
+				break;
+			case Wild::TextureType::CUBEMAP:
+				CreateCubeMapTexture(filePath);
+				break;
+			case Wild::TextureType::SKYBOX:
+				CreateSkyboxTexture(filePath);
+				break;
+			default:
+				break;
+			}
 
 		m_resource->Handle()->SetName(StringToWString(m_desc.name).c_str());
 	}
@@ -242,11 +246,6 @@ namespace Wild {
 
 		m_resource->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-		//list.GetList()->ResourceBarrier(1,
-		//	&CD3DX12_RESOURCE_BARRIER::Transition(GetResource(),
-		//		D3D12_RESOURCE_STATE_COPY_DEST,
-		//		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-
 		list.Close();
 		engine.GetGfxContext()->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
 		engine.GetGfxContext()->GetCommandQueue(QueueType::Direct)->WaitForFence();
@@ -265,5 +264,79 @@ namespace Wild {
 	void Texture::CreateCubeMapTexture(const std::string& filePath)
 	{
 
+	}
+
+	void Texture::CreateSkyboxTexture(const std::string& filePath)
+	{
+		auto& gfxContext = engine.GetGfxContext();
+
+		int width, height, channels;
+		float* pixels = stbi_loadf(filePath.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+
+		if (!pixels)
+		{
+			WD_ERROR("No data could be loaded.");
+			return;
+		}
+
+		m_desc.width = static_cast<uint32_t>(width);
+		m_desc.Height = static_cast<uint32_t>(height);
+
+		D3D12_RESOURCE_DESC textureDesc{};
+
+		textureDesc = CD3DX12_RESOURCE_DESC::Tex2D(
+			m_desc.format,
+			static_cast<UINT64>(m_desc.width),
+			static_cast<UINT>(m_desc.Height),
+			static_cast<UINT16>(m_desc.Layers),
+			static_cast<UINT16>(m_desc.mips));
+
+		// Create resource with copy dest since update subresource will transition it to that
+		m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
+
+		ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&textureDesc,
+			D3D12_RESOURCE_STATE_COMMON,
+			nullptr,
+			IID_PPV_ARGS(&m_resource->Handle())));
+
+		// Create Upload heap
+		UINT64 uploadBufferSize = GetRequiredIntermediateSize(GetResource(), 0, 1);
+
+		ComPtr<ID3D12Resource> uploadHeap;
+		ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&uploadHeap)));
+
+		D3D12_SUBRESOURCE_DATA subrsData{};
+		subrsData.pData = pixels;
+		subrsData.RowPitch = m_desc.width * 4 * sizeof(float);
+		subrsData.SlicePitch = subrsData.RowPitch * m_desc.Height;
+
+		CommandList list(D3D12_COMMAND_LIST_TYPE_DIRECT);
+
+		UpdateSubresources(list.GetList().Get(), GetResource(), uploadHeap.Get(), 0, 0, 1, &subrsData);
+
+		m_resource->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		list.Close();
+		engine.GetGfxContext()->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
+		engine.GetGfxContext()->GetCommandQueue(QueueType::Direct)->WaitForFence();
+
+		stbi_image_free(pixels);
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = m_desc.format;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Texture2D.MipLevels = 1;
+
+		m_srv = std::make_shared<ShaderResourceView>(m_resource->Handle(), srvDesc);
 	}
 }

@@ -46,7 +46,7 @@ namespace Wild {
 	{
 	public:
 		// For loading texture from disk
-		Texture(const std::string& filePath, TextureType type = TextureType::TEXTURE_2D, uint32_t mips = 0);
+		Texture(const std::string& filePath, TextureType type = TextureType::TEXTURE_2D, uint32_t mips = 0, DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM);
 		Texture(const TextureDesc& desc);
 		// For swapchain rendertargets
 		Texture(const TextureDesc& desc, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES initialState);
@@ -69,6 +69,7 @@ namespace Wild {
 	private:
 		void CreateTexture(const std::string& filePath);
 		void CreateCubeMapTexture(const std::string& filePath);
+		void CreateSkyboxTexture(const std::string& filePath);
 
 		std::unique_ptr<Resource> m_resource;
 

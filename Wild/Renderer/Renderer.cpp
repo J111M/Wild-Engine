@@ -6,6 +6,7 @@
 #include "Renderer/Passes/DeferredPass.hpp"
 #include "Renderer/Passes/PbrPass.hpp"
 #include "Renderer/Passes/GrassPass.hpp"
+#include "Renderer/Passes/SkyboxPass.hpp"
 #include "Systems/GrassManager.hpp"
 
 #include "Core/Camera.hpp"
@@ -23,6 +24,7 @@ namespace Wild {
 
 		m_renderFeatures.emplace_back(std::make_unique<DeferredPass>());
 		m_renderFeatures.emplace_back(std::make_unique<PbrPass>());
+		m_renderFeatures.emplace_back(std::make_unique<SkyPass>("Assets/Textures/Skybox/the_sky_is_on_fire_4k.hdr"));
 		m_renderFeatures.emplace_back(std::make_unique<GrassPass>(m_grassPreCompute->GetGrassData()));
 	}
 
