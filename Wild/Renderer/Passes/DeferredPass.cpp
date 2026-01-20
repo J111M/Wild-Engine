@@ -97,8 +97,8 @@ namespace Wild {
 			Uniform bindlessUni{ 0, 0, RootParams::RootResourceType::DescriptorTable };
 			CD3DX12_DESCRIPTOR_RANGE srvRange{};
 			srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
-			bindlessUni.Ranges.emplace_back(srvRange);
-			bindlessUni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+			bindlessUni.ranges.emplace_back(srvRange);
+			bindlessUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 			uniforms.emplace_back(bindlessUni);
 

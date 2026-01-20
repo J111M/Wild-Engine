@@ -22,6 +22,10 @@ namespace Wild {
 		float pad1{};
 	};
 
+	struct EnvironmentData {
+		uint32_t irradianceView{};
+	};
+
 	struct PbrRootConstant {
 		uint32_t emissiveView{};
 		uint32_t albedoView{};
@@ -42,5 +46,6 @@ namespace Wild {
 		PbrRootConstant m_rc{};
 		std::unique_ptr<Buffer> m_inverseCamera[BACK_BUFFER_COUNT];
 		std::unique_ptr<Buffer> m_pbrData[BACK_BUFFER_COUNT];
+		std::unique_ptr<Buffer> m_environmentData;
 	};	
 }

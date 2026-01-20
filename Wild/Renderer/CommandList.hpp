@@ -34,7 +34,7 @@ namespace Wild {
 			const std::vector<ClearOperation>& clearRt,
 			Texture* depthStencil,
 			DSClearOperation clearDs,
-			const std::string& passName = {});
+			const std::string& passName = {}, uint32_t rtArrayIndex = 64);
 		void BeginRender(const std::string& passName = {});
 
 		void EndRender();
@@ -54,7 +54,7 @@ namespace Wild {
 		void SetIndexBuffer() {};
 		void Draw(uint32_t size) {};
 	private:
-		void SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil);
+		void SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil, uint32_t rtArrayIndex);
 
 		const bool CanPassExecute(const std::string& passName);
 

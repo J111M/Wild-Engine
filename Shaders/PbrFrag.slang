@@ -15,12 +15,18 @@ cbuffer matrices : register(b1)
 cbuffer PbrData : register(b2)
 {
     float3 cameraPosition;
-    float pad;
+    float pad0;
     float3 lightDirection;
     float pad1;
 }
 
+cbuffer envData : register(b3)
+{
+    uint irradianceMapView;
+}
+
 Texture2D textures[4096] : register(t0, space0);
+TextureCube cubeTextures[4096] : register(t0, space1);
 
 SamplerState linearSampler : register(s0);
 
@@ -151,7 +157,13 @@ float4 main(VSOutput input) : SV_TARGET0
     // direct lighting contribution
     Lo = (kD * lambertianDiffuse + specular) * ndotl; // light color
 
-    float3 ambient = float3(0.2, 0.2, 0.2) * albedo.rgb;
+    float3 irradiance = float3(0.0f);
+    if (irradianceMapView > 0)
+        irradiance = cubeTextures[irradianceMapView].Sample(linearSampler, N).rgb;
+    else {
+        irradiance = float3(0.2f, 0.2f, 0.2f);
+    }
+    float3 ambient = albedo.rgb * irradiance;
 
     color = Lo + ambient + emissive.rgb;
 

@@ -15,6 +15,11 @@ namespace Wild {
 		ImGui::DestroyContext();
 	}
 
+	void ImguiCore::AddPanel(const std::string& name, std::function<void()> renderFunc)
+	{
+		m_panels[name] = renderFunc;
+	}
+
 	bool ImguiCore::Setup(std::shared_ptr<Window> window)
 	{
 		IMGUI_CHECKVERSION();
@@ -59,12 +64,27 @@ namespace Wild {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		static bool show_demo_window = true;
+	/*	static bool show_demo_window = true;
 		if (show_demo_window)
-			ImGui::ShowDemoWindow(&show_demo_window);
+			ImGui::ShowDemoWindow(&show_demo_window);*/
 	}
 
 	void ImguiCore::Draw() {
+		for (auto& [name, func] : m_panels) {
+			if (ImGui::Begin(name.c_str())) {
+				func();
+			}
+			ImGui::End();
+		}
+
+		// Main debug window
+		if (ImGui::Begin("Debug")) {
+			for (auto& [name, func] : m_watches) {
+				func();
+			}
+		}
+		ImGui::End();
+
 		ImGui::Render();
 
 		auto list = engine.GetGfxContext()->GetCommandList()->GetList();

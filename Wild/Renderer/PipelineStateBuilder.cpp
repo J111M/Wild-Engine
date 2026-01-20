@@ -36,25 +36,25 @@ namespace Wild {
 		{
 			const Uniform& uniform = uniforms[i];
 
-			switch (uniform.Type)
+			switch (uniform.type)
 			{
 			case RootParams::Constants:
-				builder.AddConstants((uniform.ResourceSize / 4), uniform.ShaderRegister, uniform.RegisterSpace, uniform.Visibility);
+				builder.AddConstants((uniform.resourceSize / 4), uniform.shaderRegister, uniform.registerSpace, uniform.visibility);
 				break;
 			case RootParams::ConstantBufferView:
-				builder.AddCBV(uniform.ShaderRegister, uniform.RegisterSpace, uniform.Visibility);
+				builder.AddCBV(uniform.shaderRegister, uniform.registerSpace, uniform.visibility);
 				break;
 			case RootParams::ShaderResourceView:
-				builder.AddSRV(uniform.ShaderRegister, uniform.RegisterSpace, uniform.Visibility);
+				builder.AddSRV(uniform.shaderRegister, uniform.registerSpace, uniform.visibility);
 				break;
 			case RootParams::UnorderedAccessView:
-				builder.AddUAV(uniform.ShaderRegister, uniform.RegisterSpace, uniform.Visibility);
+				builder.AddUAV(uniform.shaderRegister, uniform.registerSpace, uniform.visibility);
 				break;
 			case RootParams::DescriptorTable:
-				builder.AddDescriptorTable(uniform.Ranges, uniform.Visibility);
+				builder.AddDescriptorTable(uniform.ranges, uniform.visibility);
 				break;
 			case RootParams::StaticSampler:
-				builder.AddStaticSampler(uniform.ShaderRegister, D3D12_FILTER_ANISOTROPIC, D3D12_TEXTURE_ADDRESS_MODE_WRAP, uniform.RegisterSpace, uniform.Visibility);
+				builder.AddStaticSampler(uniform.shaderRegister, uniform.filter, uniform.addressMode, uniform.registerSpace, uniform.visibility);
 				break;
 			}
 		}
@@ -114,7 +114,9 @@ namespace Wild {
 				psoDesc.RTVFormats[i] = m_settings.renderTargetsFormat[i];
 			}
 		}
-			
+
+		psoDesc.DSVFormat = m_settings.depthFormat;
+
 		psoDesc.SampleDesc.Count = 1;
 		psoDesc.SampleDesc.Quality = 0;
 
@@ -137,8 +139,6 @@ namespace Wild {
 		psoDesc.DepthStencilState.BackFace.StencilDepthFailOp = GetDepthStencilOp(m_settings.DepthStencilState.BackFace.StencilDepthFailOp);
 		psoDesc.DepthStencilState.BackFace.StencilPassOp = GetDepthStencilOp(m_settings.DepthStencilState.BackFace.StencilPassOp);
 		psoDesc.DepthStencilState.BackFace.StencilFunc = GetComparisonFunc(m_settings.DepthStencilState.BackFace.StencilFunc);
-
-		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
 		ThrowIfFailed(gfxContext->GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
 	}

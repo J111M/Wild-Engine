@@ -24,6 +24,11 @@ namespace Wild {
 			}
 		}
 
+		{
+			BufferDesc desc{};
+			desc.bufferSize = sizeof(EnvironmentData);
+			m_environmentData = std::make_unique<Buffer>(desc, BufferType::constant);
+		}
 	}
 
 	void PbrPass::Update(const float dt)
@@ -86,41 +91,57 @@ namespace Wild {
 
 			{
 				Uniform uni{ 0, 0, RootParams::RootResourceType::Constants, sizeof(PbrRootConstant) };
-				uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+				uni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 				uniforms.emplace_back(uni);
 			}
 
 			// Inverse camera buffer
 			{
 				Uniform uni{ 1, 0, RootParams::RootResourceType::ConstantBufferView };
-				uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+				uni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 				uniforms.emplace_back(uni);
 			}
 
 			{
 				Uniform uni{ 2, 0, RootParams::RootResourceType::ConstantBufferView };
-				uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+				uni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 				uniforms.emplace_back(uni);
 			}
+
+			{
+				Uniform envData{ 3, 0, RootParams::RootResourceType::ConstantBufferView };
+				envData.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+				uniforms.emplace_back(envData);
+			}
+
 
 			// Bindless resources
 			{
 				Uniform uni{ 0, 0, RootParams::RootResourceType::DescriptorTable };
 				CD3DX12_DESCRIPTOR_RANGE srvRange{};
 				srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
-				uni.Ranges.emplace_back(srvRange);
-				uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+				CD3DX12_DESCRIPTOR_RANGE srvRange1{};
+				srvRange1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for cube maps
+				uni.ranges.emplace_back(srvRange);
+				uni.ranges.emplace_back(srvRange1);
+				uni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 				uniforms.emplace_back(uni);
 			}
 
 			{
 				Uniform uni{ 0, 0, RootParams::RootResourceType::StaticSampler };
-				uni.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+				uni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 				uniforms.emplace_back(uni);
 			}
 
 			auto& pipeline = renderer.GetOrCreatePipeline("Pbr assembly pass", PipelineStateType::Graphics, settings, uniforms);
+
+			EnvironmentData envData{};
+			if (renderer.irradianceMap)
+				envData.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView();
+
+			m_environmentData->Allocate(&envData);
 
 			list.SetPipelineState(pipeline);
 			list.BeginRender({ passData.FinalTexture }, { ClearOperation::Store }, nullptr, DSClearOperation::Store, "Pbr assembly pass");
@@ -142,7 +163,8 @@ namespace Wild {
 
 			list.SetConstantBufferView(1, m_inverseCamera[frameIndex].get());
 			list.SetConstantBufferView(2, m_pbrData[frameIndex].get());
-			list.SetBindlessHeap(3);
+			list.SetConstantBufferView(3, m_environmentData.get());
+			list.SetBindlessHeap(4);
 
 			list.GetList()->DrawInstanced(3, 1, 0, 0);
 			list.EndRender();

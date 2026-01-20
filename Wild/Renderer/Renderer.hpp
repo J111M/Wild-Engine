@@ -38,7 +38,7 @@ namespace Wild {
 	{
 	public:
 		Renderer();
-		~Renderer() {};
+		~Renderer();
 		
 		void Update(const float dt);
 		void Render(CommandList& list, float deltaTime);
@@ -50,7 +50,8 @@ namespace Wild {
 		std::shared_ptr<PipelineState> GetOrCreatePipeline(const std::string& key, PipelineStateType Type, const PipelineStateSettings& settings, const std::vector<Uniform>& uniforms = {});
 		std::shared_ptr<PipelineState> GetPipeline(const std::string& key);
 
-		Texture* CompositeTexture = nullptr;
+		Texture* irradianceMap{};
+		Texture* compositeTexture = nullptr;
 	private:
 		
 		std::vector<std::unique_ptr<RenderFeature>> m_renderFeatures;

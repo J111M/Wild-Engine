@@ -28,6 +28,10 @@ namespace Wild {
 		m_renderFeatures.emplace_back(std::make_unique<GrassPass>(m_grassPreCompute->GetGrassData()));
 	}
 
+	Renderer::~Renderer()
+	{
+	}
+
 	void Renderer::Update(const float dt)
 	{
 		for (auto& feature : m_renderFeatures)
@@ -74,7 +78,7 @@ namespace Wild {
 
 			CD3DX12_DESCRIPTOR_RANGE srvRange{};
 			srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0);
-			uni.Ranges.emplace_back(srvRange);
+			uni.ranges.emplace_back(srvRange);
 
 			uniforms.emplace_back(uni);
 		}
@@ -86,11 +90,11 @@ namespace Wild {
 
 		auto& pipeline = GetOrCreatePipeline("Copy pass", PipelineStateType::Graphics, settings, uniforms);
 
-		CompositeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		compositeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 		list.SetPipelineState(pipeline);
 		list.BeginRender({ gfxContext->GetRenderTarget().get() }, { ClearOperation::Store }, nullptr, DSClearOperation::Store);
-		list.GetList()->SetGraphicsRootDescriptorTable(0, CompositeTexture->GetSrv()->GetGpuHandle());
+		list.GetList()->SetGraphicsRootDescriptorTable(0, compositeTexture->GetSrv()->GetGpuHandle());
 		list.GetList()->DrawInstanced(3, 1, 0, 0);
 		list.EndRender();
 	}

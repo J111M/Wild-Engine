@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <memory>
+#include <glm/glm.hpp>
 
 // Inspired by Adria engine https://github.com/mateeeeeee/Adria/blob/master/Adria/Graphics/GfxStates.h
 
@@ -135,11 +136,19 @@ namespace Wild {
 		RenderTargetBlendState RenderTarget[8];
 	};
 
+	struct Viewport
+	{
+		glm::vec2 pos{};
+		glm::vec2 size{};
+	};
+
     struct RasterizerState {
 		PrimitiveTopology TopologyMode = PrimitiveTopology::TriangleList;
 		FillMode FillMode = FillMode::Solid;
 		CullMode CullMode = CullMode::Back;
 		WindingOrder WindingMode = WindingOrder::CounterClockwise;
+
+		Viewport Viewport{};
 
 		BlendState BlendDesc;
     };
@@ -180,6 +189,7 @@ namespace Wild {
 		DepthStencilState DepthStencilState{};
 
 		std::vector<DXGI_FORMAT> renderTargetsFormat{};
+		DXGI_FORMAT depthFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
         std::string PipelineName{};
     };

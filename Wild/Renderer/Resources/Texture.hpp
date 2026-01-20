@@ -32,7 +32,7 @@ namespace Wild {
 		uint32_t Height{ 0 };
 		uint32_t Depth{ 1 };
 		uint32_t Layers{ 1 };
-		uint32_t mips{ 0 };
+		uint32_t mips{ 1 };
 
 		// TODO make abstracted format type
 		DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -61,11 +61,14 @@ namespace Wild {
 		uint32_t Height() const { return m_desc.Height; }
 
 		std::shared_ptr<RenderTargetView> GetRtv() const;
+		std::shared_ptr<RenderTargetView> GetRtv(uint32_t index) const;
+		const bool UsesRtvArray() const { return m_rtvArrayAvailiable; };
+
 		std::shared_ptr<DepthStencilView> GetDsv() const;
 		std::shared_ptr<ShaderResourceView> GetSrv() const;
 
 		//TextureHandle Handle{};
-
+		
 	private:
 		void CreateTexture(const std::string& filePath);
 		void CreateCubeMapTexture(const std::string& filePath);
@@ -74,6 +77,9 @@ namespace Wild {
 		std::unique_ptr<Resource> m_resource;
 
 		std::shared_ptr<RenderTargetView> m_rtv;
+		std::vector<std::shared_ptr<RenderTargetView>> m_arrayRtvs;
+		bool m_rtvArrayAvailiable = false;
+
 		std::shared_ptr<DepthStencilView> m_dsv;
 		std::shared_ptr<ShaderResourceView> m_srv;
 

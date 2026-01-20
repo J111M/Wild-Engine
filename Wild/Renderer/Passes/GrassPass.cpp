@@ -92,15 +92,13 @@ namespace Wild {
 		auto& device = engine.GetGfxContext();
 		auto& ecs = engine.GetECS();
 
-		ImGui::Begin("Wind Settings");
-
-		ImGui::SliderFloat("Wind Strength", &m_grassSceneData.windStrength, 0.01f, 20.0f);
-		ImGui::SliderFloat("Octaves", &m_grassSceneData.octaves, 0.1, 1);
-		ImGui::SliderFloat("Frequency", &m_grassSceneData.frequency, 0.01f, 0.4f);
-		ImGui::SliderFloat("Amplitude", &m_grassSceneData.amplitude, 0.01f, 1.0f);
-		ImGui::SliderFloat2("Wind Direction", &m_grassSceneData.windDirection.x, -10.0f, 10.0f);
-
-		ImGui::End();
+		engine.GetImGui()->AddPanel("Grass Settings", [this]() {
+			ImGui::SliderFloat("Wind Strength", &m_grassSceneData.windStrength, 0.01f, 20.0f);
+			ImGui::SliderFloat("Octaves", &m_grassSceneData.octaves, 0.1, 1);
+			ImGui::SliderFloat("Frequency", &m_grassSceneData.frequency, 0.01f, 0.4f);
+			ImGui::SliderFloat("Amplitude", &m_grassSceneData.amplitude, 0.01f, 1.0f);
+			ImGui::SliderFloat2("Wind Direction", &m_grassSceneData.windDirection.x, -10.0f, 10.0f);
+		});
 
 		SceneData SceneCbv{};
 		auto& cameras = ecs->View<Camera>();
@@ -362,7 +360,7 @@ namespace Wild {
 
 			list.EndRender();
 
-			renderer.CompositeTexture = grassData.FinalTexture;
+			renderer.compositeTexture = grassData.FinalTexture;
 		});
 	}
 

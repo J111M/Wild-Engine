@@ -1,17 +1,11 @@
 cbuffer Constants : register(b0)
 {
+    column_major float4x4 projView;
     uint skyView;
-    uint skyCubeView;
+
 };
 
-cbuffer matrices : register(b1)
-{
-    column_major float4x4 view;
-    column_major float4x4 projection;
-}
-
-texture2D textures[4096] : register(t0, space0);
-TextureCube textureCube[4096] : register(t0, space1);
+Texture2D textures[4096] : register(t0, space0);
 SamplerState linearSampler : register(s0);
 
 struct VSOutput
@@ -22,8 +16,7 @@ struct VSOutput
 
 static const float PI = 3.14159265358979323846f;
 
-float2 SampleSphericalMap(float3 dir)
-{
+float2 SampleSphericalMap(float3 dir) {
     dir = normalize(dir);
 
     float u = atan2(dir.z, dir.x) / (2.0 * PI) + 0.5;
@@ -40,15 +33,9 @@ float4 main(VSOutput input) : SV_Target0
     // Calculate uv for equirectangular map
     float2 uv = SampleSphericalMap(dir);
 
-    float3 color;
-    if (skyView > 0)
-        color = textures[skyView].Sample(linearSampler, uv).rgb;
-
+    float3 color = textures[skyView].Sample(linearSampler, uv.xy).rgb;
     color = color / (color + float3(1.0));
     color = pow(color, 1.0 / 2.2);
-
-    if (skyCubeView > 0)
-        color = textureCube[skyCubeView].Sample(linearSampler, dir).rgb;
 
     return float4(color, 1.0f);
 }

@@ -39,11 +39,20 @@ namespace Wild {
 
 		int frameIndex = context->GetBackBufferIndex();
 		m_cameraProjection[frameIndex]->Allocate(&camData);
+
+		engine.GetImGui()->AddPanel("Debug skybox", [this]() {
+			int skyMode = m_debugSkyboxMode;
+			if (ImGui::SliderInt("Debug mode", &skyMode, 0, 1)) {
+				m_debugSkyboxMode = skyMode;
+			}
+			
+		});
 	}
 
 	void SkyPass::Add(Renderer& renderer, RenderGraph& rg)
 	{
 		AddSkyboxPass(renderer, rg);
+		AddIBLPass(renderer, rg);
 	}
 
 	void SkyPass::AddSkyboxPass(Renderer& renderer, RenderGraph& rg)
@@ -82,15 +91,21 @@ namespace Wild {
 			Uniform cameraBuffer{ 1, 0, RootParams::RootResourceType::ConstantBufferView };
 			uniforms.emplace_back(cameraBuffer);
 
-			Uniform bindless{ 0, 0, RootParams::RootResourceType::DescriptorTable };
-			CD3DX12_DESCRIPTOR_RANGE srvRange{};
-			srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
-			bindless.Ranges.emplace_back(srvRange);
-			bindless.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-			uniforms.emplace_back(bindless);
+			{
+				Uniform bindless{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+				CD3DX12_DESCRIPTOR_RANGE srvRange{};
+				srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+				// Second range for cube view
+				CD3DX12_DESCRIPTOR_RANGE srvRange1{};
+				srvRange1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+				bindless.ranges.emplace_back(srvRange);
+				bindless.ranges.emplace_back(srvRange1);
+				bindless.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+				uniforms.emplace_back(bindless);
+			}
 
 			Uniform staticSampler{ 0, 0, RootParams::RootResourceType::StaticSampler };
-			staticSampler.Visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+			staticSampler.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 			uniforms.emplace_back(staticSampler);
 
 			auto& pipeline = renderer.GetOrCreatePipeline("Skybox pass", PipelineStateType::Graphics, settings, uniforms);
@@ -102,7 +117,21 @@ namespace Wild {
 			int frameIndex = context->GetBackBufferIndex();
 
 			SkyRootConstant rc{};
-			rc.view = m_skyboxTexture->GetSrv()->BindlessView();
+			//rc.view = m_skyboxTexture->GetSrv()->BindlessView();
+
+			switch (m_debugSkyboxMode)
+			{
+			case 0:
+				rc.view = m_skyboxTexture->GetSrv()->BindlessView();
+				break;
+			case 1:
+				if (renderer.irradianceMap) {
+					rc.viewCube = renderer.irradianceMap->GetSrv()->BindlessView();
+				}
+				break;
+			default:
+				break;
+			}
 
 			list.SetRootConstant<SkyRootConstant>(0, rc);
 
@@ -115,6 +144,183 @@ namespace Wild {
 
 			list.GetList()->DrawInstanced(36, 1, 0, 0);
 			list.EndRender();
+		});
+	}
+
+	void SkyPass::AddIBLPass(Renderer& renderer, RenderGraph& rg)
+	{
+		auto* passData = rg.AllocatePassData<IBLPassData>();
+
+		{
+			TextureDesc desc;
+			desc.width = 512;
+			desc.Height = 512;
+			desc.Layers = 6;
+			desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+			desc.name = "Enironment cubemap";
+			desc.usage = TextureDesc::gpuOnly;
+			desc.type = TextureType::CUBEMAP;
+			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
+			passData->environmentCubeTexture = rg.CreateTransientTexture("Environtment cubemap", desc);
+		}
+
+		{
+			TextureDesc desc;
+			desc.width = 32;
+			desc.Height = 32;
+			desc.Layers = 6;
+			desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+			desc.name = "Irradiance cubemap";
+			desc.usage = TextureDesc::gpuOnly;
+			desc.type = TextureType::CUBEMAP;
+			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
+			passData->irradianceTexture = rg.CreateTransientTexture("Irradiance cubemap", desc);
+		}
+
+		rg.AddPass<IBLPassData>(
+			"IBL pass",
+			PassType::Graphics,
+			[&renderer, this](const IBLPassData& passData, CommandList& list) {
+
+			// Matrices from https://learnopengl.com/PBR/IBL/Diffuse-irradiance
+			glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+			glm::mat4 captureViews[] =
+			{
+			   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+			   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+			   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+			   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+			   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+			   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+			};
+
+			PipelineStateSettings settings{};
+			settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/CaptureIBLVert.slang");
+			settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/CaptureIBLFrag.slang");
+			settings.DepthStencilState.DepthEnable = false;
+			settings.DepthStencilState.DepthWriteMask = DepthWriteMask::Zero;
+			settings.DepthStencilState.DepthFunc = ComparisonFunc::LessEqual;
+			settings.RasterizerState.CullMode = CullMode::None;
+
+			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_FLOAT);
+			settings.depthFormat = DXGI_FORMAT_UNKNOWN;
+
+			// Setting up the input layout
+			settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+			settings.ShaderState.InputLayout.emplace_back(InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
+			settings.ShaderState.InputLayout.emplace_back(InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
+			settings.ShaderState.InputLayout.emplace_back(InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
+
+			// Generating cube map from equirectangular map
+			if (ShouldGenerateNewIBL) {
+				/// Convolute cubemap
+				{
+					// Size of the cubemap face
+					settings.RasterizerState.Viewport.size.x = 512;
+					settings.RasterizerState.Viewport.size.y = 512;
+
+					// Uniforms
+					std::vector<Uniform> uniforms;
+
+					Uniform rootConstant{ 0, 0, RootParams::RootResourceType::Constants, sizeof(IBLRootConstant) };
+					uniforms.emplace_back(rootConstant);
+
+					Uniform bindless{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+					CD3DX12_DESCRIPTOR_RANGE srvRange{};
+					srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+					bindless.ranges.emplace_back(srvRange);
+					bindless.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+					uniforms.emplace_back(bindless);
+
+					Uniform staticSampler{ 0, 0, RootParams::RootResourceType::StaticSampler };
+					staticSampler.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+					uniforms.emplace_back(staticSampler);
+
+					auto& pipeline = renderer.GetOrCreatePipeline("IBL pass", PipelineStateType::Graphics, settings, uniforms);
+
+					for (size_t face = 0; face < 6; face++)
+					{
+						list.SetPipelineState(pipeline);
+						list.BeginRender({ passData.environmentCubeTexture }, { ClearOperation::Store }, nullptr, DSClearOperation::Store, "IBL pass", face);
+
+						auto context = engine.GetGfxContext();
+						int frameIndex = context->GetBackBufferIndex();
+
+						IBLRootConstant rc{};
+						rc.projView = captureProjection * glm::mat4(glm::mat3(captureViews[face]));
+						rc.view = m_skyboxTexture->GetSrv()->BindlessView();
+
+						list.SetRootConstant<IBLRootConstant>(0, rc);
+
+						list.SetBindlessHeap(1);
+
+						list.GetList()->IASetVertexBuffers(0, 1, &m_cubeVertexBuffer->GetVBView()->View());
+
+						list.GetList()->DrawInstanced(36, 1, 0, 0);
+						list.EndRender();
+					}
+				}
+
+				/// Generate Irradiance map
+				{
+					settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/CaptureIBLVert.slang");
+					settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/GenerateIrradianceMapFrag.slang");
+
+					// Size of the cubemap face
+					settings.RasterizerState.Viewport.size.x = 32;
+					settings.RasterizerState.Viewport.size.y = 32;
+
+					// Uniforms
+					std::vector<Uniform> uniforms;
+
+					Uniform rootConstant{ 0, 0, RootParams::RootResourceType::Constants, sizeof(IBLRootConstant) };
+					uniforms.emplace_back(rootConstant);
+
+					Uniform bindless{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+					CD3DX12_DESCRIPTOR_RANGE srvRange{};
+					srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+					bindless.ranges.emplace_back(srvRange);
+					bindless.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+					uniforms.emplace_back(bindless);
+
+					Uniform staticSampler{ 0, 0, RootParams::RootResourceType::StaticSampler };
+					staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+					staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+					staticSampler.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+					uniforms.emplace_back(staticSampler);
+
+					auto& pipeline = renderer.GetOrCreatePipeline("Generate Irradiance map", PipelineStateType::Graphics, settings, uniforms);
+
+					for (size_t face = 0; face < 6; face++)
+					{
+						list.SetPipelineState(pipeline);
+						list.BeginRender({ passData.irradianceTexture }, { ClearOperation::Store }, nullptr, DSClearOperation::Store, "Generate Irradiance map", face);
+
+						auto context = engine.GetGfxContext();
+						int frameIndex = context->GetBackBufferIndex();
+
+						IBLRootConstant rc{};
+						rc.projView = captureProjection * glm::mat4(glm::mat3(captureViews[face]));
+
+						passData.environmentCubeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+						rc.view = passData.environmentCubeTexture->GetSrv()->BindlessView();
+
+						list.SetRootConstant<IBLRootConstant>(0, rc);
+
+						list.SetBindlessHeap(1);
+
+						list.GetList()->IASetVertexBuffers(0, 1, &m_cubeVertexBuffer->GetVBView()->View());
+
+						list.GetList()->DrawInstanced(36, 1, 0, 0);
+						list.EndRender();
+					}
+
+					passData.irradianceTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+					renderer.irradianceMap = passData.irradianceTexture;
+				}
+
+				ShouldGenerateNewIBL = false;
+			}
 		});
 	}
 

@@ -89,7 +89,8 @@ namespace Wild {
 		const std::vector<ClearOperation>& clearRt,
 		Texture* depthStencil,
 		DSClearOperation clearDs,
-		const std::string& passName)
+		const std::string& passName,
+		uint32_t rtArrayIndex)
 	{
 		if (!CanPassExecute(passName))
 			return;
@@ -104,13 +105,26 @@ namespace Wild {
 		ID3D12DescriptorHeap* heaps[] = { engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get() };
 		m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
 
+		auto settings = m_pipelineState->GetPipelineSettings();
+
 		D3D12_VIEWPORT viewPort{};
-		viewPort.TopLeftX = 0.0f;
-		viewPort.TopLeftY = 0.0f;
-		viewPort.Width = static_cast<FLOAT>(gfxContext->GetWidth());
-		viewPort.Height = static_cast<FLOAT>(gfxContext->GetHeight());
-		viewPort.MinDepth = 0.0f;
-		viewPort.MaxDepth = 1.0f;
+		if (settings.RasterizerState.Viewport.size.x > 0 && settings.RasterizerState.Viewport.size.y > 0) {
+			viewPort.TopLeftX = 0.0f;
+			viewPort.TopLeftY = 0.0f;
+			viewPort.Width = static_cast<FLOAT>(settings.RasterizerState.Viewport.size.x);
+			viewPort.Height = static_cast<FLOAT>(settings.RasterizerState.Viewport.size.y);
+			viewPort.MinDepth = 0.0f;
+			viewPort.MaxDepth = 1.0f;
+		}
+		else // By default use window size
+		{
+			viewPort.TopLeftX = 0.0f;
+			viewPort.TopLeftY = 0.0f;
+			viewPort.Width = static_cast<FLOAT>(gfxContext->GetWidth());
+			viewPort.Height = static_cast<FLOAT>(gfxContext->GetHeight());
+			viewPort.MinDepth = 0.0f;
+			viewPort.MaxDepth = 1.0f;
+		}
 
 		D3D12_RECT scissorRect = { 0u, 0u, static_cast<LONG>(viewPort.Width), static_cast<LONG>(viewPort.Height) };
 
@@ -120,7 +134,7 @@ namespace Wild {
 		m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		// Set all reder targets and depth target
-		SetRenderTargets(renderTargets, depthStencil);
+		SetRenderTargets(renderTargets, depthStencil, rtArrayIndex);
 
 		// Check if render target's need to be cleared
 		for (uint32_t i = 0; i < clearRt.size(); i++)
@@ -187,7 +201,7 @@ namespace Wild {
 	}
 
 
-	void CommandList::SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil)
+	void CommandList::SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil, uint32_t rtArrayIndex)
 	{
 		const uint32_t numRenderTargets = static_cast<uint32_t>(renderTargets.size());
 		if (numRenderTargets >= 8)
@@ -199,7 +213,13 @@ namespace Wild {
 		for (size_t i = 0; i < numRenderTargets; i++)
 		{
 			renderTargets[i]->Transition(*this, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			handles.push_back(renderTargets[i]->GetRtv()->GetCpuHandle());
+			// 64 is the default value for the array index meaning it is not set/used
+			if (rtArrayIndex == 64) {
+				handles.push_back(renderTargets[i]->GetRtv()->GetCpuHandle());
+			}
+			else {
+				handles.push_back(renderTargets[i]->GetRtv(rtArrayIndex)->GetCpuHandle());
+			}
 		}
 
 		// Depth stencil

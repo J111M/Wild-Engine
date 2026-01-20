@@ -10,24 +10,24 @@ namespace Wild {
 		m_desc.type = type;
 		m_desc.format = format;
 
-			switch (type)
-			{
-			case Wild::TextureType::TEXTURE_2D:
-				CreateTexture(filePath);
-				break;
-			case Wild::TextureType::TEXTURE_1D:
-				WD_WARN("Not supported yet.");
-				// CreateTexture(filePath);
-				break;
-			case Wild::TextureType::CUBEMAP:
-				CreateCubeMapTexture(filePath);
-				break;
-			case Wild::TextureType::SKYBOX:
-				CreateSkyboxTexture(filePath);
-				break;
-			default:
-				break;
-			}
+		switch (type)
+		{
+		case Wild::TextureType::TEXTURE_2D:
+			CreateTexture(filePath);
+			break;
+		case Wild::TextureType::TEXTURE_1D:
+			WD_WARN("Not supported yet.");
+			// CreateTexture(filePath);
+			break;
+		case Wild::TextureType::CUBEMAP:
+			CreateCubeMapTexture(filePath);
+			break;
+		case Wild::TextureType::SKYBOX:
+			CreateSkyboxTexture(filePath);
+			break;
+		default:
+			break;
+		}
 
 		m_resource->Handle()->SetName(StringToWString(m_desc.name).c_str());
 	}
@@ -43,8 +43,8 @@ namespace Wild {
 			textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 			textureDesc.Width = m_desc.width;
 			textureDesc.Height = m_desc.Height;
-			textureDesc.DepthOrArraySize = 1;
-			textureDesc.MipLevels = 1;
+			textureDesc.DepthOrArraySize = m_desc.Layers;
+			textureDesc.MipLevels = m_desc.mips;
 			textureDesc.Format = m_desc.format;
 			textureDesc.SampleDesc.Count = 1;
 			textureDesc.SampleDesc.Quality = 0;
@@ -73,8 +73,20 @@ namespace Wild {
 			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 			rtvDesc.Format = m_desc.format;
 			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-
-			m_rtv = std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc);
+			if (m_desc.Layers > 1) {
+				for (uint32_t face = 0; face < m_desc.Layers; face++)
+				{
+					rtvDesc.Texture2DArray.MipSlice = 0;
+					rtvDesc.Texture2DArray.FirstArraySlice = face;
+					rtvDesc.Texture2DArray.ArraySize = 1;
+					rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+					m_arrayRtvs.emplace_back(std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc));
+				}
+				m_rtvArrayAvailiable = true;
+			}
+			else {
+				m_rtv = std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc);
+			}
 		}
 
 		if (desc.flag & TextureDesc::depthStencil) {
@@ -115,13 +127,43 @@ namespace Wild {
 			m_desc.format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 		}
 
+		//if (m_desc.type == TextureType::CUBEMAP) {
+		//	D3D12_RESOURCE_DESC cubeMapDesc = {};
+		//	cubeMapDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		//	cubeMapDesc.Width = m_desc.width;
+		//	cubeMapDesc.Height = m_desc.Height;
+		//	cubeMapDesc.DepthOrArraySize = 6;
+		//	cubeMapDesc.MipLevels = m_desc.mips;
+		//	cubeMapDesc.Format = m_desc.format;
+		//	cubeMapDesc.SampleDesc.Count = 1;
+		//	cubeMapDesc.SampleDesc.Quality = 0;
+		//	cubeMapDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		//	cubeMapDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+		//	// Create resource with initial state
+		//	m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
+
+		//	ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(
+		//		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		//		D3D12_HEAP_FLAG_NONE,
+		//		&cubeMapDesc,
+		//		D3D12_RESOURCE_STATE_COPY_DEST,
+		//		nullptr,
+		//		IID_PPV_ARGS(&m_resource->Handle())
+		//	), "Failed to create Cubemap");
+		//}
+
 		if (m_desc.flag & TextureDesc::ViewFlag::shaderResource) {
 			D3D12_SHADER_RESOURCE_VIEW_DESC  srvDesc = {};
 			srvDesc.Format = m_desc.format;
 			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc.Texture2D.MipLevels = 1;
+			srvDesc.Texture2D.MipLevels = m_desc.mips;
 			srvDesc.Texture2D.MostDetailedMip = 0;
+			if (m_desc.type == TextureType::CUBEMAP)
+			{
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+			}
 
 			m_srv = std::make_shared<ShaderResourceView>(m_resource->Handle(), srvDesc);
 		}
@@ -164,6 +206,17 @@ namespace Wild {
 		}
 
 		return m_rtv;
+	}
+
+	std::shared_ptr<RenderTargetView> Texture::GetRtv(uint32_t index) const
+	{
+		if (!m_arrayRtvs[index]) {
+			std::string err = "Render target view with index: " + std::to_string(index) + " not availiable on this texture.";
+			WD_ERROR(err.c_str());
+			return nullptr;
+		}
+
+		return m_arrayRtvs[index];
 	}
 
 	std::shared_ptr<DepthStencilView> Texture::GetDsv() const

@@ -7,13 +7,17 @@
 
 namespace Wild {
 	struct Uniform {
-		uint32_t ShaderRegister{};
-		uint32_t RegisterSpace{};
-		RootParams::RootResourceType Type{};
-		size_t ResourceSize{};
+		uint32_t shaderRegister{};
+		uint32_t registerSpace{};
+		RootParams::RootResourceType type{};
+		size_t resourceSize{};
 
-		D3D12_SHADER_VISIBILITY Visibility = D3D12_SHADER_VISIBILITY_ALL;
-		std::vector<D3D12_DESCRIPTOR_RANGE> Ranges;
+		D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL;
+		std::vector<D3D12_DESCRIPTOR_RANGE> ranges;
+
+		// Sampler types if used
+		D3D12_FILTER filter = D3D12_FILTER_ANISOTROPIC;
+		D3D12_TEXTURE_ADDRESS_MODE addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	};
 
 	enum class PipelineStateType : uint8_t

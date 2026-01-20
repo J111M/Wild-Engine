@@ -4,11 +4,19 @@
 #include "Renderer/RenderGraph/RenderGraph.hpp"
 #include "Renderer/Resources/Mesh.hpp"
 
+#include <functional>
+
 namespace Wild {
 	struct SkyPassData
 	{
 		Texture* FinalTexture;
 		Texture* DepthTexture;
+	};
+
+	struct IBLPassData
+	{
+		Texture* environmentCubeTexture;
+		Texture* irradianceTexture;
 	};
 
 	struct CameraProjection {
@@ -18,7 +26,15 @@ namespace Wild {
 
 	struct SkyRootConstant {
 		uint32_t view;
+		uint32_t viewCube;
 	};
+
+	struct IBLRootConstant {
+		glm::mat4 projView{};
+		uint32_t view;
+	};
+
+	class CommandList;
 
 	class SkyPass : public RenderFeature
 	{
@@ -30,13 +46,18 @@ namespace Wild {
 		virtual void Add(Renderer& renderer, RenderGraph& rg) override;
 
 		void AddSkyboxPass(Renderer& renderer, RenderGraph& rg);
-
+		void AddIBLPass(Renderer& renderer, RenderGraph& rg);
 	private:
+		// Skybox pass
 		std::vector<Vertex> CreateCube();
 		std::vector<Vertex> m_cube;
 
 		std::unique_ptr<Buffer> m_cameraProjection[BACK_BUFFER_COUNT];
 		std::unique_ptr<Buffer> m_cubeVertexBuffer;
 		std::unique_ptr<Texture> m_skyboxTexture;
+
+		uint32_t m_debugSkyboxMode = 0;
+		bool ShouldGenerateNewIBL = true;
+		//std::function<void(const SkyPassData&, CommandList&)> m_skyboxLambda;
 	};
 }
