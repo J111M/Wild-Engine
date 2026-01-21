@@ -24,6 +24,7 @@ namespace Wild {
 			shaderResource = 1 << 1,
 			renderTarget = 1 << 2,
 			depthStencil = 1 << 3,
+			readWrite = 1 << 4,
 		};
 
 		TextureType type = TextureType::TEXTURE_2D;
@@ -53,6 +54,7 @@ namespace Wild {
 		~Texture() {};
 
 		void Transition(CommandList& list, D3D12_RESOURCE_STATES newState);
+		//void Barrier(CommandList& list, BarrierType type);
 
 		ID3D12Resource* GetResource() { return m_resource->Handle().Get(); }
 		TextureDesc GetDesc() { return m_desc; }
@@ -66,7 +68,7 @@ namespace Wild {
 
 		std::shared_ptr<DepthStencilView> GetDsv() const;
 		std::shared_ptr<ShaderResourceView> GetSrv() const;
-
+		std::shared_ptr<UnorderedAccessView> GetUav() const;
 		//TextureHandle Handle{};
 		
 	private:
@@ -82,6 +84,7 @@ namespace Wild {
 
 		std::shared_ptr<DepthStencilView> m_dsv;
 		std::shared_ptr<ShaderResourceView> m_srv;
+		std::shared_ptr<UnorderedAccessView> m_uav;
 
 		TextureDesc m_desc;
 	};

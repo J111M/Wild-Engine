@@ -18,6 +18,13 @@ namespace Wild {
 		SKYBOX
     };
 
+	//enum BarrierType : uint32_t
+	//{
+	//	none = 0,
+	//	uav = 1 << 1,
+	//};
+
+
 	enum class PrimitiveTopology : uint8_t
 	{
 		Undefined,

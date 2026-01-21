@@ -16,6 +16,15 @@ namespace Wild {
 		}
 
 		m_skyboxTexture = std::make_unique<Texture>(filePath, TextureType::SKYBOX, 0, DXGI_FORMAT_R32G32B32A32_FLOAT);
+
+
+		TextureDesc texDesc;
+		texDesc.width = 256;
+		texDesc.Height = 256;
+		texDesc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
+		texDesc.format = DXGI_FORMAT_R16G16_FLOAT;
+		texDesc.name = "BRDF LUT";
+		m_brdfLut = std::make_shared<Texture>(texDesc);
 	}
 
 	void SkyPass::Update(const float dt)
@@ -45,7 +54,7 @@ namespace Wild {
 			if (ImGui::SliderInt("Debug mode", &skyMode, 0, 1)) {
 				m_debugSkyboxMode = skyMode;
 			}
-			
+
 		});
 	}
 
@@ -316,9 +325,36 @@ namespace Wild {
 					}
 
 					passData.irradianceTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-					renderer.irradianceMap = passData.irradianceTexture;
+
 				}
 
+				/// BRDF LUT pass
+				{
+					PipelineStateSettings computeSettings{};
+					computeSettings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/GenerateBrdfLut.slang");
+
+					std::vector<Uniform> uniforms;
+
+					Uniform brdfLutUAVTexture{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+					CD3DX12_DESCRIPTOR_RANGE uavRange{};
+					uavRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+					brdfLutUAVTexture.ranges.emplace_back(uavRange);
+					uniforms.emplace_back(brdfLutUAVTexture);
+
+
+					auto& pipeline = renderer.GetOrCreatePipeline("Generate brdf lut pass", PipelineStateType::Compute, computeSettings, uniforms);
+					list.SetPipelineState(pipeline);
+					list.BeginRender();
+
+					list.SetUnorderedAccessView(0, m_brdfLut.get());
+
+					list.GetList()->Dispatch((m_brdfLut->Width() + 7) / 8, (m_brdfLut->Height() + 7) / 8, 1);
+					list.EndRender();
+
+					m_brdfLut->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+				}
+
+				renderer.irradianceMap = passData.irradianceTexture;
 				ShouldGenerateNewIBL = false;
 			}
 		});

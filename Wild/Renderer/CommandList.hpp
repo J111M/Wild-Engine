@@ -48,8 +48,12 @@ namespace Wild {
 		void SetRootConstant(uint32_t rootIndex, rc& rootConstant);
 		void SetBindlessHeap(uint32_t rootIndex);
 		void SetConstantBufferView(uint32_t rootIndex, Buffer* buffer);
+
 		void SetUnorderedAccessView(uint32_t rootIndex, Buffer* buffer);
+		void SetUnorderedAccessView(uint32_t rootIndex, Texture* texture);
+
 		void SetShaderResourceView(uint32_t rootIndex, Buffer* buffer);
+
 		void SetVertexBuffer() {};
 		void SetIndexBuffer() {};
 		void Draw(uint32_t size) {};

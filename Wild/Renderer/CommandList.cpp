@@ -75,6 +75,18 @@ namespace Wild {
 		}
 	}
 
+	void CommandList::SetUnorderedAccessView(uint32_t rootIndex, Texture* texture)
+	{
+		texture->Transition(*this, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+		if (m_pipelineState->IsComputePass()) {
+			m_commandList->SetComputeRootDescriptorTable(static_cast<UINT>(rootIndex), texture->GetUav()->GetGpuHandle());
+		}
+		else {
+			m_commandList->SetGraphicsRootDescriptorTable(static_cast<UINT>(rootIndex), texture->GetUav()->GetGpuHandle());
+		}
+	}
+
 	void CommandList::SetShaderResourceView(uint32_t rootIndex, Buffer* buffer)
 	{
 		if (m_pipelineState->IsComputePass()) {

@@ -32,7 +32,7 @@ namespace Wild {
 	template<typename T>
 	inline void ImguiCore::Watch(const std::string& name, T* value)
 	{
-		m_watches[name] = [value]() {
+		m_watches[name] = [value, name]() {
 			if constexpr (std::is_same_v<T, float>) {
 				ImGui::Text("%s: %.2f", name.c_str(), *value);
 			}

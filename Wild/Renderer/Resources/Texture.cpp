@@ -127,31 +127,39 @@ namespace Wild {
 			m_desc.format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 		}
 
-		//if (m_desc.type == TextureType::CUBEMAP) {
-		//	D3D12_RESOURCE_DESC cubeMapDesc = {};
-		//	cubeMapDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		//	cubeMapDesc.Width = m_desc.width;
-		//	cubeMapDesc.Height = m_desc.Height;
-		//	cubeMapDesc.DepthOrArraySize = 6;
-		//	cubeMapDesc.MipLevels = m_desc.mips;
-		//	cubeMapDesc.Format = m_desc.format;
-		//	cubeMapDesc.SampleDesc.Count = 1;
-		//	cubeMapDesc.SampleDesc.Quality = 0;
-		//	cubeMapDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		//	cubeMapDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		if (m_desc.flag & TextureDesc::readWrite) {
+			D3D12_RESOURCE_DESC readWriteDesc = {};
+			readWriteDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+			readWriteDesc.Width = m_desc.width;
+			readWriteDesc.Height = m_desc.Height;
+			readWriteDesc.DepthOrArraySize = m_desc.Layers;
+			readWriteDesc.MipLevels = m_desc.Layers;
+			readWriteDesc.Format = m_desc.format;
+			readWriteDesc.SampleDesc.Count = 1;
+			readWriteDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+			readWriteDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 
-		//	// Create resource with initial state
-		//	m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
+			if (!m_resource) {
+				// Create resource with initial state
+				m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-		//	ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(
-		//		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		//		D3D12_HEAP_FLAG_NONE,
-		//		&cubeMapDesc,
-		//		D3D12_RESOURCE_STATE_COPY_DEST,
-		//		nullptr,
-		//		IID_PPV_ARGS(&m_resource->Handle())
-		//	), "Failed to create Cubemap");
-		//}
+				gfxContext->GetDevice()->CreateCommittedResource(
+					&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+					D3D12_HEAP_FLAG_NONE,
+					&readWriteDesc,
+					D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+					nullptr,
+					IID_PPV_ARGS(&m_resource->Handle())
+				);
+			}
+
+			D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+			uavDesc.Format = m_desc.format;
+			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+			uavDesc.Texture2D.MipSlice = 0;
+
+			m_uav = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc);
+		}
 
 		if (m_desc.flag & TextureDesc::ViewFlag::shaderResource) {
 			D3D12_SHADER_RESOURCE_VIEW_DESC  srvDesc = {};
@@ -198,6 +206,24 @@ namespace Wild {
 		m_resource->Transition(list, newState);
 	}
 
+	/*void Texture::Barrier(CommandList& list, BarrierType type)
+	{
+		CD3DX12_RESOURCE_BARRIER resourceBarrier{};
+
+		switch (type)
+		{
+		case BarrierType::none:
+			break;
+		case BarrierType::uav:
+			resourceBarrier = CD3DX12_RESOURCE_BARRIER::UAV(m_resource->Handle().Get());
+			break;
+		default:
+			break;
+		}
+
+		list.GetList()->ResourceBarrier(1, &resourceBarrier);
+	}*/
+
 	std::shared_ptr<RenderTargetView> Texture::GetRtv() const
 	{
 		if (!m_rtv) {
@@ -211,8 +237,8 @@ namespace Wild {
 	std::shared_ptr<RenderTargetView> Texture::GetRtv(uint32_t index) const
 	{
 		if (!m_arrayRtvs[index]) {
-			std::string err = "Render target view with index: " + std::to_string(index) + " not availiable on this texture.";
-			WD_ERROR(err.c_str());
+			std::string err = "Render target view with index: " + std::to_string(index) + " not availiable on texture: ";
+			WD_ERROR(err.c_str(), m_desc.name.c_str());
 			return nullptr;
 		}
 
@@ -222,7 +248,7 @@ namespace Wild {
 	std::shared_ptr<DepthStencilView> Texture::GetDsv() const
 	{
 		if (!m_dsv) {
-			WD_ERROR("dsv not availiable on this texture.");
+			WD_ERROR("dsv not availiable on texture: ", m_desc.name.c_str());
 			return nullptr;
 		}
 
@@ -232,11 +258,21 @@ namespace Wild {
 	std::shared_ptr<ShaderResourceView> Texture::GetSrv() const
 	{
 		if (!m_srv) {
-			WD_ERROR("m_srv not availiable on this texture.");
+			WD_ERROR("srv not availiable on texture: ", m_desc.name.c_str());
 			return nullptr;
 		}
 
 		return m_srv;
+	}
+
+	std::shared_ptr<UnorderedAccessView> Texture::GetUav() const
+	{
+		if (!m_uav) {
+			WD_ERROR("uav not availiable on texture:", m_desc.name.c_str());
+			return nullptr;
+		}
+
+		return m_uav;
 	}
 
 	void Texture::CreateTexture(const std::string& filePath)

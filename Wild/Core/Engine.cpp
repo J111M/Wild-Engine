@@ -28,6 +28,8 @@ namespace Wild {
 		auto& transform = engine.GetECS()->AddComponent<Transform>(CameraEntity, glm::vec3(0, 0, 0), CameraEntity);
 		auto& camera = engine.GetECS()->AddComponent<Camera>(CameraEntity, glm::vec3(0,0,5));
 
+		float frameTime{};
+
 		while (!m_window->ShouldClose()) {
 			auto currentTime = std::chrono::high_resolution_clock::now();
 			float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
@@ -41,6 +43,9 @@ namespace Wild {
 			m_gfxContext->BeginFrame();
 			m_imguiCore->Prepare();
 
+			m_imguiCore->Watch("Frame time: ", &frameTime);
+			m_imguiCore->Watch("delta time: ", &deltaTime);
+
 			// Update and render all the passes
 			m_renderer->Update(deltaTime);
 			m_renderer->Render(*m_gfxContext->GetCommandList().get(), deltaTime);
@@ -51,7 +56,7 @@ namespace Wild {
 			glfwPollEvents();
 
 			endTime = std::chrono::high_resolution_clock::now();
-			float frameTime = std::chrono::duration<float, std::milli>(endTime - currentTime).count();
+			frameTime = std::chrono::duration<float, std::milli>(endTime - currentTime).count();
 		}
 	}
 

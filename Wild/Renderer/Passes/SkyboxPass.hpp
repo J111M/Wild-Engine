@@ -34,6 +34,10 @@ namespace Wild {
 		uint32_t view;
 	};
 
+	struct BrdfLutRootConstant {
+		uint32_t environmentView{};
+	};
+
 	class CommandList;
 
 	class SkyPass : public RenderFeature
@@ -59,5 +63,8 @@ namespace Wild {
 		uint32_t m_debugSkyboxMode = 0;
 		bool ShouldGenerateNewIBL = true;
 		//std::function<void(const SkyPassData&, CommandList&)> m_skyboxLambda;
+
+		// BRDF LUT
+		std::shared_ptr<Texture> m_brdfLut;
 	};
 }
