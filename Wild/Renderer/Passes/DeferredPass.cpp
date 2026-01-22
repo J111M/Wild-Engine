@@ -40,7 +40,7 @@ namespace Wild {
 			TextureDesc desc;
 			desc.width = engine.GetGfxContext()->GetWidth();
 			desc.Height = engine.GetGfxContext()->GetHeight();
-			desc.format = DXGI_FORMAT_R16G16B16A16_SNORM;
+			desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
 			desc.name = "Normal render target";
 			desc.usage = TextureDesc::gpuOnly;
 			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
@@ -87,7 +87,7 @@ namespace Wild {
 			settings.ShaderState.InputLayout.emplace_back(InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
 
 			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Albedo
-			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_SNORM); // Normal
+			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Normal
 			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Emissive
 
 			std::vector<Uniform> uniforms;

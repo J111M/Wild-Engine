@@ -88,6 +88,16 @@ float3 FresnelSchlickRough(float cosTheta, float3 F0, float roughness)
     return F0 + (max(float3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+// Octahederal decoding
+float3 OctDecode(float2 enc) {
+    enc = enc * 2.0 - 1.0;
+    float3 n = float3(enc, 1.0 - abs(enc.x) - abs(enc.y));
+    if (n.z < 0.0) {
+        n.xy = (1.0 - abs(n.yx)) * select(n.xy >= 0.0, 1.0, -1.0);
+    }
+    return normalize(n);
+}
+
 [shader("fragment")]
 float4 main(VSOutput input) : SV_TARGET0
 {
@@ -124,7 +134,7 @@ float4 main(VSOutput input) : SV_TARGET0
     float3 color = float3(0.0f, 0.0f, 0.0f);
 
     // shading setup
-    float3 N = normal.xyz;
+    float3 N = OctDecode(normal.xy);
     float3 V = normalize(cameraPosition - positionWS);
     float3 R = reflect(-V, N);
 
