@@ -20,7 +20,7 @@ namespace Wild {
 	};
 
 	struct GrassRC {
-		glm::mat4 Matrix{};
+		glm::mat4 matrix{};
 		uint32_t bladeId{};
 		float time;
 		uint32_t foo2;

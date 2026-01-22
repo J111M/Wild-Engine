@@ -17,9 +17,9 @@ namespace Wild {
 
 	struct PBRData {
 		glm::vec3 cameraPosition{};
-		float pad{};
-		glm::vec3 lightDirection{};
-		float pad1{};
+		glm::vec3 lightDirection = glm::vec4(-0.3, -6.0, -2.5, 1.0f);
+		uint32_t viewMode = 0;
+	
 	};
 
 	struct EnvironmentData {
@@ -46,8 +46,10 @@ namespace Wild {
 
 	private:
 		PbrRootConstant m_rc{};
+		PBRData m_pbrData{};
+
 		std::unique_ptr<Buffer> m_inverseCamera[BACK_BUFFER_COUNT];
-		std::unique_ptr<Buffer> m_pbrData[BACK_BUFFER_COUNT];
+		std::unique_ptr<Buffer> m_pbrDataBuffer[BACK_BUFFER_COUNT];
 		std::unique_ptr<Buffer> m_environmentData;
 	};	
 }

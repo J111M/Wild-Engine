@@ -1,4 +1,5 @@
 #include "Renderer/Passes/DeferredPass.hpp"
+#include "Renderer/Passes/GrassPass.hpp"
 
 #include "Renderer/Resources/Model.hpp"
 
@@ -22,53 +23,12 @@ namespace Wild {
 	void DeferredPass::Add(Renderer& renderer, RenderGraph& rg)
 	{
 		auto* passData = rg.AllocatePassData<DeferredPassData>();
+		auto* grassData = rg.GetPassData<DeferredPassData, RenderGrassData>();
 
-		// Albedo
-		{
-			TextureDesc desc;
-			desc.width = engine.GetGfxContext()->GetWidth();
-			desc.Height = engine.GetGfxContext()->GetHeight();
-			desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			desc.name = "Albedo render target";
-			desc.usage = TextureDesc::gpuOnly;
-			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
-			passData->AlbedoRoughnessTexture = rg.CreateTransientTexture("AlbedoRoughnessTexture", desc);
-		}
-
-		// Normals
-		{
-			TextureDesc desc;
-			desc.width = engine.GetGfxContext()->GetWidth();
-			desc.Height = engine.GetGfxContext()->GetHeight();
-			desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			desc.name = "Normal render target";
-			desc.usage = TextureDesc::gpuOnly;
-			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
-			passData->NormalMetallicTexture = rg.CreateTransientTexture("NormalMetallicTexture", desc);
-		}
-
-		// emissive
-		{
-			TextureDesc desc;
-			desc.width = engine.GetGfxContext()->GetWidth();
-			desc.Height = engine.GetGfxContext()->GetHeight();
-			desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			desc.name = "Emissive render target";
-			desc.usage = TextureDesc::gpuOnly;
-			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
-			passData->EmissiveTexture = rg.CreateTransientTexture("EmissiveTexture", desc);
-		}
-
-		// DepthStencil
-		{
-			TextureDesc desc;
-			desc.width = engine.GetGfxContext()->GetWidth();
-			desc.Height = engine.GetGfxContext()->GetHeight();
-			desc.name = "DepthStencil Texture";
-			desc.usage = TextureDesc::gpuOnly;
-			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::depthStencil | TextureDesc::shaderResource); // Automatically uses depth stencil format
-			passData->DepthTexture = rg.CreateTransientTexture("DepthStencil", desc);
-		}
+		passData->AlbedoRoughnessTexture = grassData->AlbedoRoughness;
+		passData->NormalMetallicTexture = grassData->NormalMetallic;
+		passData->EmissiveTexture = grassData->Emissive;
+		passData->DepthTexture = grassData->DepthTexture;
 
 		rg.AddPass<DeferredPassData>(
 			"Deferred pass",
@@ -118,7 +78,7 @@ namespace Wild {
 			}
 
 			list.SetPipelineState(pipeline);
-			list.BeginRender({ passData.AlbedoRoughnessTexture, passData.NormalMetallicTexture, passData.EmissiveTexture }, { ClearOperation::Clear, ClearOperation::Clear, ClearOperation::Clear }, { passData.DepthTexture }, DSClearOperation::DepthClear);
+			list.BeginRender({ passData.AlbedoRoughnessTexture, passData.NormalMetallicTexture, passData.EmissiveTexture }, { ClearOperation::Store, ClearOperation::Store, ClearOperation::Store }, { passData.DepthTexture }, DSClearOperation::Store);
 
 			auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
 			for (auto&& [entity, trans, mesh] : meshes.each()) {

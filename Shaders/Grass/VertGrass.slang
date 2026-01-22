@@ -16,7 +16,8 @@ struct VSOutput
 
 cbuffer Constants : register(b0)
 {
-    column_major float4x4 model;
+    column_major float4x4 world;
+    column_major float4x4 invModel;
     uint bladeId;
     float time;
 };
@@ -111,12 +112,20 @@ void MakePersistentLength(in float3 v0, inout float3 v1, inout float3 v2, in flo
     v2 = v1 + v12;
 }
 
-uint murmurHash12(uint2 src) {
+uint murmurHash12(uint2 src)
+{
     const uint M = 0x5bd1e995u;
     uint h = 1190494759u;
-    src *= M; src ^= src >> 24u; src *= M;
-    h *= M; h ^= src.x; h *= M; h ^= src.y;
-    h ^= h >> 13u; h *= M; h ^= h >> 15u;
+    src *= M;
+    src ^= src >> 24u;
+    src *= M;
+    h *= M;
+    h ^= src.x;
+    h *= M;
+    h ^= src.y;
+    h ^= h >> 13u;
+    h *= M;
+    h ^= h >> 15u;
     return h;
 }
 
@@ -133,10 +142,8 @@ float noise(float2 p)
     float2 f = fract(p);
     float2 u = smoothstep(float2(0.0), float2(1.0), f);
 
-    float val = lerp(lerp(hash12(i + float2(0.0, 0.0)), 
-                        hash12(i + float2(1.0, 0.0)), u.x),
-                     lerp(hash12(i + float2(0.0, 1.0)), 
-                        hash12(i + float2(1.0, 1.0)), u.x), u.y);
+    float val = lerp(lerp(hash12(i + float2(0.0, 0.0)), hash12(i + float2(1.0, 0.0)), u.x),
+                     lerp(hash12(i + float2(0.0, 1.0)), hash12(i + float2(1.0, 1.0)), u.x), u.y);
     return val * 2.0 - 1.0;
 }
 
@@ -154,6 +161,7 @@ VSOutput main(VSInput input)
     float3 bladePosition = initialBladeHeight;
 
     float2 bladeDirection = float2(cos(grassData.rotation), sin(grassData.rotation));
+    // bladeDirection = mul(rotationMat, float3(bladeDirection.x, 0.0f, bladeDirection.y)).xz;
 
     // Wind calculation
     float2 windDir = normalize(windDirection);
@@ -163,7 +171,7 @@ VSOutput main(VSInput input)
 
     // Grass leaning value
     const float leaning = 0.7f;
-    float3 v0 = bladePosition; // Fixed position of the grass blade
+    float3 v0 = bladePosition;                                     // Fixed position of the grass blade
     float3 v1 = v0 + float3(0.0f, grassData.height * 0.67f, 0.0f); // Up vector
     float3 v2 = v1 + float3(bladeDirection.x, grassData.height, bladeDirection.y) * leaning;
 
@@ -171,16 +179,16 @@ VSOutput main(VSInput input)
 
     bladePosition = bezier(v0, v1, v2, initialBladeHeight.y);
 
-    float3 up = normalize(bezierDerivitive(v0, v1, v2, initialBladeHeight.y));
-    float3 right = normalize(float3(bladeDirection.y, 0.0f, -bladeDirection.x));
+    float3 tangent = normalize(bezierDerivitive(v0, v1, v2, initialBladeHeight.y));
+    float3 right = float3(bladeDirection.x, 0.0, bladeDirection.y);
 
-    float3 worldSpaceNormal = cross(right, up);
+    float3 normal = normalize(cross(tangent, normalize(right)));
 
-    float4 vertexWorldPos = mul(model, float4(bladePosition, 1.0f));
+    float4 vertexWorldPos = mul(world, float4(bladePosition, 1.0f));
 
-    output.position = mul(projView, vertexWorldPos);
+    output.position = vertexWorldPos;
     output.fragPosition = vertexWorldPos.xyz;
-    output.normal = worldSpaceNormal;
-    output.bladeHeight = initialBladeHeight.y;
+    output.normal = normal;
+    output.bladeHeight = input.texCoord; // 1D coordinates
     return output;
 }

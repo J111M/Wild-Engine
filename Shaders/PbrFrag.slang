@@ -14,10 +14,10 @@ cbuffer matrices : register(b1)
 
 cbuffer PbrData : register(b2)
 {
-    float3 cameraPosition;
-    float pad0;
-    float3 lightDirection;
-    float pad1;
+    float4 cameraPosition;
+    float4 lightDirection;
+    uint debugViewMode;
+ 
 }
 
 cbuffer envData : register(b3)
@@ -89,10 +89,12 @@ float3 FresnelSchlickRough(float cosTheta, float3 F0, float roughness)
 }
 
 // Octahederal decoding
-float3 OctDecode(float2 enc) {
+float3 OctDecode(float2 enc)
+{
     enc = enc * 2.0 - 1.0;
     float3 n = float3(enc, 1.0 - abs(enc.x) - abs(enc.y));
-    if (n.z < 0.0) {
+    if (n.z < 0.0)
+    {
         n.xy = (1.0 - abs(n.yx)) * select(n.xy >= 0.0, 1.0, -1.0);
     }
     return normalize(n);
@@ -120,14 +122,20 @@ float4 main(VSOutput input) : SV_TARGET0
     albedo.rgb = pow(albedo.rgb, float3(2.2f));
     emissive.rgb = pow(emissive.rgb, float3(2.2f));
 
-    float roughness = albedo.w;
-    float metallic = normal.w;
+    float roughness = albedo.a;
+    float metallic = normal.a;
+    float ao = emissive.a;
+    if (ao > 1.0f)
+        ao = 1.0f;
+
+    // SSS and translucency
+    float thickness = normal.b;
 
     // Reconstruct the position from the depth
     float3 positionNDC = float3(input.uv.x * 2.0 - 1.0, 1.0 - input.uv.y * 2.0, textures[depthView].Sample(pointSampler, input.uv).x);
-    //positionNDC.xy = (input.uv * 2) - 1;
-    //positionNDC.y *= -1.0f;
-    //positionNDC.z = ;
+    // positionNDC.xy = (input.uv * 2) - 1;
+    // positionNDC.y *= -1.0f;
+    // positionNDC.z = ;
 
     float3 positionWS = RestorePositionWS(positionNDC).xyz;
 
@@ -135,10 +143,10 @@ float4 main(VSOutput input) : SV_TARGET0
 
     // shading setup
     float3 N = OctDecode(normal.xy);
-    float3 V = normalize(cameraPosition - positionWS);
+    float3 V = normalize(cameraPosition.xyz - positionWS);
     float3 R = reflect(-V, N);
 
-    float3 L = normalize(lightDirection);
+    float3 L = normalize(lightDirection.xyz);
     float3 H = normalize(V + L);
 
     float3 F0 = float3(0.04f, 0.04f, 0.04f);
@@ -164,7 +172,7 @@ float4 main(VSOutput input) : SV_TARGET0
     float3 Lo = float3(0.0f, 0.0f, 0.0f);
     float3 lambertianDiffuse = (albedo.rgb / PI);
 
-    // direct lighting contribution
+    // IBL contribution
     Lo = (kD * lambertianDiffuse + specular) * ndotl; // add light color
 
     float3 irradiance = float3(0.0f);
@@ -190,14 +198,43 @@ float4 main(VSOutput input) : SV_TARGET0
     if (brdfView > 0)
         envBrdf = textures[brdfView].Sample(pointSampler, float2(ndotv, roughness)).rg;
 
-    //envBrdf = max(envBrdf, 0.0f);
+    // envBrdf = max(envBrdf, 0.0f);
 
-    float3 specularIBL = prefilteredReflection * iblkS;//(iblF * envBrdf.x + envBrdf.y);
+    float3 specularIBL = prefilteredReflection * iblkS; //(iblF * envBrdf.x + envBrdf.y); // Temporary disabled because the brdf is not correct
 
     float3 diffuse = albedo.rgb * irradiance;
-    float3 ambient = (iblkD * diffuse + specularIBL);
+
+    // Translucency
+    float wrap = 0.5;
+    float backlit = saturate((dot(V, -L) + wrap) / (1.0 + wrap));
+    float falloff = 1.3;
+    float translucencyMask = (1 - thickness) * falloff; // invert thickness to 0 being most thin and 1 having no effect;
+
+    float3 scatterColor = float3(0.0f);
+    if (thickness > 0)
+        scatterColor = float3(1.1, 1.2, 0.9) * backlit * albedo.rgb * translucencyMask;
+
+    float3 ambient = (iblkD * diffuse + specularIBL + scatterColor) * ao;
 
     color = Lo + ambient + emissive.rgb;
+
+    switch (debugViewMode)
+    {
+    case 0:
+        return float4(color, 1.0f);
+    case 1:
+        return float4(albedo.rgb, 1.0f);
+    case 2:
+        return float4(N.xyz, 1.0f);
+    case 3:
+        return float4(float3(roughness), 1.0f);
+    case 4:
+        return float4(float3(metallic), 1.0f);
+    case 5:
+        return float4(scatterColor, 1.0f);
+    case 6:
+        return float4(float3(positionNDC.z), 1.0f);
+    }
 
     return float4(color, 1.0f);
 }

@@ -11,7 +11,9 @@ namespace Wild {
 	};
 
 	struct RenderGrassData {
-		Texture* FinalTexture;
+		Texture* AlbedoRoughness;
+		Texture* NormalMetallic; // Also store SSS
+		Texture* Emissive; // Store AO
 		Texture* DepthTexture;
 	};
 
@@ -50,7 +52,8 @@ namespace Wild {
 	};
 
 	struct GrassRC {
-		glm::mat4 Matrix{};
+		glm::mat4 matrix{};
+		glm::mat4 invMatrix{};
 		uint32_t bladeId{};
 		float time;
 		uint32_t foo2;

@@ -1,5 +1,4 @@
 #include "Renderer/Passes/GrassPass.hpp"
-#include "Renderer/Passes/SkyboxPass.hpp"
 
 #include <glm/gtc/matrix_access.hpp>
 
@@ -74,7 +73,8 @@ namespace Wild {
 		}
 
 		m_chunkEntity = engine.GetECS()->CreateEntity();
-		engine.GetECS()->AddComponent<Transform>(m_chunkEntity, glm::vec3(2, 0, -5), m_chunkEntity);
+		auto& transform = engine.GetECS()->AddComponent<Transform>(m_chunkEntity, glm::vec3(2, 0, -5), m_chunkEntity);
+		transform.SetPosition(glm::vec3(-10, 0, -20));
 	}
 
 	void GrassPass::Add(Renderer& renderer, RenderGraph& rg)
@@ -286,14 +286,56 @@ namespace Wild {
 		auto* passData = rg.AllocatePassData<RenderGrassData>();
 		auto indirectPass = rg.GetPassData<RenderGrassData, IndirectCommandsData>();
 
-		auto* skyboxData = rg.GetPassData<RenderGrassData, SkyPassData>();
+		// Albedo
+		{
+			TextureDesc desc;
+			desc.width = engine.GetGfxContext()->GetWidth();
+			desc.Height = engine.GetGfxContext()->GetHeight();
+			desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			desc.name = "Albedo render target";
+			desc.usage = TextureDesc::gpuOnly;
+			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
+			passData->AlbedoRoughness = rg.CreateTransientTexture("AlbedoRoughnessTexture", desc);
+		}
 
-		passData->FinalTexture = skyboxData->FinalTexture;
-		passData->DepthTexture = skyboxData->DepthTexture;
+		// Normals
+		{
+			TextureDesc desc;
+			desc.width = engine.GetGfxContext()->GetWidth();
+			desc.Height = engine.GetGfxContext()->GetHeight();
+			desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			desc.name = "Normal render target";
+			desc.usage = TextureDesc::gpuOnly;
+			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
+			passData->NormalMetallic = rg.CreateTransientTexture("NormalMetallicTexture", desc);
+		}
+
+		// emissive
+		{
+			TextureDesc desc;
+			desc.width = engine.GetGfxContext()->GetWidth();
+			desc.Height = engine.GetGfxContext()->GetHeight();
+			desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			desc.name = "Emissive render target";
+			desc.usage = TextureDesc::gpuOnly;
+			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
+			passData->Emissive = rg.CreateTransientTexture("EmissiveTexture", desc);
+		}
+
+		// DepthStencil
+		{
+			TextureDesc desc;
+			desc.width = engine.GetGfxContext()->GetWidth();
+			desc.Height = engine.GetGfxContext()->GetHeight();
+			desc.name = "DepthStencil Texture";
+			desc.usage = TextureDesc::gpuOnly;
+			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::depthStencil | TextureDesc::shaderResource); // Automatically uses depth stencil format
+			passData->DepthTexture = rg.CreateTransientTexture("DepthStencil", desc);
+		}
 
 		rg.AddPass<RenderGrassData>(
 			"Grass render pass",
-			PassType::Compute,
+			PassType::Graphics,
 			[&renderer, this](const RenderGrassData& grassData, CommandList& list) {
 
 			PipelineStateSettings settings{};
@@ -304,6 +346,10 @@ namespace Wild {
 			settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
 			settings.ShaderState.InputLayout.emplace_back(InputElement("COORDS", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3)));
 			settings.ShaderState.InputLayout.emplace_back(InputElement("SWAY", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3) + sizeof(float)));
+
+			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Albedo
+			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Normal
+			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Emissive
 
 			settings.RasterizerState.CullMode = CullMode::None;
 
@@ -323,18 +369,30 @@ namespace Wild {
 
 			auto& pipeline = renderer.GetOrCreatePipeline("Grass render pass", PipelineStateType::Graphics, settings, uniforms);
 
+			// Get camera | TODO get only the active camera or render for each possible camera
+			auto ecs = engine.GetECS();
+			auto& cameras = ecs->View<Camera>();
+			Camera* camera = nullptr;
+			for (auto entity : cameras) {
+				camera = &ecs->GetComponent<Camera>(entity);
+				break;
+			}
+
 			list.SetPipelineState(pipeline);
-			list.BeginRender({ grassData.FinalTexture },
-				{ ClearOperation::Store },
+			list.BeginRender({ grassData.AlbedoRoughness, grassData.NormalMetallic, grassData.Emissive },
+				{ ClearOperation::Clear, ClearOperation::Clear, ClearOperation::Clear },
 				grassData.DepthTexture,
-				DSClearOperation::Store,
+				DSClearOperation::DepthClear,
 				"Grass Pass");
 
 			auto& gfxContext = engine.GetGfxContext();
 			UINT frameIndex = gfxContext->GetBackBufferIndex();
 
 			auto& transform = engine.GetECS()->GetComponent<Transform>(m_chunkEntity);
-			m_rc.Matrix = transform.GetWorldMatrix();
+			if (camera) {
+				m_rc.matrix = camera->GetProjection() * camera->GetView() * transform.GetWorldMatrix();
+				m_rc.invMatrix = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
+			}
 			m_rc.bladeId = 0;
 
 			list.SetShaderResourceView(1, m_grassBladeInstanceBuffer.get());
@@ -360,7 +418,7 @@ namespace Wild {
 
 			list.EndRender();
 
-			renderer.compositeTexture = grassData.FinalTexture;
+
 		});
 	}
 
@@ -417,13 +475,13 @@ namespace Wild {
 		/// First lod grass blade
 		grassVertices.push_back({ {-0.03f, 0.0f, 0.0f}, 0.0f, 0.0f });
 		grassVertices.push_back({ {0.03f, 0.0f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {-0.03f, 0.2f, 0.0f}, 0.0f, 0.2f });
-		grassVertices.push_back({ {0.03f, 0.2f, 0.0f}, 0.0f, 0.2f });
-		grassVertices.push_back({ {-0.03f, 0.4f, 0.0f}, 0.0f, 0.4f });
-		grassVertices.push_back({ {0.03f, 0.4f, 0.0f}, 0.0f, 0.4f });
-		grassVertices.push_back({ {-0.03f, 0.6f, 0.0f}, 0.0f, 0.6f });
-		grassVertices.push_back({ {0.03f, 0.6f, 0.0f}, 0.0f, 0.6f });
-		grassVertices.push_back({ {0.0f, 0.75f, 0.0f}, 0.0f, 1.0f });
+		grassVertices.push_back({ {-0.03f, 0.2f, 0.0f}, 0.2f, 0.2f });
+		grassVertices.push_back({ {0.03f, 0.2f, 0.0f}, 0.2f, 0.2f });
+		grassVertices.push_back({ {-0.03f, 0.4f, 0.0f}, 0.4f, 0.4f });
+		grassVertices.push_back({ {0.03f, 0.4f, 0.0f}, 0.4f, 0.4f });
+		grassVertices.push_back({ {-0.03f, 0.6f, 0.0f}, 0.6f, 0.6f });
+		grassVertices.push_back({ {0.03f, 0.6f, 0.0f}, 0.6f, 0.6f });
+		grassVertices.push_back({ {0.0f, 0.75f, 0.0f}, 1.0f, 1.0f });
 
 		grassIndices.insert(grassIndices.end(), { 0, 1, 2, 1, 3, 2 }); // First quad
 		grassIndices.insert(grassIndices.end(), { 2, 3, 4, 3, 5, 4 }); // Second quad
@@ -433,11 +491,11 @@ namespace Wild {
 		/// Second lod grass blade
 		grassVertices.push_back({ {-0.03f, 0.0f, 0.0f}, 0.0f, 0.0f });
 		grassVertices.push_back({ {0.03f, 0.0f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {-0.03f, 0.3f, 0.0f}, 0.0f, 0.3f });
-		grassVertices.push_back({ {0.03f, 0.3f, 0.0f}, 0.0f, 0.3f });
-		grassVertices.push_back({ {-0.03f, 0.6f, 0.0f}, 0.0f, 0.6f });
-		grassVertices.push_back({ {0.03f, 0.6f, 0.0f}, 0.0f, 0.6f });
-		grassVertices.push_back({ {0.0f, 0.75f, 0.0f}, 0.0f, 1.0f });
+		grassVertices.push_back({ {-0.03f, 0.3f, 0.0f}, 0.3f, 0.3f });
+		grassVertices.push_back({ {0.03f, 0.3f, 0.0f}, 0.3f, 0.3f });
+		grassVertices.push_back({ {-0.03f, 0.6f, 0.0f}, 0.6f, 0.6f });
+		grassVertices.push_back({ {0.03f, 0.6f, 0.0f}, 0.6f, 0.6f });
+		grassVertices.push_back({ {0.0f, 0.75f, 0.0f}, 1.0f, 1.0f });
 
 		grassIndices.insert(grassIndices.end(), { 0, 1, 2, 1, 3, 2 }); // First quad
 		grassIndices.insert(grassIndices.end(), { 2, 3, 4, 3, 5, 4 }); // Second quad
@@ -446,9 +504,9 @@ namespace Wild {
 		/// Third lod grass blade 
 		grassVertices.push_back({ {-0.03f, 0.0f, 0.0f}, 0.0f, 0.0f });
 		grassVertices.push_back({ {0.03f, 0.0f, 0.0f}, 0.0f, 0.0f });
-		grassVertices.push_back({ {-0.03f, 0.5f, 0.0f}, 0.0f, 0.5f });
-		grassVertices.push_back({ {0.03f, 0.5f, 0.0f}, 0.0f, 0.5f });
-		grassVertices.push_back({ {0.0f, 0.75f, 0.0f}, 0.0f, 1.0f });
+		grassVertices.push_back({ {-0.03f, 0.5f, 0.0f}, 0.5f, 0.5f });
+		grassVertices.push_back({ {0.03f, 0.5f, 0.0f}, 0.5f, 0.5f });
+		grassVertices.push_back({ {0.0f, 0.75f, 0.0f}, 1.0f, 1.0f });
 
 		grassIndices.insert(grassIndices.end(), { 0, 1, 2, 1, 3, 2 }); // Quad
 		grassIndices.insert(grassIndices.end(), { 2, 3, 4 }); // Top triangle

@@ -20,7 +20,7 @@ namespace Wild {
 			desc.bufferSize = sizeof(PBRData);
 			for (int i = 0; i < BACK_BUFFER_COUNT; i++)
 			{
-				m_pbrData[i] = std::make_unique<Buffer>(desc, BufferType::constant);
+				m_pbrDataBuffer[i] = std::make_unique<Buffer>(desc, BufferType::constant);
 			}
 		}
 
@@ -37,7 +37,6 @@ namespace Wild {
 		auto ecs = engine.GetECS();
 		auto& cameras = ecs->View<Camera>();
 
-		PBRData pbrData{};
 		InverseCamera inverseCamData{};
 
 		// Loop over all camera's TODO make the code run for each camera entity
@@ -47,15 +46,30 @@ namespace Wild {
 
 				inverseCamData.inverseView = glm::inverse(cam.GetView());
 				inverseCamData.inverseProj = glm::inverse(cam.GetProjection());
-				pbrData.cameraPosition = cam.GetPosition();
+				m_pbrData.cameraPosition = cam.GetPosition();
 			}
 		}
 
 		int frameIndex = context->GetBackBufferIndex();
 		m_inverseCamera[frameIndex]->Allocate(&inverseCamData);
 
-		pbrData.lightDirection = glm::vec3(-0.3, -6.0, -2.5);
-		m_pbrData[frameIndex]->Allocate(&pbrData);
+		engine.GetImGui()->AddPanel("Pbr settings", [this]() {
+			ImGui::SliderFloat3("Light direction: ", &m_pbrData.lightDirection[0], -20.0f, 20.0f);
+
+			const char* debugModes[] = {
+			"None",
+			"Albedo",
+			"Normals",
+			"Roughness",
+			"Metallic",
+			"AO",
+			"Depth"
+			};
+
+			ImGui::Combo("Debug view Mode", (int*)&m_pbrData.viewMode, debugModes, IM_ARRAYSIZE(debugModes));
+		});
+
+		m_pbrDataBuffer[frameIndex]->Allocate(&m_pbrData);
 	}
 
 	void PbrPass::Add(Renderer& renderer, RenderGraph& rg)
@@ -168,7 +182,7 @@ namespace Wild {
 			int frameIndex = context->GetBackBufferIndex();
 
 			list.SetConstantBufferView(1, m_inverseCamera[frameIndex].get());
-			list.SetConstantBufferView(2, m_pbrData[frameIndex].get());
+			list.SetConstantBufferView(2, m_pbrDataBuffer[frameIndex].get());
 			list.SetConstantBufferView(3, m_environmentData.get());
 			list.SetBindlessHeap(4);
 

@@ -75,7 +75,7 @@ PSOut main(PSInput input)
     PSOut psOut;
     psOut.albedo = float4(albedo.rgb, roughness);
     psOut.normal = float4(float2(OctEncode(normal.xyz).xy), 0.0f, metallic);
-    psOut.emissive = float4(emissive.rgb, 0.0f);
+    psOut.emissive = float4(emissive.rgb, 1.0f);
 
     return psOut;
 }
