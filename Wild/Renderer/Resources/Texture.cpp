@@ -80,7 +80,7 @@ namespace Wild {
 					rtvDesc.Texture2DArray.FirstArraySlice = face;
 					rtvDesc.Texture2DArray.ArraySize = 1;
 					rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-					m_arrayRtvs.emplace_back(std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc));
+					m_rtvArray.emplace_back(std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc));
 				}
 				m_rtvArrayAvailiable = true;
 			}
@@ -97,13 +97,13 @@ namespace Wild {
 			depthDesc.Height = m_desc.Height;
 			depthDesc.DepthOrArraySize = 1;
 			depthDesc.MipLevels = 1;
-			depthDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+			depthDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 			depthDesc.SampleDesc.Count = 1;
 			depthDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 			depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
 			D3D12_CLEAR_VALUE clearValue = {};
-			clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+			clearValue.Format = DXGI_FORMAT_D32_FLOAT;
 			clearValue.DepthStencil = { 1.0f, 0 };
 
 			// Create resource with initial state
@@ -119,12 +119,12 @@ namespace Wild {
 			);
 
 			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-			dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+			dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
 			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
 			m_dsv = std::make_shared<DepthStencilView>(m_resource->Handle(), dsvDesc);
 
-			m_desc.format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+			m_desc.format = DXGI_FORMAT_R32_FLOAT;
 		}
 
 		if (m_desc.flag & TextureDesc::readWrite) {
@@ -133,7 +133,7 @@ namespace Wild {
 			readWriteDesc.Width = m_desc.width;
 			readWriteDesc.Height = m_desc.Height;
 			readWriteDesc.DepthOrArraySize = m_desc.Layers;
-			readWriteDesc.MipLevels = m_desc.Layers;
+			readWriteDesc.MipLevels = m_desc.mips;
 			readWriteDesc.Format = m_desc.format;
 			readWriteDesc.SampleDesc.Count = 1;
 			readWriteDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
@@ -158,7 +158,24 @@ namespace Wild {
 			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 			uavDesc.Texture2D.MipSlice = 0;
 
-			m_uav = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc);
+			if (m_desc.Layers > 1) {
+				for (uint32_t mip = 0; mip < m_desc.mips; mip++)
+				{
+					for (uint32_t face = 0; face < m_desc.Layers; face++)
+					{
+						uavDesc.Texture2DArray.MipSlice = mip;
+						uavDesc.Texture2DArray.FirstArraySlice = face;
+						uavDesc.Texture2DArray.ArraySize = 1;
+						uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+						m_uavArray.emplace_back(std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc));
+					}
+				}
+				
+				m_uavArrayAvailiable = true;
+			}
+			else {
+				m_uav = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc);
+			}
 		}
 
 		if (m_desc.flag & TextureDesc::ViewFlag::shaderResource) {
@@ -195,7 +212,7 @@ namespace Wild {
 
 		if (desc.flag & TextureDesc::depthStencil) {
 			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-			dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+			dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
 			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
 			m_dsv = std::make_shared<DepthStencilView>(m_resource->Handle(), dsvDesc);
@@ -236,13 +253,13 @@ namespace Wild {
 
 	std::shared_ptr<RenderTargetView> Texture::GetRtv(uint32_t index) const
 	{
-		if (!m_arrayRtvs[index]) {
+		if (!m_rtvArray[index]) {
 			std::string err = "Render target view with index: " + std::to_string(index) + " not availiable on texture: ";
 			WD_ERROR(err.c_str(), m_desc.name.c_str());
 			return nullptr;
 		}
 
-		return m_arrayRtvs[index];
+		return m_rtvArray[index];
 	}
 
 	std::shared_ptr<DepthStencilView> Texture::GetDsv() const
@@ -273,6 +290,17 @@ namespace Wild {
 		}
 
 		return m_uav;
+	}
+
+	std::shared_ptr<UnorderedAccessView> Texture::GetUav(uint32_t index) const
+	{
+		if (!m_uavArray[index]) {
+			std::string err = "Unordered access view with index: " + std::to_string(index) + " not availiable on texture: ";
+			WD_ERROR(err.c_str(), m_desc.name.c_str());
+			return nullptr;
+		}
+
+		return m_uavArray[index];
 	}
 
 	void Texture::CreateTexture(const std::string& filePath)

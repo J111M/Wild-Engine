@@ -50,7 +50,7 @@ namespace Wild {
 		void SetConstantBufferView(uint32_t rootIndex, Buffer* buffer);
 
 		void SetUnorderedAccessView(uint32_t rootIndex, Buffer* buffer);
-		void SetUnorderedAccessView(uint32_t rootIndex, Texture* texture);
+		void SetUnorderedAccessView(uint32_t rootIndex, Texture* texture, uint32_t index = 64);
 
 		void SetShaderResourceView(uint32_t rootIndex, Buffer* buffer);
 

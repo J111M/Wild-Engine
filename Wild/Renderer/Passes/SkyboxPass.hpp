@@ -25,8 +25,9 @@ namespace Wild {
 	};
 
 	struct SkyRootConstant {
-		uint32_t view;
-		uint32_t viewCube;
+		uint32_t view{};
+		uint32_t viewCube{};
+		uint32_t mipLevel{};
 	};
 
 	struct IBLRootConstant {
@@ -34,8 +35,11 @@ namespace Wild {
 		uint32_t view;
 	};
 
-	struct BrdfLutRootConstant {
+	struct SpecularMapRootConstant {
 		uint32_t environmentView{};
+		int mipSize{};
+		float roughness{};
+		int face{};
 	};
 
 	class CommandList;
@@ -64,7 +68,8 @@ namespace Wild {
 		bool ShouldGenerateNewIBL = true;
 		//std::function<void(const SkyPassData&, CommandList&)> m_skyboxLambda;
 
-		// BRDF LUT
 		std::shared_ptr<Texture> m_brdfLut;
+		std::shared_ptr<Texture> m_specularMap;
+		uint32_t m_specularMips = 5;
 	};
 }

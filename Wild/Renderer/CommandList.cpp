@@ -75,15 +75,22 @@ namespace Wild {
 		}
 	}
 
-	void CommandList::SetUnorderedAccessView(uint32_t rootIndex, Texture* texture)
+	void CommandList::SetUnorderedAccessView(uint32_t rootIndex, Texture* texture, uint32_t index)
 	{
 		texture->Transition(*this, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
+		std::shared_ptr<UnorderedAccessView> textureUav;
+		// 64 is the default index value TODO rework the array indexing system
+		if (index == 64)
+			textureUav = texture->GetUav();
+		else
+			textureUav = texture->GetUav(index);
+
 		if (m_pipelineState->IsComputePass()) {
-			m_commandList->SetComputeRootDescriptorTable(static_cast<UINT>(rootIndex), texture->GetUav()->GetGpuHandle());
+			m_commandList->SetComputeRootDescriptorTable(static_cast<UINT>(rootIndex), textureUav->GetGpuHandle());
 		}
 		else {
-			m_commandList->SetGraphicsRootDescriptorTable(static_cast<UINT>(rootIndex), texture->GetUav()->GetGpuHandle());
+			m_commandList->SetGraphicsRootDescriptorTable(static_cast<UINT>(rootIndex), textureUav->GetGpuHandle());
 		}
 	}
 

@@ -15,10 +15,9 @@ namespace Wild {
 		sessionDesc.targets = &targetDesc;
 		sessionDesc.targetCount = 1;
 
-
 		slang::ISession* session;
 		globalSession->createSession(sessionDesc, &session);
-	
+
 		ComPtr<slang::IBlob> diagnostics;
 		ComPtr<slang::IModule> module = session->loadModule(shaderPath.c_str(), &diagnostics);
 

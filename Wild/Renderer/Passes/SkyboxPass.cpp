@@ -17,14 +17,28 @@ namespace Wild {
 
 		m_skyboxTexture = std::make_unique<Texture>(filePath, TextureType::SKYBOX, 0, DXGI_FORMAT_R32G32B32A32_FLOAT);
 
+		{
+			TextureDesc texDesc;
+			texDesc.width = 512;
+			texDesc.Height = 512;
+			texDesc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
+			texDesc.format = DXGI_FORMAT_R16G16_FLOAT;
+			texDesc.name = "BRDF LUT";
+			m_brdfLut = std::make_shared<Texture>(texDesc);
+		}
 
-		TextureDesc texDesc;
-		texDesc.width = 256;
-		texDesc.Height = 256;
-		texDesc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
-		texDesc.format = DXGI_FORMAT_R16G16_FLOAT;
-		texDesc.name = "BRDF LUT";
-		m_brdfLut = std::make_shared<Texture>(texDesc);
+		{
+			TextureDesc texDesc;
+			texDesc.width = 512;
+			texDesc.Height = 512;
+			texDesc.Layers = 6;
+			texDesc.type = TextureType::CUBEMAP;
+			texDesc.mips = m_specularMips;
+			texDesc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
+			texDesc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+			texDesc.name = "Specular cube map";
+			m_specularMap = std::make_shared<Texture>(texDesc);
+		}
 	}
 
 	void SkyPass::Update(const float dt)
@@ -51,7 +65,7 @@ namespace Wild {
 
 		engine.GetImGui()->AddPanel("Debug skybox", [this]() {
 			int skyMode = m_debugSkyboxMode;
-			if (ImGui::SliderInt("Debug mode", &skyMode, 0, 1)) {
+			if (ImGui::SliderInt("Debug mode", &skyMode, 0, 6)) {
 				m_debugSkyboxMode = skyMode;
 			}
 
@@ -138,6 +152,16 @@ namespace Wild {
 					rc.viewCube = renderer.irradianceMap->GetSrv()->BindlessView();
 				}
 				break;
+			case 2:
+			case 3:
+			case 4:
+			case 5:
+			case 6:
+				if (renderer.specularMap) {
+					rc.viewCube = renderer.specularMap->GetSrv()->BindlessView();
+					rc.mipLevel = m_debugSkyboxMode - 2;
+				}
+				break;
 			default:
 				break;
 			}
@@ -166,7 +190,7 @@ namespace Wild {
 			desc.Height = 512;
 			desc.Layers = 6;
 			desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-			desc.name = "Enironment cubemap";
+			desc.name = "Environment cubemap";
 			desc.usage = TextureDesc::gpuOnly;
 			desc.type = TextureType::CUBEMAP;
 			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
@@ -354,7 +378,72 @@ namespace Wild {
 					m_brdfLut->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 				}
 
+				/// Specular reflection pass
+				{
+					PipelineStateSettings computeSettings{};
+					computeSettings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/GenerateSpecularMap.slang");
+
+					std::vector<Uniform> uniforms;
+
+					Uniform rootConstant{ 0, 0, RootParams::RootResourceType::Constants, sizeof(SpecularMapRootConstant) };
+					uniforms.emplace_back(rootConstant);
+
+					Uniform brdfLutUAVTexture{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+					CD3DX12_DESCRIPTOR_RANGE uavRange{};
+					uavRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+					brdfLutUAVTexture.ranges.emplace_back(uavRange);
+					uniforms.emplace_back(brdfLutUAVTexture);
+
+					// Set bindless texture
+					Uniform bindless{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+					CD3DX12_DESCRIPTOR_RANGE srvRange{};
+					srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindless
+					bindless.ranges.emplace_back(srvRange);
+					uniforms.emplace_back(bindless);
+
+					Uniform staticSampler{ 0, 0, RootParams::RootResourceType::StaticSampler };
+					staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+					staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+					uniforms.emplace_back(staticSampler);
+
+					auto& pipeline = renderer.GetOrCreatePipeline("Specular reflection pass", PipelineStateType::Compute, computeSettings, uniforms);
+					list.SetPipelineState(pipeline);
+					list.BeginRender();
+
+					SpecularMapRootConstant rc{};
+					if (passData.environmentCubeTexture)
+						rc.environmentView = passData.environmentCubeTexture->GetSrv()->BindlessView();
+
+					passData.environmentCubeTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+					auto desc = m_specularMap->GetDesc();
+					for (uint32_t mip = 0; mip < desc.mips; mip++)
+					{
+						for (uint32_t face = 0; face < desc.Layers; face++)
+						{
+							uint32_t uavIndex = mip * desc.Layers + face;
+							rc.mipSize = desc.width * std::pow(0.5, mip);
+							rc.roughness = (float)mip / (float)(desc.mips - 1);
+							rc.face = face;
+
+							list.SetRootConstant(0, rc);
+							list.SetUnorderedAccessView(1, m_specularMap.get(), uavIndex);
+							list.SetBindlessHeap(2);
+
+							list.GetList()->Dispatch((rc.mipSize + 31) / 32, (rc.mipSize + 31) / 32, 1);
+						}
+					}
+
+					list.EndRender();
+
+					m_brdfLut->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+					m_specularMap->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+					passData.environmentCubeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+				}
+
 				renderer.irradianceMap = passData.irradianceTexture;
+				renderer.specularMap = m_specularMap.get();
+				renderer.brdfLut = m_brdfLut.get();
 				ShouldGenerateNewIBL = false;
 			}
 		});

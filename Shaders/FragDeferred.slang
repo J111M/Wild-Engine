@@ -59,8 +59,8 @@ PSOut main(PSInput input)
     if (roughnessMetallicView != 0)
     {
         float2 rm = textures[NonUniformResourceIndex(roughnessMetallicView)].Sample(anisotropySampler, input.uv).gb;
-        roughness = rm.r;
-        metallic = rm.g;
+        roughness = rm.x;
+        metallic = rm.y;
     }
 
     PSOut psOut;

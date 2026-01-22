@@ -2,6 +2,7 @@ cbuffer Constants : register(b0)
 {
     uint skyView;
     uint skyCubeView;
+    uint mipLevel;
 };
 
 cbuffer matrices : register(b1)
@@ -48,7 +49,7 @@ float4 main(VSOutput input) : SV_Target0
     color = pow(color, 1.0 / 2.2);
 
     if (skyCubeView > 0)
-        color = textureCube[skyCubeView].Sample(linearSampler, dir).rgb;
+        color = textureCube[skyCubeView].SampleLevel(linearSampler, dir, mipLevel).rgb;
 
     return float4(color, 1.0f);
 }

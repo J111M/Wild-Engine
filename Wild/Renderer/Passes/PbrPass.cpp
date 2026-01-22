@@ -132,14 +132,20 @@ namespace Wild {
 			{
 				Uniform uni{ 0, 0, RootParams::RootResourceType::StaticSampler };
 				uni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+				uni.filter = D3D12_FILTER_MIN_MAG_MIP_POINT; //D3D12_FILTER_MIN_MAG_MIP_LINEAR; //D3D12_FILTER_MIN_MAG_MIP_LINEAR
+				uni.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 				uniforms.emplace_back(uni);
 			}
 
 			auto& pipeline = renderer.GetOrCreatePipeline("Pbr assembly pass", PipelineStateType::Graphics, settings, uniforms);
 
 			EnvironmentData envData{};
-			if (renderer.irradianceMap)
+			if (renderer.irradianceMap) {
 				envData.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView();
+				envData.specularView = renderer.specularMap->GetSrv()->BindlessView();
+				envData.brdfView = renderer.brdfLut->GetSrv()->BindlessView();
+			}
+
 
 			m_environmentData->Allocate(&envData);
 

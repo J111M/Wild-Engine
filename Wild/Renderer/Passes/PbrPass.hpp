@@ -24,6 +24,8 @@ namespace Wild {
 
 	struct EnvironmentData {
 		uint32_t irradianceView{};
+		uint32_t specularView{};
+		uint32_t brdfView{};
 	};
 
 	struct PbrRootConstant {

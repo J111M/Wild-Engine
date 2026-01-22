@@ -66,10 +66,12 @@ namespace Wild {
 		std::shared_ptr<RenderTargetView> GetRtv(uint32_t index) const;
 		const bool UsesRtvArray() const { return m_rtvArrayAvailiable; };
 
+		std::shared_ptr<UnorderedAccessView> GetUav() const;
+		std::shared_ptr<UnorderedAccessView> GetUav(uint32_t index) const;
+		const bool UsesUavArray() const { return m_uavArrayAvailiable; };
+
 		std::shared_ptr<DepthStencilView> GetDsv() const;
 		std::shared_ptr<ShaderResourceView> GetSrv() const;
-		std::shared_ptr<UnorderedAccessView> GetUav() const;
-		//TextureHandle Handle{};
 		
 	private:
 		void CreateTexture(const std::string& filePath);
@@ -79,12 +81,19 @@ namespace Wild {
 		std::unique_ptr<Resource> m_resource;
 
 		std::shared_ptr<RenderTargetView> m_rtv;
-		std::vector<std::shared_ptr<RenderTargetView>> m_arrayRtvs;
+
+		// Rtv support for rendering to a cubemap texture
+		std::vector<std::shared_ptr<RenderTargetView>> m_rtvArray;
 		bool m_rtvArrayAvailiable = false;
+
+		std::shared_ptr<UnorderedAccessView> m_uav;
+
+		// Uav support for cubemap textures
+		std::vector<std::shared_ptr<UnorderedAccessView>> m_uavArray;
+		bool m_uavArrayAvailiable = false;
 
 		std::shared_ptr<DepthStencilView> m_dsv;
 		std::shared_ptr<ShaderResourceView> m_srv;
-		std::shared_ptr<UnorderedAccessView> m_uav;
 
 		TextureDesc m_desc;
 	};

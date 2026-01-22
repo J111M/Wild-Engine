@@ -51,6 +51,8 @@ namespace Wild {
 		std::shared_ptr<PipelineState> GetPipeline(const std::string& key);
 
 		Texture* irradianceMap{};
+		Texture* specularMap{};
+		Texture* brdfLut{};
 		Texture* compositeTexture = nullptr;
 	private:
 		
