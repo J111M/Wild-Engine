@@ -19,6 +19,12 @@ namespace Wild {
 		Texture* irradianceTexture;
 	};
 
+	struct IrradiancePassData
+	{
+		Texture* environmentCubeTexture;
+		Texture* irradianceTexture;
+	};
+
 	struct CameraProjection {
 		glm::mat4 view{};
 		glm::mat4 proj{};

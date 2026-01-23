@@ -15,8 +15,11 @@ namespace Wild {
 			m_cameraProjection[i] = std::make_unique<Buffer>(bufferDesc, BufferType::constant);
 		}
 
+		// Initial equirectangular texture map used as skybox
 		m_skyboxTexture = std::make_unique<Texture>(filePath, TextureType::SKYBOX, 0, DXGI_FORMAT_R32G32B32A32_FLOAT);
 
+		// Posibly move these resources to the pass
+		// Brdf look up table
 		{
 			TextureDesc texDesc;
 			texDesc.width = 512;
@@ -28,6 +31,7 @@ namespace Wild {
 			m_brdfLut = std::make_shared<Texture>(texDesc);
 		}
 
+		// Specular cube map resource
 		{
 			TextureDesc texDesc;
 			texDesc.width = 512;
@@ -58,7 +62,6 @@ namespace Wild {
 
 				camData.view = glm::mat4(glm::mat3(cam.GetView()));
 				camData.proj = cam.GetProjection();
-				//camData.proj[1][1] *= -1;
 			}
 		}
 
@@ -80,6 +83,11 @@ namespace Wild {
 		AddIBLPass(renderer, rg);
 	}
 
+	/// <summary>
+	/// Skybox pass is the last pass the reason for this is because the PBR pass draw to a full quad which overwrites the skybox with black pixels
+	/// I didn't want my hdr skybox stored in a low color range so I just output it as the last pass.
+	/// </summary>
+	/// <param name="rg">Render Graph</param>
 	void SkyPass::AddSkyboxPass(Renderer& renderer, RenderGraph& rg)
 	{
 		auto* passData = rg.AllocatePassData<SkyPassData>();
@@ -184,6 +192,12 @@ namespace Wild {
 		});
 	}
 
+	/// <summary>
+	/// Generates all the data needed for Image Based Lighting like irradiance map, brdf lut and specular map.
+	/// The pass doesn't cache the texture yet this still needs to be done.
+	/// Resources are linked at the end of the pass and are currently only generated at the start of the pass.
+	/// </summary>
+	/// <param name="rg">Render Graph</param>
 	void SkyPass::AddIBLPass(Renderer& renderer, RenderGraph& rg)
 	{
 		auto* passData = rg.AllocatePassData<IBLPassData>();
@@ -244,13 +258,13 @@ namespace Wild {
 			settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_FLOAT);
 			settings.depthFormat = DXGI_FORMAT_UNKNOWN;
 
-			// Setting up the input layout
+			// Setting up the input layout for cube
 			settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
 			settings.ShaderState.InputLayout.emplace_back(InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
 			settings.ShaderState.InputLayout.emplace_back(InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
 			settings.ShaderState.InputLayout.emplace_back(InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
 
-			// Generating cube map from equirectangular map
+			/// Generating cube map from equirectangular map since it is easier to sample from and less expensive
 			if (ShouldGenerateNewIBL) {
 				/// Convolute cubemap
 				{
@@ -315,13 +329,15 @@ namespace Wild {
 					Uniform rootConstant{ 0, 0, RootParams::RootResourceType::Constants, sizeof(IBLRootConstant) };
 					uniforms.emplace_back(rootConstant);
 
+					// Uniform for setting up the bindless heap
 					Uniform bindless{ 0, 0, RootParams::RootResourceType::DescriptorTable };
 					CD3DX12_DESCRIPTOR_RANGE srvRange{};
-					srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+					srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 					bindless.ranges.emplace_back(srvRange);
 					bindless.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 					uniforms.emplace_back(bindless);
 
+					// Static sampler uniform
 					Uniform staticSampler{ 0, 0, RootParams::RootResourceType::StaticSampler };
 					staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
 					staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
@@ -330,6 +346,7 @@ namespace Wild {
 
 					auto& pipeline = renderer.GetOrCreatePipeline("Generate Irradiance map", PipelineStateType::Graphics, settings, uniforms);
 
+					/// Loop over all faces and render to each specific face via an index into the rtv
 					for (size_t face = 0; face < 6; face++)
 					{
 						list.SetPipelineState(pipeline);
@@ -345,7 +362,6 @@ namespace Wild {
 						rc.view = passData.environmentCubeTexture->GetSrv()->BindlessView();
 
 						list.SetRootConstant<IBLRootConstant>(0, rc);
-
 						list.SetBindlessHeap(1);
 
 						list.GetList()->IASetVertexBuffers(0, 1, &m_cubeVertexBuffer->GetVBView()->View());
@@ -358,13 +374,14 @@ namespace Wild {
 
 				}
 
-				/// BRDF LUT pass
+				/// BRDF look up table pass generated with compute
 				{
 					PipelineStateSettings computeSettings{};
 					computeSettings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/GenerateBrdfLut.slang");
 
 					std::vector<Uniform> uniforms;
 
+					// Uniform for setting up the bindless heap
 					Uniform brdfLutUAVTexture{ 0, 0, RootParams::RootResourceType::DescriptorTable };
 					CD3DX12_DESCRIPTOR_RANGE uavRange{};
 					uavRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
@@ -373,6 +390,7 @@ namespace Wild {
 
 
 					auto& pipeline = renderer.GetOrCreatePipeline("Generate brdf lut pass", PipelineStateType::Compute, computeSettings, uniforms);
+
 					list.SetPipelineState(pipeline);
 					list.BeginRender();
 
@@ -384,7 +402,7 @@ namespace Wild {
 					m_brdfLut->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 				}
 
-				/// Specular reflection pass
+				/// Specular reflection pass generated with compute
 				{
 					PipelineStateSettings computeSettings{};
 					computeSettings.ShaderState.ComputeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/GenerateSpecularMap.slang");
@@ -394,18 +412,19 @@ namespace Wild {
 					Uniform rootConstant{ 0, 0, RootParams::RootResourceType::Constants, sizeof(SpecularMapRootConstant) };
 					uniforms.emplace_back(rootConstant);
 
-					Uniform brdfLutUAVTexture{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+					// UAV uniform for specular cube map
+					Uniform specularCubemapTexture{ 0, 0, RootParams::RootResourceType::DescriptorTable };
 					CD3DX12_DESCRIPTOR_RANGE uavRange{};
 					uavRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
-					brdfLutUAVTexture.ranges.emplace_back(uavRange);
-					uniforms.emplace_back(brdfLutUAVTexture);
+					specularCubemapTexture.ranges.emplace_back(uavRange);
+					uniforms.emplace_back(specularCubemapTexture);
 
-					// Set bindless texture
-					Uniform bindless{ 0, 0, RootParams::RootResourceType::DescriptorTable };
+					// Uniform for setting up the bindless heap cubemap textures
+					Uniform cubeMapTextures{ 0, 0, RootParams::RootResourceType::DescriptorTable };
 					CD3DX12_DESCRIPTOR_RANGE srvRange{};
 					srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindless
-					bindless.ranges.emplace_back(srvRange);
-					uniforms.emplace_back(bindless);
+					cubeMapTextures.ranges.emplace_back(srvRange);
+					uniforms.emplace_back(cubeMapTextures);
 
 					Uniform staticSampler{ 0, 0, RootParams::RootResourceType::StaticSampler };
 					staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -417,11 +436,13 @@ namespace Wild {
 					list.BeginRender();
 
 					SpecularMapRootConstant rc{};
-					if (passData.environmentCubeTexture)
+
+					if (passData.environmentCubeTexture) {
 						rc.environmentView = passData.environmentCubeTexture->GetSrv()->BindlessView();
-
-					passData.environmentCubeTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
+						passData.environmentCubeTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+					}
+						
+					/// Loop over all possible faces and mips and generate the UAV resource for their respective index into the heap
 					auto desc = m_specularMap->GetDesc();
 					for (uint32_t mip = 0; mip < desc.mips; mip++)
 					{
@@ -442,11 +463,13 @@ namespace Wild {
 
 					list.EndRender();
 
+					// Transition resources so they are ready for use
 					m_brdfLut->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 					m_specularMap->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 					passData.environmentCubeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 				}
 
+				// Set all their resources into the renderer TODO modify so that they are set in the pass
 				renderer.irradianceMap = passData.irradianceTexture;
 				renderer.specularMap = m_specularMap.get();
 				renderer.brdfLut = m_brdfLut.get();
