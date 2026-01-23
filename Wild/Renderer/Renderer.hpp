@@ -15,14 +15,7 @@
 #include "Tools/States.hpp"
 
 namespace Wild {
-	struct RootConstant {
-		glm::mat4 matrix{};
-		glm::mat4 invMatrix{};
-		uint32_t albedoView{};
-		uint32_t normalView{};
-		uint32_t roughnessMetallicView{};
-		uint32_t emissiveView{};
-	};
+
 
 	class Renderer;
 

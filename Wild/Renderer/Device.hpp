@@ -89,6 +89,8 @@ namespace Wild {
 
 		std::shared_ptr<CommandQueue> m_commandQueue[static_cast<uint32_t>(QueueType::Max)];
 
+		std::shared_ptr<Window> m_window;
+
 		// Resource allocators
 		std::shared_ptr<DescriptorAllocatorRtv> m_descriptorAllocatorsRtv;
 		std::shared_ptr<DescriptorAllocatorDsv> m_descriptorAllocatorsDsv;
