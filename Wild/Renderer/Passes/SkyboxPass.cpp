@@ -24,6 +24,7 @@ namespace Wild {
 			texDesc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
 			texDesc.format = DXGI_FORMAT_R16G16_FLOAT;
 			texDesc.name = "BRDF LUT";
+			texDesc.shouldStayInCache = true;
 			m_brdfLut = std::make_shared<Texture>(texDesc);
 		}
 
@@ -37,6 +38,7 @@ namespace Wild {
 			texDesc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
 			texDesc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 			texDesc.name = "Specular cube map";
+			texDesc.shouldStayInCache = true;
 			m_specularMap = std::make_shared<Texture>(texDesc);
 		}
 	}
@@ -196,6 +198,7 @@ namespace Wild {
 			desc.usage = TextureDesc::gpuOnly;
 			desc.type = TextureType::CUBEMAP;
 			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
+			desc.shouldStayInCache = true;
 			passData->environmentCubeTexture = rg.CreateTransientTexture("Environtment cubemap", desc);
 		}
 
@@ -209,6 +212,7 @@ namespace Wild {
 			desc.usage = TextureDesc::gpuOnly;
 			desc.type = TextureType::CUBEMAP;
 			desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
+			desc.shouldStayInCache = true;
 			passData->irradianceTexture = rg.CreateTransientTexture("Irradiance cubemap", desc);
 		}
 

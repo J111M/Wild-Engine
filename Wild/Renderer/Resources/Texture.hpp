@@ -40,6 +40,9 @@ namespace Wild {
 
 		ViewFlag flag = none;
 
+		// Bool to make sure texture is not deleted when the cache is flushed
+		bool shouldStayInCache = false;
+
 		std::string name = "default";
 	};
 

@@ -50,6 +50,8 @@ namespace Wild {
 		std::shared_ptr<PipelineState> GetOrCreatePipeline(const std::string& key, PipelineStateType Type, const PipelineStateSettings& settings, const std::vector<Uniform>& uniforms = {});
 		std::shared_ptr<PipelineState> GetPipeline(const std::string& key);
 
+		void FlushResources();
+
 		Texture* irradianceMap{};
 		Texture* specularMap{};
 		Texture* brdfLut{};

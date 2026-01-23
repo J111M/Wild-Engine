@@ -116,7 +116,7 @@ namespace Wild {
 		currentCommandList->ResetList();
 	}
 
-	void GfxContext::ResizeWindow()
+	bool GfxContext::ResizeWindow()
 	{
 		int windowWidth = m_window->GetWidth();
 		int windowHeight = m_window->GetHeight();
@@ -127,28 +127,35 @@ namespace Wild {
 			m_clientWidth = std::max(1, windowWidth);
 			m_clientHeight = std::max(1, windowHeight);
 
-			/* for (int i = 0; i < BACK_BUFFER_COUNT; i++)
-			 {
-				 m_directCommandList[i]->Close();
-			 }*/
-
+			// Make sure queue is empty
 			GetCommandQueue(QueueType::Direct)->WaitForFence();
 
+			// Clear possible render targets
 			for (int i = 0; i < BACK_BUFFER_COUNT; i++)
 			{
-				m_renderTargets[i].reset();
+				if(m_renderTargets[i])
+					m_renderTargets[i].reset();
 			}
 
-			m_depthTarget.reset();
+			if(m_depthTarget)
+				m_depthTarget.reset();
 
+			// Flush all command before recreating the swap chain
+			Flush();
+
+			// Resize or recreate swapchain if it doesn't exist
 			CreateSwapchain();
-
-
+			
 			WD_INFO("Window is resized succsesfully!");
 
+			// Set new client values
 			m_clientWidth = m_window->GetWidth();
 			m_clientHeight = m_window->GetHeight();
+
+			return true;
 		}
+
+		return false;
 	}
 
 	void GfxContext::Flush() {
@@ -264,10 +271,11 @@ namespace Wild {
 		desc.usage = TextureDesc::gpuOnly;
 		desc.flag = TextureDesc::renderTarget;
 
-		ID3D12Resource* scBuffer = nullptr;
+		ComPtr<ID3D12Resource> scBuffer = nullptr;
 		m_swapchain->GetBuffer(index, IID_PPV_ARGS(&scBuffer));
 
 		m_renderTargets[index] = std::make_shared<Texture>(desc, scBuffer, D3D12_RESOURCE_STATE_PRESENT);
+
 
 		std::string rtName = "Backbuffer Render target: " + std::to_string(index);
 		m_renderTargets[index]->GetResource()->SetName(StringToWString(rtName).c_str());

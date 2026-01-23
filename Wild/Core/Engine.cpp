@@ -26,7 +26,7 @@ namespace Wild {
 
 		auto CameraEntity = engine.GetECS()->CreateEntity();
 		auto& transform = engine.GetECS()->AddComponent<Transform>(CameraEntity, glm::vec3(0, 0, 0), CameraEntity);
-		auto& camera = engine.GetECS()->AddComponent<Camera>(CameraEntity, glm::vec3(0,0,5));
+		auto& camera = engine.GetECS()->AddComponent<Camera>(CameraEntity, glm::vec3(0, 0, 5));
 
 		float frameTime{};
 
@@ -38,7 +38,9 @@ namespace Wild {
 			camera.Input(*m_window.get(), m_window->GetWidth(), m_window->GetHeight(), deltaTime);
 			camera.UpdateMatrix(glm::radians(70.0f), m_window->AspectRatio(), 0.1f, 10000.0f);
 
-			m_gfxContext->ResizeWindow();
+			if (m_gfxContext->ResizeWindow()) {
+				m_renderer->FlushResources();
+			}
 
 			m_gfxContext->BeginFrame();
 			m_imguiCore->Prepare();

@@ -16,7 +16,7 @@
 // Class insipered by @Tygo Boons https://t-boons.github.io/Rendergraph/
 
 namespace Wild {
-	#define GRAPHRESOURCE_LIFETIME 5
+#define GRAPHRESOURCE_LIFETIME 5
 
 	class TransientResourceCache : public NonCopyable
 	{
@@ -58,10 +58,21 @@ namespace Wild {
 	inline void TransientResourceCache::Flush()
 	{
 		// Delete all resources
-		for (auto& resource : m_resources) { resource.second.reset(); }
+		for (auto it = m_resources.begin(); it != m_resources.end(); ) {
+			bool shouldKeep = false;
 
-		m_lifetimes.clear();
-		m_resources.clear();
+			if (auto texture = std::any_cast<std::shared_ptr<Texture>>(&it->second)) {
+				shouldKeep = (*texture)->GetDesc().shouldStayInCache;
+			}
+
+			if (shouldKeep) {
+				it++;
+			}
+			else {
+				m_lifetimes.erase(it->first);
+				it = m_resources.erase(it);
+			}
+		}
 
 		WD_INFO("Deallocated/Flushed all transient resources.");
 	}

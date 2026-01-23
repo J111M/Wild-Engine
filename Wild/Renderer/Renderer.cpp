@@ -44,17 +44,6 @@ namespace Wild {
 	void Renderer::Render(CommandList& list, float deltaTime) {
 		auto gfxContext = engine.GetGfxContext();
 
-		D3D12_VIEWPORT viewPort{};
-		viewPort.TopLeftX = 0.0f;
-		viewPort.TopLeftY = 0.0f;
-		viewPort.Width = static_cast<FLOAT>(gfxContext->GetWidth());
-		viewPort.Height = static_cast<FLOAT>(gfxContext->GetHeight());
-		viewPort.MinDepth = 0.0f;
-		viewPort.MaxDepth = 1.0f;
-
-		D3D12_RECT scissorRect = { 0u, 0u, static_cast<LONG>(viewPort.Width), static_cast<LONG>(viewPort.Height) };
-
-
 		RenderGraph rg = RenderGraph(*m_resourceCache);
 
 		for (auto& feature : m_renderFeatures)
@@ -128,5 +117,11 @@ namespace Wild {
 		}
 
 		return nullptr;
+	}
+
+	void Renderer::FlushResources()
+	{
+		if (m_resourceCache)
+			m_resourceCache->Flush();
 	}
 }
