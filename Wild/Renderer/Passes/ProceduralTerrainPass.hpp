@@ -6,14 +6,12 @@
 namespace Wild {
 	struct ProceduralTerrainPassData
 	{
-		std::vector<Texture> heightMaps;
+		float foo;
 	};
 
 	struct TerrainRootConstant {
-		uint32_t emissiveView{};
-		uint32_t albedoView{};
-		uint32_t normalView{};
-		uint32_t depthView{};
+		glm::vec2 textureSize;
+		glm::vec2 chunkPosition;
 	};
 
 	class ProceduralTerrainPass : public RenderFeature
@@ -27,6 +25,7 @@ namespace Wild {
 
 		void RegenerateChunks() { m_shouldGenerateChunks = true; }
 
+		std::vector<std::shared_ptr<Texture>> heightMaps;
 	private:
 		std::vector<uint32_t> m_freedIndices;
 

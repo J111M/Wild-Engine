@@ -30,23 +30,32 @@
 
 using namespace Microsoft::WRL;
 
-
 inline void ThrowIfFailed(HRESULT hr, const char* msg = nullptr)
 {
     if (FAILED(hr))
     {
-        char buffer[256];
-        sprintf_s(buffer, "HRESULT failed: 0x%08X", static_cast<unsigned int>(hr));
+        char hrMsg[512] = {};
+        FormatMessageA(
+            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+            nullptr,
+            hr,
+            MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+            hrMsg,
+            sizeof(hrMsg),
+            nullptr
+        );
+        size_t len = strlen(hrMsg);
+        if (len > 0 && hrMsg[len - 1] == '\n') hrMsg[len - 1] = '\0';
+        if (len > 1 && hrMsg[len - 2] == '\r') hrMsg[len - 2] = '\0';
+
+        char buffer[1024];
+        sprintf_s(buffer, "HRESULT 0x%08X: %s", static_cast<unsigned int>(hr), hrMsg);
 
         std::string errMsg = buffer;
-        if (msg) {
+        if (msg)
             errMsg = std::string(msg) + " | " + errMsg;
 
-            WD_FATAL(errMsg);
-        }
-        else
-            WD_FATAL(errMsg);
-
+        WD_FATAL(errMsg);
         throw std::runtime_error(errMsg);
     }
 }

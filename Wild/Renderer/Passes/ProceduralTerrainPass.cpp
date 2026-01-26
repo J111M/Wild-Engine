@@ -14,8 +14,6 @@ namespace Wild {
 	{
 		auto* passData = rg.AllocatePassData<ProceduralTerrainPassData>();
 
-
-
 		rg.AddPass<ProceduralTerrainPassData>("Procedural terrain pass", PassType::Compute, [&renderer, this](ProceduralTerrainPassData& passData, CommandList& list) {
 
 			if (m_shouldGenerateChunks) {
@@ -25,14 +23,16 @@ namespace Wild {
 				desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
 				desc.format = DXGI_FORMAT_R32_FLOAT;
 
+				const uint32_t chunkWidth = 1u;
+				const uint32_t chunkHeight = 1u;
 
 				// Chunk size
-				for (uint32_t x = 0; x < 5u; x++)
+				for (uint32_t x = 0; x < chunkWidth; x++)
 				{
-					for (uint32_t y = 0; y < 5u; y++)
+					for (uint32_t y = 0; y < chunkHeight; y++)
 					{
 						desc.name = "Chunk number X: " + std::to_string(x) + " | Y: " + std::to_string(y);
-						passData.heightMaps.emplace_back(Texture(desc));
+						heightMaps.emplace_back(std::make_shared<Texture>(desc));
 					}
 				}
 
@@ -52,21 +52,26 @@ namespace Wild {
 				uniforms.emplace_back(heightMap);
 
 				auto& pipeline = renderer.GetOrCreatePipeline("Procedural terrain pass", PipelineStateType::Compute, computeSettings, uniforms);
-				list.SetPipelineState(pipeline);
-				list.BeginRender();
+				
 
-				for (size_t i = 0; i < passData.heightMaps.size(); i++)
+				for (size_t i = 0; i < heightMaps.size(); i++)
 				{
+					list.SetPipelineState(pipeline);
+					list.BeginRender();
+					m_rc.textureSize = glm::vec2(desc.width, desc.Height);
+
+					size_t x = i % chunkWidth;
+					size_t y = i / chunkWidth;
+					m_rc.chunkPosition = glm::vec2(x * 32, y * 32);
+
 					list.SetRootConstant(0, m_rc);
-					list.SetUnorderedAccessView(1, &passData.heightMaps[i]);
+					list.SetUnorderedAccessView(1, heightMaps[i].get());
 					list.GetList()->Dispatch((desc.width + 31) / 32, (desc.Height + 31) / 32, 1);
+
+					list.EndRender();
 				}
-				
 
-				
-
-				list.EndRender();
-
+				m_shouldGenerateChunks = false;
 			}
 		});
 	}
