@@ -94,8 +94,8 @@ namespace Wild
         auto *passData = rg.AllocatePassData<SkyPassData>();
         auto *pbrData = rg.GetPassData<SkyPassData, PbrPassData>();
 
-        passData->FinalTexture = pbrData->FinalTexture;
-        passData->DepthTexture = pbrData->DepthTexture;
+        passData->finalTexture = pbrData->finalTexture;
+        passData->depthTexture = pbrData->depthTexture;
 
         rg.AddPass<SkyPassData>(
             "Skybox pass", PassType::Graphics, [&renderer, this](const SkyPassData& passData, CommandList& list) {
@@ -151,9 +151,9 @@ namespace Wild
                 auto& pipeline = renderer.GetOrCreatePipeline("Skybox pass", PipelineStateType::Graphics, settings, uniforms);
 
                 list.SetPipelineState(pipeline);
-                list.BeginRender({passData.FinalTexture},
+                list.BeginRender({passData.finalTexture},
                                  {ClearOperation::Store},
-                                 passData.DepthTexture,
+                                 passData.depthTexture,
                                  DSClearOperation::Store,
                                  "Skybox pass");
 
@@ -198,7 +198,7 @@ namespace Wild
                 list.GetList()->DrawInstanced(36, 1, 0, 0);
                 list.EndRender();
 
-                renderer.compositeTexture = passData.FinalTexture;
+                renderer.compositeTexture = passData.finalTexture;
             });
     }
 

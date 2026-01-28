@@ -15,11 +15,13 @@ namespace Wild
     struct GrassComputeRC
     {
         glm::mat4 modelMatrix{};
-        glm::vec3 chunkPosition{};
+        glm::vec2 chunkPosition{};
         glm::vec2 minMaxHeight{};
         uint32_t seed{};
+        uint32_t bufferOffset{};
     };
 
+    // TODO modify Grass compute so it is done after the chunk generation in the terrain pass
     class GrassCompute
     {
       public:

@@ -10,8 +10,8 @@ namespace Wild
 {
     struct SkyPassData
     {
-        Texture *FinalTexture;
-        Texture *DepthTexture;
+        Texture *finalTexture;
+        Texture *depthTexture;
     };
 
     struct IBLPassData

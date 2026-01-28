@@ -17,10 +17,10 @@ namespace Wild
 
     struct DeferredPassData
     {
-        Texture *AlbedoRoughnessTexture;
-        Texture *NormalMetallicTexture;
-        Texture *EmissiveTexture;
-        Texture *DepthTexture;
+        Texture *albedoRoughnessTexture;
+        Texture *normalMetallicTexture;
+        Texture *emissiveTexture;
+        Texture *depthTexture;
     };
 
     class DeferredPass : public RenderFeature

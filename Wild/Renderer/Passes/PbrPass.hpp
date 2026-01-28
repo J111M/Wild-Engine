@@ -7,8 +7,8 @@ namespace Wild
 {
     struct PbrPassData
     {
-        Texture *FinalTexture;
-        Texture *DepthTexture;
+        Texture *finalTexture;
+        Texture *depthTexture;
     };
 
     struct InverseCamera

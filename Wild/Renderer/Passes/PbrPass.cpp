@@ -58,9 +58,9 @@ namespace Wild
         engine.GetImGui()->AddPanel("Pbr settings", [this]() {
             ImGui::SliderFloat3("Light direction: ", &m_pbrData.lightDirection[0], -20.0f, 20.0f);
 
-            const char *debugModes[] = {"None", "Albedo", "Normals", "Roughness", "Metallic", "AO", "Depth"};
+            const char* debugModes[] = {"None", "Albedo", "Normals", "Roughness", "Metallic", "AO", "Depth"};
 
-            ImGui::Combo("Debug view Mode", (int *)&m_pbrData.viewMode, debugModes, IM_ARRAYSIZE(debugModes));
+            ImGui::Combo("Debug view Mode", (int*)&m_pbrData.viewMode, debugModes, IM_ARRAYSIZE(debugModes));
         });
 
         m_pbrDataBuffer[frameIndex]->Allocate(&m_pbrData);
@@ -68,10 +68,10 @@ namespace Wild
 
     void PbrPass::Add(Renderer& renderer, RenderGraph& rg)
     {
-        auto *passData = rg.AllocatePassData<PbrPassData>();
-        auto *deferredData = rg.GetPassData<PbrPassData, DeferredPassData>();
+        auto* passData = rg.AllocatePassData<PbrPassData>();
+        auto* deferredData = rg.GetPassData<PbrPassData, DeferredPassData>();
 
-        passData->DepthTexture = deferredData->DepthTexture;
+        passData->depthTexture = deferredData->depthTexture;
 
         // Final texture
         {
@@ -82,7 +82,7 @@ namespace Wild
             desc.name = "FinalPbrTexture";
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
-            passData->FinalTexture = rg.CreateTransientTexture("FinalPbrTexture", desc);
+            passData->finalTexture = rg.CreateTransientTexture("FinalPbrTexture", desc);
         }
 
         rg.AddPass<PbrPassData>(
@@ -168,17 +168,17 @@ namespace Wild
 
                 list.SetPipelineState(pipeline);
                 list.BeginRender(
-                    {passData.FinalTexture}, {ClearOperation::Store}, nullptr, DSClearOperation::Store, "Pbr assembly pass");
+                    {passData.finalTexture}, {ClearOperation::Store}, nullptr, DSClearOperation::Store, "Pbr assembly pass");
 
-                deferredData->AlbedoRoughnessTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                deferredData->NormalMetallicTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                deferredData->EmissiveTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                deferredData->DepthTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                deferredData->albedoRoughnessTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                deferredData->normalMetallicTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                deferredData->emissiveTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                deferredData->depthTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-                m_rc.albedoView = deferredData->AlbedoRoughnessTexture->GetSrv()->BindlessView();
-                m_rc.normalView = deferredData->NormalMetallicTexture->GetSrv()->BindlessView();
-                m_rc.emissiveView = deferredData->EmissiveTexture->GetSrv()->BindlessView();
-                m_rc.depthView = deferredData->DepthTexture->GetSrv()->BindlessView();
+                m_rc.albedoView = deferredData->albedoRoughnessTexture->GetSrv()->BindlessView();
+                m_rc.normalView = deferredData->normalMetallicTexture->GetSrv()->BindlessView();
+                m_rc.emissiveView = deferredData->emissiveTexture->GetSrv()->BindlessView();
+                m_rc.depthView = deferredData->depthTexture->GetSrv()->BindlessView();
 
                 list.SetRootConstant<PbrRootConstant>(0, m_rc);
 

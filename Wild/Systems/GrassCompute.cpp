@@ -32,14 +32,15 @@ namespace Wild
     {
         // loop over all chunks
         m_rc.modelMatrix = glm::mat4{1.0f};
-        m_rc.chunkPosition = glm::vec3{};
+        m_rc.chunkPosition = glm::vec2{};
+        m_rc.bufferOffset = 0;
 
         m_bladeDataBuffer->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         list.GetList()->SetPipelineState(m_pipeline->GetPso().Get());
         list.GetList()->SetComputeRootSignature(m_pipeline->GetRootSignature().Get());
 
-        ID3D12DescriptorHeap *heaps[] = {engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get()};
+        ID3D12DescriptorHeap* heaps[] = {engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get()};
         list.GetList()->SetDescriptorHeaps(1, heaps);
 
         list.GetList()->SetComputeRootUnorderedAccessView(0, m_bladeDataBuffer->GetBuffer()->GetGPUVirtualAddress());

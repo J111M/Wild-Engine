@@ -3,6 +3,7 @@
 BasedOnStyle: Microsoft
 NamespaceIndentation: All
 ReferenceAlignment: Left
+PointerAlignment: Left
 BreakBeforeBinaryOperators: None
 AlignOperands: DontAlign
 ColumnLimit: 130

@@ -30,8 +30,8 @@ namespace Wild
 
     struct GrassPassData
     {
-        Texture* FinalTexture;
-        Texture* DepthTexture;
+        Texture* finalTexture;
+        Texture* depthTexture;
     };
 
     class GrassManager : public RenderFeature

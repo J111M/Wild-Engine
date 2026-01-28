@@ -74,8 +74,8 @@ namespace Wild
         }
 
         m_chunkEntity = engine.GetECS()->CreateEntity();
-        auto& transform = engine.GetECS()->AddComponent<Transform>(m_chunkEntity, glm::vec3(2, 0, -5), m_chunkEntity);
-        transform.SetPosition(glm::vec3(-10, 0, -20));
+        auto& transform = engine.GetECS()->AddComponent<Transform>(m_chunkEntity, glm::vec3(0, 0, 0), m_chunkEntity);
+        transform.SetPosition(glm::vec3(-16, 0, -16));
     }
 
     void GrassPass::Add(Renderer& renderer, RenderGraph& rg)
@@ -137,7 +137,7 @@ namespace Wild
     /// </summary>
     void GrassPass::AddClearCounterPass(Renderer& renderer, RenderGraph& rg)
     {
-        auto *passData = rg.AllocatePassData<ClearCounterData>();
+        auto* passData = rg.AllocatePassData<ClearCounterData>();
 
         rg.AddPass<ClearCounterData>(
             "Clear counter pass", PassType::Compute, [&renderer, this](ClearCounterData& countData, CommandList& list) {
@@ -176,7 +176,7 @@ namespace Wild
     /// </summary>
     void GrassPass::AddGrassCulling(Renderer& renderer, RenderGraph& rg)
     {
-        auto *passData = rg.AllocatePassData<GrassCullData>();
+        auto* passData = rg.AllocatePassData<GrassCullData>();
 
         // The dependency makes sure the clear counter pass is executed before executing this pass
         auto dependency = rg.GetPassData<GrassCullData, ClearCounterData>();
@@ -245,7 +245,7 @@ namespace Wild
     /// </summary>
     void GrassPass::AddIndirectDrawCommandsPass(Renderer& renderer, RenderGraph& rg)
     {
-        auto *passData = rg.AllocatePassData<IndirectCommandsData>();
+        auto* passData = rg.AllocatePassData<IndirectCommandsData>();
         auto cullData = rg.GetPassData<IndirectCommandsData, GrassCullData>();
 
         rg.AddPass<IndirectCommandsData>(
@@ -286,7 +286,7 @@ namespace Wild
 
     void GrassPass::AddRenderGrass(Renderer& renderer, RenderGraph& rg)
     {
-        auto *passData = rg.AllocatePassData<RenderGrassData>();
+        auto* passData = rg.AllocatePassData<RenderGrassData>();
         auto indirectPass = rg.GetPassData<RenderGrassData, IndirectCommandsData>();
 
         // Albedo
@@ -298,7 +298,7 @@ namespace Wild
             desc.name = "Albedo render target";
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
-            passData->AlbedoRoughness = rg.CreateTransientTexture("AlbedoRoughnessTexture", desc);
+            passData->albedoRoughnessTexture = rg.CreateTransientTexture("AlbedoRoughnessTexture", desc);
         }
 
         // Normals
@@ -310,7 +310,7 @@ namespace Wild
             desc.name = "Normal render target";
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
-            passData->NormalMetallic = rg.CreateTransientTexture("NormalMetallicTexture", desc);
+            passData->normalMetallicTexture = rg.CreateTransientTexture("NormalMetallicTexture", desc);
         }
 
         // emissive
@@ -322,7 +322,7 @@ namespace Wild
             desc.name = "Emissive render target";
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
-            passData->Emissive = rg.CreateTransientTexture("EmissiveTexture", desc);
+            passData->emissiveTexture = rg.CreateTransientTexture("EmissiveTexture", desc);
         }
 
         // DepthStencil
@@ -334,7 +334,7 @@ namespace Wild
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(
                 TextureDesc::depthStencil | TextureDesc::shaderResource); // Automatically uses depth stencil format
-            passData->DepthTexture = rg.CreateTransientTexture("DepthStencil", desc);
+            passData->depthTexture = rg.CreateTransientTexture("DepthStencil", desc);
         }
 
         rg.AddPass<RenderGrassData>(
@@ -375,7 +375,7 @@ namespace Wild
                 // Get camera | TODO get only the active camera or render for each possible camera
                 auto ecs = engine.GetECS();
                 auto& cameras = ecs->View<Camera>();
-                Camera *camera = nullptr;
+                Camera* camera = nullptr;
                 for (auto entity : cameras)
                 {
                     camera = &ecs->GetComponent<Camera>(entity);
@@ -383,9 +383,9 @@ namespace Wild
                 }
 
                 list.SetPipelineState(pipeline);
-                list.BeginRender({grassData.AlbedoRoughness, grassData.NormalMetallic, grassData.Emissive},
+                list.BeginRender({grassData.albedoRoughnessTexture, grassData.normalMetallicTexture, grassData.emissiveTexture},
                                  {ClearOperation::Clear, ClearOperation::Clear, ClearOperation::Clear},
-                                 grassData.DepthTexture,
+                                 grassData.depthTexture,
                                  DSClearOperation::DepthClear,
                                  "Grass Pass");
 

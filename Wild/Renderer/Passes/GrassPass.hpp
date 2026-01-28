@@ -14,10 +14,10 @@ namespace Wild
 
     struct RenderGrassData
     {
-        Texture *AlbedoRoughness;
-        Texture *NormalMetallic; // Also store SSS
-        Texture *Emissive;       // Store AO
-        Texture *DepthTexture;
+        Texture* albedoRoughnessTexture;
+        Texture* normalMetallicTexture; // Stores SSS
+        Texture* emissiveTexture;       // Stores AO
+        Texture* depthTexture;
     };
 
     struct FrustumBuffer

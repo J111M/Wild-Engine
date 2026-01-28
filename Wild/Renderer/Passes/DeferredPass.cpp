@@ -1,5 +1,5 @@
 #include "Renderer/Passes/DeferredPass.hpp"
-#include "Renderer/Passes/GrassPass.hpp"
+#include "Renderer/Passes/ProceduralTerrainPass.hpp"
 
 #include "Renderer/Resources/Model.hpp"
 
@@ -21,13 +21,13 @@ namespace Wild
 
     void DeferredPass::Add(Renderer& renderer, RenderGraph& rg)
     {
-        auto *passData = rg.AllocatePassData<DeferredPassData>();
-        auto *grassData = rg.GetPassData<DeferredPassData, RenderGrassData>();
+        auto* passData = rg.AllocatePassData<DeferredPassData>();
+        auto* grassData = rg.GetPassData<DeferredPassData, DrawTerrainPassData>();
 
-        passData->AlbedoRoughnessTexture = grassData->AlbedoRoughness;
-        passData->NormalMetallicTexture = grassData->NormalMetallic;
-        passData->EmissiveTexture = grassData->Emissive;
-        passData->DepthTexture = grassData->DepthTexture;
+        passData->albedoRoughnessTexture = grassData->albedoRoughnessTexture;
+        passData->normalMetallicTexture = grassData->normalMetallicTexture;
+        passData->emissiveTexture = grassData->emissiveTexture;
+        passData->depthTexture = grassData->depthTexture;
 
         rg.AddPass<DeferredPassData>(
             "Deferred pass", PassType::Graphics, [&renderer, this](const DeferredPassData& passData, CommandList& list) {
@@ -74,7 +74,7 @@ namespace Wild
                 auto ecs = engine.GetECS();
                 auto& cameras = ecs->View<Camera>();
 
-                Camera *camera = nullptr;
+                Camera* camera = nullptr;
                 for (auto entity : cameras)
                 {
                     camera = &ecs->GetComponent<Camera>(entity);
@@ -82,9 +82,9 @@ namespace Wild
                 }
 
                 list.SetPipelineState(pipeline);
-                list.BeginRender({passData.AlbedoRoughnessTexture, passData.NormalMetallicTexture, passData.EmissiveTexture},
+                list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
                                  {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
-                                 {passData.DepthTexture},
+                                 {passData.depthTexture},
                                  DSClearOperation::Store);
 
                 auto meshes = ecs->GetRegistry().view<Transform, Mesh>();

@@ -10,9 +10,10 @@ RWStructuredBuffer<GrassBlade> GrassData : register(u0);
 cbuffer RootConsant : register(b0)
 {
     float4x4 modelMatrix;
-    float3 chunkPosition;
+    float2 chunkPosition;
     float2 minMaxHeight;
     uint seed;
+    uint chunkId;
 };
 
 // https://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11
@@ -78,17 +79,20 @@ float rescale(float value, float min, float max)
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     // TODO add bounds for safity
-    
-    float2 rHash1 = HashFloat2InRange(DTid.x + 1, 0, 320); // 32 units per chunk for now
+    // TODO the offset id should be linked to the id of the chunk | ChunkID * threadID
+    uint offsetId = DTid.x + chunkId + 1;
 
-    float3 bladePosition = float3(rHash1.x, 0, rHash1.y);
+    // TODO modify PerBladeData to match chunk and chunk id
+    float2 rHash1 = HashFloat2InRange(offsetId, 0, 320); // 32 units per chunk for now
+
+    float3 bladePosition = float3(rHash1.x + chunkPosition.x, 0, rHash1.y + chunkPosition.y);
     
     GrassData[DTid.x].worldPosition = bladePosition.xyz;
 
-    float rHash2 = HashFloatInRange(DTid.x ^ 0x6C8E9CF5u, 0, 16);
-    
-    GrassData[DTid.x].rotation = rescale(uhash11(DTid.x + 1), 0, 4) * 2 * 3.141592653589793f; // To radiance
+    float rHash2 = HashFloatInRange(offsetId ^ 0x6C8E9CF5u, 0, 16);
 
-    GrassData[DTid.x].height = HashFloatInRange(DTid.x + 1 ^ 0x6C8EFE5u, 0.4, 1.1);
+    GrassData[DTid.x].rotation = rescale(uhash11(offsetId + 1), 0, 4) * 2 * 3.141592653589793f; // To radiance
+
+    GrassData[DTid.x].height = HashFloatInRange(offsetId ^ 0x45D9F3Bu, 0.4, 1.1);
 
 }

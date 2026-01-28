@@ -1,19 +1,26 @@
 #include "Renderer/Passes/ProceduralTerrainPass.hpp"
+#include "Renderer/Passes/GrassPass.hpp"
 
 namespace Wild
 {
-    ProceduralTerrainPass::ProceduralTerrainPass() {}
+    ProceduralTerrainPass::ProceduralTerrainPass() { GenerateTerrainPlane(128); }
 
     void ProceduralTerrainPass::Update(const float dt) {}
 
     void ProceduralTerrainPass::Add(Renderer& renderer, RenderGraph& rg)
     {
-        auto *passData = rg.AllocatePassData<ProceduralTerrainPassData>();
+        GenerateTerrainPass(renderer, rg);
+        DrawTerrainPass(renderer, rg);
+    }
 
-        rg.AddPass<ProceduralTerrainPassData>(
+    void ProceduralTerrainPass::GenerateTerrainPass(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<GenerateTerrainPassData>();
+
+        rg.AddPass<GenerateTerrainPassData>(
             "Procedural terrain pass",
             PassType::Compute,
-            [&renderer, this](ProceduralTerrainPassData& passData, CommandList& list) {
+            [&renderer, this](GenerateTerrainPassData& passData, CommandList& list) {
                 if (m_shouldGenerateChunks)
                 {
                     TextureDesc desc{};
@@ -22,16 +29,24 @@ namespace Wild
                     desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
                     desc.format = DXGI_FORMAT_R32_FLOAT;
 
-                    const uint32_t chunkWidth = 1u;
-                    const uint32_t chunkHeight = 1u;
+                    const uint32_t chunkWidth = 10u;
+                    const uint32_t chunkHeight = 10u;
 
                     // Chunk size
                     for (uint32_t x = 0; x < chunkWidth; x++)
                     {
                         for (uint32_t y = 0; y < chunkHeight; y++)
                         {
+                            Entity chunkEntity = engine.GetECS()->CreateEntity();
+                            auto& transform =
+                                engine.GetECS()->AddComponent<Transform>(chunkEntity, glm::vec3(0, 0, 0), m_chunkEntity);
+                            transform.SetPosition(glm::vec3(x * 32, 0, y * 32));
+
+                            auto& chunk = engine.GetECS()->AddComponent<TerrainChunk>(chunkEntity);
                             desc.name = "Chunk number X: " + std::to_string(x) + " | Y: " + std::to_string(y);
-                            heightMaps.emplace_back(std::make_shared<Texture>(desc));
+                            chunk.m_heightMap = std::make_unique<Texture>(desc);
+
+                            m_terrainChunks.emplace_back(chunkEntity);
                         }
                     }
 
@@ -41,7 +56,7 @@ namespace Wild
 
                     std::vector<Uniform> uniforms;
 
-                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(TerrainRootConstant)};
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(GenerateTerrainRootConstant)};
                     uniforms.emplace_back(rootConstant);
 
                     // UAV uniform for specular cube map
@@ -54,18 +69,19 @@ namespace Wild
                     auto& pipeline = renderer.GetOrCreatePipeline(
                         "Procedural terrain pass", PipelineStateType::Compute, computeSettings, uniforms);
 
-                    for (size_t i = 0; i < heightMaps.size(); i++)
+                    for (size_t i = 0; i < m_terrainChunks.size(); i++)
                     {
                         list.SetPipelineState(pipeline);
                         list.BeginRender();
-                        m_rc.textureSize = glm::vec2(desc.width, desc.Height);
+                        m_grc.textureSize = glm::vec2(desc.width, desc.Height);
 
                         size_t x = i % chunkWidth;
                         size_t y = i / chunkWidth;
-                        m_rc.chunkPosition = glm::vec2(x * 32, y * 32);
+                        m_grc.chunkPosition = glm::vec2(x * 32, y * 32);
 
-                        list.SetRootConstant(0, m_rc);
-                        list.SetUnorderedAccessView(1, heightMaps[i].get());
+                        list.SetRootConstant(0, m_grc);
+                        list.SetUnorderedAccessView(
+                            1, engine.GetECS()->GetComponent<TerrainChunk>(m_terrainChunks[i]).m_heightMap.get());
                         list.GetList()->Dispatch((desc.width + 31) / 32, (desc.Height + 31) / 32, 1);
 
                         list.EndRender();
@@ -75,4 +91,154 @@ namespace Wild
                 }
             });
     }
+
+    void ProceduralTerrainPass::DrawTerrainPass(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<DrawTerrainPassData>();
+        auto* grassData = rg.GetPassData<DrawTerrainPassData, RenderGrassData>();
+        auto* heightMapData = rg.GetPassData<DrawTerrainPassData, GenerateTerrainPassData>();
+
+        passData->albedoRoughnessTexture = grassData->albedoRoughnessTexture;
+        passData->normalMetallicTexture = grassData->normalMetallicTexture;
+        passData->emissiveTexture = grassData->emissiveTexture;
+        passData->depthTexture = grassData->depthTexture;
+
+        rg.AddPass<DrawTerrainPassData>(
+            "Draw procedural terrain pass",
+            PassType::Graphics,
+            [&renderer, heightMapData, this](DrawTerrainPassData& passData, CommandList& list) {
+                PipelineStateSettings settings{};
+                settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DrawTerrainVert.slang");
+                settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DrawTerrainFrag.slang");
+                settings.DepthStencilState.DepthEnable = true;
+
+                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Albedo
+                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Normal
+                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Emissive
+
+                // Setting up the input layout
+                settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+                settings.ShaderState.InputLayout.emplace_back(
+                    InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
+                settings.ShaderState.InputLayout.emplace_back(
+                    InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
+                settings.ShaderState.InputLayout.emplace_back(
+                    InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
+
+                std::vector<Uniform> uniforms;
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DrawTerrainRootConstant)};
+                uniforms.emplace_back(rootConstant);
+
+                Uniform bindlessUni{0, 0, RootParams::RootResourceType::DescriptorTable};
+                CD3DX12_DESCRIPTOR_RANGE srvRange{};
+                srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                              UINT_MAX,
+                              0,
+                              0,
+                              D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+                bindlessUni.ranges.emplace_back(srvRange);
+                bindlessUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+                uniforms.emplace_back(bindlessUni);
+
+                Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
+                uniforms.emplace_back(staticSampler);
+
+                auto& pipeline =
+                    renderer.GetOrCreatePipeline("Draw terrain chunks pass", PipelineStateType::Graphics, settings, uniforms);
+
+                // Rendering
+                auto ecs = engine.GetECS();
+                auto& cameras = ecs->View<Camera>();
+
+                Camera* camera = nullptr;
+                for (auto entity : cameras)
+                {
+                    camera = &ecs->GetComponent<Camera>(entity);
+                    break;
+                }
+
+                list.SetPipelineState(pipeline);
+                list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
+                                 {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
+                                 {passData.depthTexture},
+                                 DSClearOperation::Store);
+
+                for (auto [entity, chunk, transform] : ecs->GetRegistry().view<TerrainChunk, Transform>().each())
+                {
+                    if (camera)
+                    {
+                        m_drc.worldMatix = camera->GetProjection() * camera->GetView() * transform.GetWorldMatrix();
+                        m_drc.invModel = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
+                    }
+
+                    m_drc.heightMapView = chunk.m_heightMap->GetSrv()->BindlessView();
+
+                    list.SetRootConstant<DrawTerrainRootConstant>(0, m_drc);
+                    list.SetBindlessHeap(1);
+                    list.GetList()->IASetVertexBuffers(0, 1, &m_terrainVertices->GetVBView()->View());
+                    list.GetList()->IASetIndexBuffer(&m_terrainIndices->GetIBView()->View());
+                    list.GetList()->DrawIndexedInstanced(m_drawCount, 1, 0, 0, 0);
+
+                    list.EndRender();
+                }
+            });
+    }
+
+    void ProceduralTerrainPass::GenerateTerrainPlane(uint32_t resolution)
+    {
+        float size = 32.0f;
+        float halfSize = size / 2.0f;
+        float step = size / resolution;
+
+        std::vector<Vertex> vertices;
+        vertices.reserve(static_cast<size_t>(resolution) * static_cast<size_t>(resolution));
+
+        // Generate vertices
+        for (uint32_t z = 0; z <= resolution; z++)
+        {
+            for (uint32_t x = 0; x <= resolution; x++)
+            {
+                Vertex vertex;
+                vertex.position = {-halfSize + x * step, 0.0f, -halfSize + z * step};
+                vertex.color = {1.0f, 1.0f, 1.0f};
+                vertex.normal = {0.0f, 1.0f, 0.0f};
+                vertex.uv = {(float)x / resolution, (float)z / resolution};
+                vertices.push_back(vertex);
+            }
+        }
+
+        BufferDesc vDesc{};
+        m_terrainVertices = std::make_unique<Buffer>(vDesc);
+        m_terrainVertices->CreateVertexBuffer(vertices);
+
+        std::vector<uint32_t> indices;
+        indices.reserve(static_cast<size_t>(resolution) * static_cast<size_t>(resolution) * 6);
+
+        // Generate indices
+        for (uint32_t z = 0; z < resolution; z++)
+        {
+            for (uint32_t x = 0; x < resolution; x++)
+            {
+                uint32_t topLeft = z * (resolution + 1) + x;
+                uint32_t topRight = topLeft + 1;
+                uint32_t bottomLeft = (z + 1) * (resolution + 1) + x;
+                uint32_t bottomRight = bottomLeft + 1;
+
+                indices.push_back(topLeft);
+                indices.push_back(bottomLeft);
+                indices.push_back(topRight);
+
+                indices.push_back(topRight);
+                indices.push_back(bottomLeft);
+                indices.push_back(bottomRight);
+            }
+        }
+
+        BufferDesc iDesc{};
+        m_terrainIndices = std::make_unique<Buffer>(vDesc);
+        m_terrainIndices->CreateIndexBuffer(indices);
+
+        m_drawCount = indices.size();
+    };
 } // namespace Wild
