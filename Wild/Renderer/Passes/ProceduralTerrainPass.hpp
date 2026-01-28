@@ -1,36 +1,39 @@
 #pragma once
 
-#include "Renderer/Renderer.hpp"
 #include "Renderer/RenderGraph/RenderGraph.hpp"
+#include "Renderer/Renderer.hpp"
 
-namespace Wild {
-	struct ProceduralTerrainPassData
-	{
-		float foo;
-	};
+namespace Wild
+{
+    struct ProceduralTerrainPassData
+    {
+        float foo;
+    };
 
-	struct TerrainRootConstant {
-		glm::vec2 textureSize;
-		glm::vec2 chunkPosition;
-	};
+    struct TerrainRootConstant
+    {
+        glm::vec2 textureSize;
+        glm::vec2 chunkPosition;
+    };
 
-	class ProceduralTerrainPass : public RenderFeature
-	{
-	public:
-		ProceduralTerrainPass();
-		~ProceduralTerrainPass() {};
+    class ProceduralTerrainPass : public RenderFeature
+    {
+      public:
+        ProceduralTerrainPass();
+        ~ProceduralTerrainPass() {};
 
-		virtual void Update(const float dt) override;
-		virtual void Add(Renderer& renderer, RenderGraph& rg) override;
+        virtual void Update(const float dt) override;
+        virtual void Add(Renderer& renderer, RenderGraph& rg) override;
 
-		void RegenerateChunks() { m_shouldGenerateChunks = true; }
+        void RegenerateChunks() { m_shouldGenerateChunks = true; }
 
-		std::vector<std::shared_ptr<Texture>> heightMaps;
-	private:
-		std::vector<uint32_t> m_freedIndices;
+        std::vector<std::shared_ptr<Texture>> heightMaps;
 
-		bool m_shouldGenerateChunks = true;
+      private:
+        std::vector<uint32_t> m_freedIndices;
 
-		TerrainRootConstant m_rc{};
-	};
-}
+        bool m_shouldGenerateChunks = true;
+
+        TerrainRootConstant m_rc{};
+    };
+} // namespace Wild

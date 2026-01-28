@@ -9,15 +9,15 @@
 #include "Tools/Log.hpp"
 
 #ifdef DEBUG
-#define IFCHECK(condition, ...) \
-    if(!(condition)) WD_ERROR(__VA_ARGS__)
+#define IFCHECK(condition, ...)                                                                                                  \
+    if (!(condition)) WD_ERROR(__VA_ARGS__)
 #else
-#define IFCHECK(...) \
-{ \
-} 
+#define IFCHECK(...)                                                                                                             \
+    {                                                                                                                            \
+    }
 #endif
 
-#include <comdef.h> 
+#include <comdef.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -30,20 +30,18 @@
 
 using namespace Microsoft::WRL;
 
-inline void ThrowIfFailed(HRESULT hr, const char* msg = nullptr)
+inline void ThrowIfFailed(HRESULT hr, const char *msg = nullptr)
 {
     if (FAILED(hr))
     {
         char hrMsg[512] = {};
-        FormatMessageA(
-            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-            nullptr,
-            hr,
-            MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
-            hrMsg,
-            sizeof(hrMsg),
-            nullptr
-        );
+        FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                       nullptr,
+                       hr,
+                       MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+                       hrMsg,
+                       sizeof(hrMsg),
+                       nullptr);
         size_t len = strlen(hrMsg);
         if (len > 0 && hrMsg[len - 1] == '\n') hrMsg[len - 1] = '\0';
         if (len > 1 && hrMsg[len - 2] == '\r') hrMsg[len - 2] = '\0';
@@ -52,8 +50,7 @@ inline void ThrowIfFailed(HRESULT hr, const char* msg = nullptr)
         sprintf_s(buffer, "HRESULT 0x%08X: %s", static_cast<unsigned int>(hr), hrMsg);
 
         std::string errMsg = buffer;
-        if (msg)
-            errMsg = std::string(msg) + " | " + errMsg;
+        if (msg) errMsg = std::string(msg) + " | " + errMsg;
 
         WD_FATAL(errMsg);
         throw std::runtime_error(errMsg);
@@ -62,7 +59,7 @@ inline void ThrowIfFailed(HRESULT hr, const char* msg = nullptr)
 
 class NonCopyable
 {
-protected:
+  protected:
     NonCopyable() = default;
     ~NonCopyable() = default;
     NonCopyable(const NonCopyable&) = delete;

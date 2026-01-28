@@ -1,17 +1,15 @@
 #include "Core/Camera.hpp"
 
-namespace Wild {
-	Camera::Camera(glm::vec3 pos)
-	{
-		m_position = pos;
-	}
+namespace Wild
+{
+    Camera::Camera(glm::vec3 pos) { m_position = pos; }
 
-	void Camera::UpdateMatrix(float fov, float aspect, float nearF, float farF)
-	{
-		m_viewMatrix = glm::lookAt(m_position, m_position + m_orientation, m_up);
-		m_projectionMatrix = glm::perspective(fov, aspect, nearF, farF);
+    void Camera::UpdateMatrix(float fov, float aspect, float nearF, float farF)
+    {
+        m_viewMatrix = glm::lookAt(m_position, m_position + m_orientation, m_up);
+        m_projectionMatrix = glm::perspective(fov, aspect, nearF, farF);
 
-		m_cameraMatrix = m_projectionMatrix * m_viewMatrix;
+        m_cameraMatrix = m_projectionMatrix * m_viewMatrix;
 
         m_nearFar.x = nearF;
         m_nearFar.y = farF;
@@ -19,40 +17,51 @@ namespace Wild {
         m_aspect = aspect;
 
         m_quaternion = glm::quatLookAt(glm::normalize(m_orientation), glm::normalize(m_up));
-	}
+    }
 
-	void Camera::Input(Window& window, uint32_t width, uint32_t height, float dt) 
-	{
-		GLFWwindow* glfwWindow = window.GetWindow();
+    void Camera::Input(Window& window, uint32_t width, uint32_t height, float dt)
+    {
+        GLFWwindow *glfwWindow = window.GetWindow();
 
-		dt = glm::clamp(dt, 0.0f, 0.0333f);
+        dt = glm::clamp(dt, 0.0f, 0.0333f);
 
         if (glfwGetKey(glfwWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) { m_speed = 15.0f; }
-        else { m_speed = 5.0f; }
+        else
+        {
+            m_speed = 5.0f;
+        }
 
-		float velocity = m_speed * dt;
+        float velocity = m_speed * dt;
 
-		if (glfwGetKey(glfwWindow, GLFW_KEY_S) == GLFW_PRESS) { m_position -= velocity * m_orientation; }
-		if (glfwGetKey(glfwWindow, GLFW_KEY_W) == GLFW_PRESS) { m_position += velocity * m_orientation; }
-		if (glfwGetKey(glfwWindow, GLFW_KEY_A) == GLFW_PRESS) { m_position -= velocity * glm::normalize(glm::cross(m_orientation, m_up)); }
-		if (glfwGetKey(glfwWindow, GLFW_KEY_D) == GLFW_PRESS) { m_position += velocity * glm::normalize(glm::cross(m_orientation, m_up)); }
+        if (glfwGetKey(glfwWindow, GLFW_KEY_S) == GLFW_PRESS) { m_position -= velocity * m_orientation; }
+        if (glfwGetKey(glfwWindow, GLFW_KEY_W) == GLFW_PRESS) { m_position += velocity * m_orientation; }
+        if (glfwGetKey(glfwWindow, GLFW_KEY_A) == GLFW_PRESS)
+        {
+            m_position -= velocity * glm::normalize(glm::cross(m_orientation, m_up));
+        }
+        if (glfwGetKey(glfwWindow, GLFW_KEY_D) == GLFW_PRESS)
+        {
+            m_position += velocity * glm::normalize(glm::cross(m_orientation, m_up));
+        }
 
-		if (glfwGetKey(glfwWindow, GLFW_KEY_E) == GLFW_PRESS) { m_position += velocity * m_up; }
-		if (glfwGetKey(glfwWindow, GLFW_KEY_Q) == GLFW_PRESS) { m_position -= velocity * m_up; }
+        if (glfwGetKey(glfwWindow, GLFW_KEY_E) == GLFW_PRESS) { m_position += velocity * m_up; }
+        if (glfwGetKey(glfwWindow, GLFW_KEY_Q) == GLFW_PRESS) { m_position -= velocity * m_up; }
 
-		//if (glfwGetKey(glfwWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) { speed = 0.05f; }
-		//else { speed = 0.05f; }
+        // if (glfwGetKey(glfwWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) { speed = 0.05f; }
+        // else { speed = 0.05f; }
 
-		// Handles mouse inputs
-        if (glfwGetMouseButton(glfwWindow, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
+        // Handles mouse inputs
+        if (glfwGetMouseButton(glfwWindow, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+        {
             // Hides the mouse cursor
-            //glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+            // glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
             // Get current mouse position
             double mouseX, mouseY;
             glfwGetCursorPos(glfwWindow, &mouseX, &mouseY);
 
-            if (firstClick) {
+            if (firstClick)
+            {
                 m_lastMousePos.x = mouseX;
                 m_lastMousePos.y = mouseY;
                 firstClick = false;
@@ -71,10 +80,13 @@ namespace Wild {
             float rotY = -m_sensitivity * (deltaY / static_cast<float>(height));
 
             // Compute new orientation
-            glm::vec3 newOrientation = glm::rotate(m_orientation, glm::radians(rotY), glm::normalize(glm::cross(m_orientation, m_up)));
+            glm::vec3 newOrientation =
+                glm::rotate(m_orientation, glm::radians(rotY), glm::normalize(glm::cross(m_orientation, m_up)));
 
             // Clamp y rotation
-            if (!(glm::angle(newOrientation, m_up) <= glm::radians(5.0f) || glm::angle(newOrientation, -m_up) <= glm::radians(5.0f))) {
+            if (!(glm::angle(newOrientation, m_up) <= glm::radians(5.0f) ||
+                  glm::angle(newOrientation, -m_up) <= glm::radians(5.0f)))
+            {
                 m_orientation = newOrientation;
             }
 
@@ -82,23 +94,25 @@ namespace Wild {
             m_orientation = glm::rotate(m_orientation, glm::radians(rotX), m_up);
 
             // Keep the mouse within the window bounds
-            if (mouseX <= 0 || mouseX >= width || mouseY <= 0 || mouseY >= height) {
+            if (mouseX <= 0 || mouseX >= width || mouseY <= 0 || mouseY >= height)
+            {
                 glfwSetCursorPos(glfwWindow, width / 2.0, height / 2.0);
                 m_lastMousePos.x = width / 2.0;
                 m_lastMousePos.y = height / 2.0;
             }
         }
-        else {
+        else
+        {
             // Make the cursor visible again
-            //glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            // glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             firstClick = true;
         }
-	}
+    }
     const glm::quat& Camera::GetCameraQuateurnion()
     {
         ///*glm::mat3 camRot = glm::mat3(glm::normalize(glm::cross(m_orientation, m_up)), m_up, m_orientation);
-        //return glm::quat_cast(camRot);*/
+        // return glm::quat_cast(camRot);*/
 
         return m_quaternion;
     }
-}
+} // namespace Wild

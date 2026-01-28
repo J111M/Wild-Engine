@@ -9,81 +9,82 @@
 
 #include <glm/glm.hpp>
 
-namespace Wild {
-	class Texture;
-	class PipelineState;
-	class Buffer;
+namespace Wild
+{
+    class Texture;
+    class PipelineState;
+    class Buffer;
 
-	class CommandList : private NonCopyable
-	{
-	public:
-		CommandList(D3D12_COMMAND_LIST_TYPE listType);
-		~CommandList();
+    class CommandList : private NonCopyable
+    {
+      public:
+        CommandList(D3D12_COMMAND_LIST_TYPE listType);
+        ~CommandList();
 
-		ComPtr<ID3D12GraphicsCommandList> GetList() { return m_commandList; }
-		ComPtr<ID3D12CommandAllocator> GetAllocator() { return m_allocator; }
+        ComPtr<ID3D12GraphicsCommandList> GetList() { return m_commandList; }
+        ComPtr<ID3D12CommandAllocator> GetAllocator() { return m_allocator; }
 
-		bool IsReady() { return m_commandListClosed; }
+        bool IsReady() { return m_commandListClosed; }
 
-		void ResetList();
-		void Close();
+        void ResetList();
+        void Close();
 
-		void SetPipelineState(const std::shared_ptr<PipelineState> pipeline);
+        void SetPipelineState(const std::shared_ptr<PipelineState> pipeline);
 
-		void BeginRender(const std::vector<Texture*>& renderTargets,
-			const std::vector<ClearOperation>& clearRt,
-			Texture* depthStencil,
-			DSClearOperation clearDs,
-			const std::string& passName = {}, uint32_t rtArrayIndex = 64);
-		void BeginRender(const std::string& passName = {});
+        void BeginRender(const std::vector<Texture *>& renderTargets, const std::vector<ClearOperation>& clearRt,
+                         Texture *depthStencil, DSClearOperation clearDs, const std::string& passName = {},
+                         uint32_t rtArrayIndex = 64);
+        void BeginRender(const std::string& passName = {});
 
-		void EndRender();
+        void EndRender();
 
-		void ClearDepthStencil(Texture& depthStencil, const DSClearOperation clear, const float depth = 1.0, const uint8_t stencil = 0);
-		void ClearRenderTarget(Texture& renderTarget, const glm::vec4& color = { 0.0f, 0.0f, 0.0f, 1.0f });
+        void ClearDepthStencil(Texture& depthStencil, const DSClearOperation clear, const float depth = 1.0,
+                               const uint8_t stencil = 0);
+        void ClearRenderTarget(Texture& renderTarget, const glm::vec4& color = {0.0f, 0.0f, 0.0f, 1.0f});
 
-		// TODO Implement for platform abstraction
+        // TODO Implement for platform abstraction
 
-		template<typename rc>
-		void SetRootConstant(uint32_t rootIndex, rc& rootConstant);
-		void SetBindlessHeap(uint32_t rootIndex);
-		void SetConstantBufferView(uint32_t rootIndex, Buffer* buffer);
+        template <typename rc> void SetRootConstant(uint32_t rootIndex, rc& rootConstant);
+        void SetBindlessHeap(uint32_t rootIndex);
+        void SetConstantBufferView(uint32_t rootIndex, Buffer *buffer);
 
-		void SetUnorderedAccessView(uint32_t rootIndex, Buffer* buffer);
-		void SetUnorderedAccessView(uint32_t rootIndex, Texture* texture, uint32_t index = 64);
+        void SetUnorderedAccessView(uint32_t rootIndex, Buffer *buffer);
+        void SetUnorderedAccessView(uint32_t rootIndex, Texture *texture, uint32_t index = 64);
 
-		void SetShaderResourceView(uint32_t rootIndex, Buffer* buffer);
+        void SetShaderResourceView(uint32_t rootIndex, Buffer *buffer);
 
-		void SetVertexBuffer() {};
-		void SetIndexBuffer() {};
-		void Draw(uint32_t size) {};
-	private:
-		void SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil, uint32_t rtArrayIndex);
+        void SetVertexBuffer() {};
+        void SetIndexBuffer() {};
+        void Draw(uint32_t size) {};
 
-		const bool CanPassExecute(const std::string& passName);
+      private:
+        void SetRenderTargets(const std::vector<Texture *>& renderTargets, Texture *depthStencil, uint32_t rtArrayIndex);
 
-		ComPtr<ID3D12GraphicsCommandList> m_commandList;
-		ComPtr<ID3D12CommandAllocator> m_allocator;
+        const bool CanPassExecute(const std::string& passName);
 
-		D3D12_COMMAND_LIST_TYPE m_type;
+        ComPtr<ID3D12GraphicsCommandList> m_commandList;
+        ComPtr<ID3D12CommandAllocator> m_allocator;
 
-		// Pipeline state is set per pass
-		std::shared_ptr<PipelineState> m_pipelineState{};
+        D3D12_COMMAND_LIST_TYPE m_type;
 
-		bool m_commandListClosed = false;
-		bool m_frameInFlight = false;
-		bool m_pipelineIsSet = false;
-		//std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> m_psoCache{};
-	};
+        // Pipeline state is set per pass
+        std::shared_ptr<PipelineState> m_pipelineState{};
 
-	template<typename rc>
-	inline void CommandList::SetRootConstant(uint32_t rootIndex, rc& rootConstant)
-	{
-		if (m_pipelineState->IsComputePass()) {
-			m_commandList->SetComputeRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
-		}
-		else {
-			m_commandList->SetGraphicsRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
-		}
-	}
-}
+        bool m_commandListClosed = false;
+        bool m_frameInFlight = false;
+        bool m_pipelineIsSet = false;
+        // std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> m_psoCache{};
+    };
+
+    template <typename rc> inline void CommandList::SetRootConstant(uint32_t rootIndex, rc& rootConstant)
+    {
+        if (m_pipelineState->IsComputePass())
+        {
+            m_commandList->SetComputeRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
+        }
+        else
+        {
+            m_commandList->SetGraphicsRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
+        }
+    }
+} // namespace Wild

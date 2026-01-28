@@ -5,41 +5,43 @@
 #include <Windows.h>
 #include <wrl.h>
 
-namespace Wild {
-	Window::Window(std::string windowName, int width, int height)
-	{
-		m_width = width;
-		m_height = height;
+namespace Wild
+{
+    Window::Window(std::string windowName, int width, int height)
+    {
+        m_width = width;
+        m_height = height;
 
-		if (!glfwInit()) {
-			WD_FATAL("Failed to initialize glfw!");
-			glfwTerminate();
-		}
-			
-		m_windowName = windowName;
+        if (!glfwInit())
+        {
+            WD_FATAL("Failed to initialize glfw!");
+            glfwTerminate();
+        }
 
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        m_windowName = windowName;
 
-		m_window = glfwCreateWindow(m_width, m_height, windowName.c_str(), nullptr, nullptr);
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-		m_hwnd = glfwGetWin32Window(m_window);
+        m_window = glfwCreateWindow(m_width, m_height, windowName.c_str(), nullptr, nullptr);
 
-		glfwSetWindowUserPointer(m_window, this);
-		glfwSetFramebufferSizeCallback(m_window, FrameBufferResizeCallback);
-	}
+        m_hwnd = glfwGetWin32Window(m_window);
 
-	Window::~Window()
-	{
-		glfwDestroyWindow(m_window);
-		glfwTerminate();
-	}
+        glfwSetWindowUserPointer(m_window, this);
+        glfwSetFramebufferSizeCallback(m_window, FrameBufferResizeCallback);
+    }
 
-	void Window::FrameBufferResizeCallback(GLFWwindow* window, int width, int height)
-	{
-		auto userWindow = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+    Window::~Window()
+    {
+        glfwDestroyWindow(m_window);
+        glfwTerminate();
+    }
 
-		userWindow->m_frameBufferResized = true;
-		userWindow->m_width = width;
-		userWindow->m_height = height;
-	}
-}
+    void Window::FrameBufferResizeCallback(GLFWwindow *window, int width, int height)
+    {
+        auto userWindow = reinterpret_cast<Window *>(glfwGetWindowUserPointer(window));
+
+        userWindow->m_frameBufferResized = true;
+        userWindow->m_width = width;
+        userWindow->m_height = height;
+    }
+} // namespace Wild

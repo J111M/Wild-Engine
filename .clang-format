@@ -1,0 +1,13 @@
+# Format Style Options - Created with Clang Power Tools
+---
+BasedOnStyle: Microsoft
+NamespaceIndentation: All
+ReferenceAlignment: Left
+BreakBeforeBinaryOperators: None
+AlignOperands: DontAlign
+ColumnLimit: 130
+AllowShortFunctionsOnASingleLine: All
+AllowShortBlocksOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: true
+BinPackArguments: false
+...

@@ -3,105 +3,108 @@
 #include "Renderer/CommandList.hpp"
 #include "Renderer/CommandQueue.hpp"
 #include "Renderer/Resources/Texture.hpp"
+#include "Renderer/Window.hpp"
 
 #include "Tools/DescriptorAllocator.hpp"
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
 
-namespace Wild {
-	constexpr int BACK_BUFFER_COUNT = 2;
+namespace Wild
+{
+    constexpr int BACK_BUFFER_COUNT = 2;
 
-	class GfxContext
-	{
-	public:
-		GfxContext(std::shared_ptr<Window> window);
-		~GfxContext() {};
+    class GfxContext
+    {
+      public:
+        GfxContext(std::shared_ptr<Window> window);
+        ~GfxContext() {};
 
-		void Initialize();
-		void Shutdown();
+        void Initialize();
+        void Shutdown();
 
-		ComPtr<ID3D12Device> GetDevice() { return m_device; }
-		ComPtr<IDXGIFactory4> GetFactory() { return m_factory; }
+        ComPtr<ID3D12Device> GetDevice() { return m_device; }
+        ComPtr<IDXGIFactory4> GetFactory() { return m_factory; }
 
-		// Get queue from input variable type
-		std::shared_ptr<CommandQueue> GetCommandQueue(QueueType type) { return m_commandQueue[static_cast<uint32_t>(type)]; }
+        // Get queue from input variable type
+        std::shared_ptr<CommandQueue> GetCommandQueue(QueueType type) { return m_commandQueue[static_cast<uint32_t>(type)]; }
 
-		// Get frame index
-		UINT GetBackBufferIndex() { return m_swapchain->GetCurrentBackBufferIndex(); }
+        // Get frame index
+        UINT GetBackBufferIndex() { return m_swapchain->GetCurrentBackBufferIndex(); }
 
-		std::shared_ptr<Texture> GetRenderTarget() { return m_renderTargets[m_backBufferIndex]; }
-		std::shared_ptr<Texture> GetDepthTarget() { return m_depthTarget; }
+        std::shared_ptr<Texture> GetRenderTarget() { return m_renderTargets[m_backBufferIndex]; }
+        std::shared_ptr<Texture> GetDepthTarget() { return m_depthTarget; }
 
-		std::shared_ptr<CommandList> GetCommandList() { return m_directCommandList[m_backBufferIndex]; }
+        std::shared_ptr<CommandList> GetCommandList() { return m_directCommandList[m_backBufferIndex]; }
 
-		// TODO add possible command list for compute commands
-		//std::shared_ptr<CommandList> GetComputeCommandList() { return m_computeCommandList[m_backBufferIndex]; }
+        // TODO add possible command list for compute commands
+        // std::shared_ptr<CommandList> GetComputeCommandList() { return m_computeCommandList[m_backBufferIndex]; }
 
-		void BeginFrame();
-		void EndFrame();
+        void BeginFrame();
+        void EndFrame();
 
-		bool ResizeWindow();
+        bool ResizeWindow();
 
-		int GetWidth() { return m_clientWidth; }
-		int GetHeight() { return m_clientHeight; }
+        int GetWidth() { return m_clientWidth; }
+        int GetHeight() { return m_clientHeight; }
 
-		void Flush();
+        void Flush();
 
-		std::shared_ptr<DescriptorAllocatorRtv> GetRtvAllocator() { return m_descriptorAllocatorsRtv; }
-		std::shared_ptr<DescriptorAllocatorDsv> GetDsvAllocator() { return m_descriptorAllocatorsDsv; }
-		std::shared_ptr<DescriptorAllocatorCbvSrvUav> GetCbvSrvUavAllocator() { return m_desciptorAllocatorCbvSrvUav; }
-	private:
-		// Entrypoint to graphics API
-		void SetupFactory();
+        std::shared_ptr<DescriptorAllocatorRtv> GetRtvAllocator() { return m_descriptorAllocatorsRtv; }
+        std::shared_ptr<DescriptorAllocatorDsv> GetDsvAllocator() { return m_descriptorAllocatorsDsv; }
+        std::shared_ptr<DescriptorAllocatorCbvSrvUav> GetCbvSrvUavAllocator() { return m_desciptorAllocatorCbvSrvUav; }
 
-		// Enemurate over all the physical graphics adapters and pick one that supports the feature level
-		void CreateAdapter();
+      private:
+        // Entrypoint to graphics API
+        void SetupFactory();
 
-		// Creating the actual device object
-		void CreateDevice();
+        // Enemurate over all the physical graphics adapters and pick one that supports the feature level
+        void CreateAdapter();
 
-		// Creates or resizes swapchain if availiable
-		void CreateSwapchain();
-		void CreateTextureFromSwapchain(UINT index);
+        // Creating the actual device object
+        void CreateDevice();
 
-		ComPtr<IDXGIFactory4> m_factory;
+        // Creates or resizes swapchain if availiable
+        void CreateSwapchain();
+        void CreateTextureFromSwapchain(UINT index);
 
-		// factory flags
-		UINT m_dxgiFactoryFlags = 0;
+        ComPtr<IDXGIFactory4> m_factory;
 
-		// DirectX 12 resources
-		ComPtr<ID3D12Debug1> m_debugController;
-		ComPtr<IDXGIAdapter1> m_adapter;
-		ComPtr<ID3D12Device> m_device;
-		ComPtr<ID3D12DebugDevice> m_debugDevice;
+        // factory flags
+        UINT m_dxgiFactoryFlags = 0;
 
-		// Swapchain
-		ComPtr<IDXGISwapChain3> m_swapchain;
-		D3D12_VIEWPORT m_viewport;
-		D3D12_RECT m_surfaceSize;
+        // DirectX 12 resources
+        ComPtr<ID3D12Debug1> m_debugController;
+        ComPtr<IDXGIAdapter1> m_adapter;
+        ComPtr<ID3D12Device> m_device;
+        ComPtr<ID3D12DebugDevice> m_debugDevice;
 
-		std::shared_ptr<CommandList> m_directCommandList[BACK_BUFFER_COUNT];
+        // Swapchain
+        ComPtr<IDXGISwapChain3> m_swapchain;
+        D3D12_VIEWPORT m_viewport;
+        D3D12_RECT m_surfaceSize;
 
-		// Output render targets
-		std::shared_ptr<Texture> m_renderTargets[BACK_BUFFER_COUNT];
-		std::shared_ptr<Texture> m_depthTarget;
+        std::shared_ptr<CommandList> m_directCommandList[BACK_BUFFER_COUNT];
 
-		std::shared_ptr<CommandQueue> m_commandQueue[static_cast<uint32_t>(QueueType::Max)];
+        // Output render targets
+        std::shared_ptr<Texture> m_renderTargets[BACK_BUFFER_COUNT];
+        std::shared_ptr<Texture> m_depthTarget;
 
-		std::shared_ptr<Window> m_window;
+        std::shared_ptr<CommandQueue> m_commandQueue[static_cast<uint32_t>(QueueType::Max)];
 
-		// Resource allocators
-		std::shared_ptr<DescriptorAllocatorRtv> m_descriptorAllocatorsRtv;
-		std::shared_ptr<DescriptorAllocatorDsv> m_descriptorAllocatorsDsv;
-		std::shared_ptr<DescriptorAllocatorCbvSrvUav> m_desciptorAllocatorCbvSrvUav;
+        std::shared_ptr<Window> m_window;
 
-		UINT m_backBufferIndex{};
-		UINT m_currentFrame{};
+        // Resource allocators
+        std::shared_ptr<DescriptorAllocatorRtv> m_descriptorAllocatorsRtv;
+        std::shared_ptr<DescriptorAllocatorDsv> m_descriptorAllocatorsDsv;
+        std::shared_ptr<DescriptorAllocatorCbvSrvUav> m_desciptorAllocatorCbvSrvUav;
 
-		bool m_vsyncEnabled = true;
-		bool m_hdrEnabled = false;
+        UINT m_backBufferIndex{};
+        UINT m_currentFrame{};
 
-		int m_clientWidth{}, m_clientHeight{};
-	};
-}
+        bool m_vsyncEnabled = true;
+        bool m_hdrEnabled = false;
+
+        int m_clientWidth{}, m_clientHeight{};
+    };
+} // namespace Wild

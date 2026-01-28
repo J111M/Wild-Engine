@@ -1,81 +1,87 @@
 #pragma once
 
-#include "Renderer/Renderer.hpp"
 #include "Renderer/RenderGraph/RenderGraph.hpp"
+#include "Renderer/Renderer.hpp"
 #include "Renderer/Resources/Mesh.hpp"
 
 #include <functional>
 
-namespace Wild {
-	struct SkyPassData
-	{
-		Texture* FinalTexture;
-		Texture* DepthTexture;
-	};
+namespace Wild
+{
+    struct SkyPassData
+    {
+        Texture *FinalTexture;
+        Texture *DepthTexture;
+    };
 
-	struct IBLPassData
-	{
-		Texture* environmentCubeTexture;
-		Texture* irradianceTexture;
-	};
+    struct IBLPassData
+    {
+        Texture *environmentCubeTexture;
+        Texture *irradianceTexture;
+    };
 
-	struct IrradiancePassData
-	{
-		Texture* environmentCubeTexture;
-		Texture* irradianceTexture;
-	};
+    struct IrradiancePassData
+    {
+        Texture *environmentCubeTexture;
+        Texture *irradianceTexture;
+    };
 
-	struct CameraProjection {
-		glm::mat4 view{};
-		glm::mat4 proj{};
-	};
+    struct CameraProjection
+    {
+        glm::mat4 view{};
+        glm::mat4 proj{};
+    };
 
-	struct SkyRootConstant {
-		uint32_t view{};
-		uint32_t viewCube{};
-		uint32_t mipLevel{};
-	};
+    struct SkyRootConstant
+    {
+        uint32_t view{};
+        uint32_t viewCube{};
+        uint32_t mipLevel{};
+    };
 
-	struct IBLRootConstant {
-		glm::mat4 projView{};
-		uint32_t view;
-	};
+    struct IBLRootConstant
+    {
+        glm::mat4 projView{};
+        uint32_t view;
+    };
 
-	struct SpecularMapRootConstant {
-		uint32_t environmentView{};
-		int mipSize{};
-		float roughness{};
-		int face{};
-	};
+    struct SpecularMapRootConstant
+    {
+        uint32_t environmentView{};
+        int mipSize{};
+        float roughness{};
+        int face{};
+    };
 
-	class CommandList;
+    class CommandList;
 
-	class SkyPass : public RenderFeature
-	{
-	public:
-		SkyPass(std::string filePath);
-		~SkyPass() {};
+    class SkyPass : public RenderFeature
+    {
+      public:
+        SkyPass(std::string filePath);
+        ~SkyPass() {};
 
-		virtual void Update(const float dt) override;
-		virtual void Add(Renderer& renderer, RenderGraph& rg) override;
+        virtual void Update(const float dt) override;
+        virtual void Add(Renderer& renderer, RenderGraph& rg) override;
 
-		void AddSkyboxPass(Renderer& renderer, RenderGraph& rg);
-		void AddIBLPass(Renderer& renderer, RenderGraph& rg);
-	private:
-		// Skybox pass
-		std::vector<Vertex> CreateCube();
-		std::vector<Vertex> m_cube;
+        void AddSkyboxPass(Renderer& renderer, RenderGraph& rg);
+        void AddIBLPass(Renderer& renderer, RenderGraph& rg);
 
-		std::unique_ptr<Buffer> m_cameraProjection[BACK_BUFFER_COUNT];
-		std::unique_ptr<Buffer> m_cubeVertexBuffer;
-		std::unique_ptr<Texture> m_skyboxTexture;
+      private:
+        // Skybox pass
+        std::vector<Vertex> CreateCube();
+        std::vector<Vertex> m_cube;
 
-		uint32_t m_debugSkyboxMode = 0;
-		bool ShouldGenerateNewIBL = true;
-		//std::function<void(const SkyPassData&, CommandList&)> m_skyboxLambda;
+        std::unique_ptr<Buffer> m_cameraProjection[BACK_BUFFER_COUNT];
+        std::unique_ptr<Buffer> m_cubeVertexBuffer;
+        std::unique_ptr<Texture> m_skyboxTexture;
 
-		std::shared_ptr<Texture> m_brdfLut;
-		std::shared_ptr<Texture> m_specularMap;
-		uint32_t m_specularMips = 5;
-	};
-}
+        uint32_t m_debugSkyboxMode = 0;
+        bool ShouldGenerateNewIBL = true;
+        // std::function<void(const SkyPassData&, CommandList&)> m_skyboxLambda;
+
+        std::shared_ptr<Texture> m_brdfLut;
+        std::shared_ptr<Texture> m_specularMap;
+        uint32_t m_specularMips = 5;
+    };
+} // namespace Wild

@@ -3,31 +3,34 @@
 #include "Tools/Common3d12.hpp"
 #include "Tools/States.hpp"
 
-namespace Wild {
-    //psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    //psoDesc.RasterizerState.FrontCounterClockwise = TRUE;
-    //psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-    //psoDesc.NumRenderTargets = 1;
-    //psoDesc.SampleDesc.Count = 1;
-    //psoDesc.SampleDesc.Quality = 0;
+namespace Wild
+{
+    // psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    // psoDesc.RasterizerState.FrontCounterClockwise = TRUE;
+    // psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    // psoDesc.NumRenderTargets = 1;
+    // psoDesc.SampleDesc.Count = 1;
+    // psoDesc.SampleDesc.Quality = 0;
 
-    //psoDesc.DepthStencilState.DepthEnable = m_settings.DepthStencilState.DepthEnable;
-    //psoDesc.DepthStencilState.DepthWriteMask = static_cast<D3D12_DEPTH_WRITE_MASK>(m_settings.DepthStencilState.DepthWriteMask);
-    //psoDesc.DepthStencilState.DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(m_settings.DepthStencilState.DepthFunc);
+    // psoDesc.DepthStencilState.DepthEnable = m_settings.DepthStencilState.DepthEnable;
+    // psoDesc.DepthStencilState.DepthWriteMask =
+    // static_cast<D3D12_DEPTH_WRITE_MASK>(m_settings.DepthStencilState.DepthWriteMask); psoDesc.DepthStencilState.DepthFunc =
+    // static_cast<D3D12_COMPARISON_FUNC>(m_settings.DepthStencilState.DepthFunc);
 
-    //D3D12_FILL_MODE FillMode;
-    //D3D12_CULL_MODE CullMode;
-    //BOOL FrontCounterClockwise;
-    //INT DepthBias;
-    //FLOAT DepthBiasClamp;
-    //FLOAT SlopeScaledDepthBias;
-    //BOOL DepthClipEnable;
-    //BOOL MultisampleEnable;
-    //BOOL AntialiasedLineEnable;
-    //UINT ForcedSampleCount;
-    //D3D12_CONSERVATIVE_RASTERIZATION_MODE ConservativeRaster;
+    // D3D12_FILL_MODE FillMode;
+    // D3D12_CULL_MODE CullMode;
+    // BOOL FrontCounterClockwise;
+    // INT DepthBias;
+    // FLOAT DepthBiasClamp;
+    // FLOAT SlopeScaledDepthBias;
+    // BOOL DepthClipEnable;
+    // BOOL MultisampleEnable;
+    // BOOL AntialiasedLineEnable;
+    // UINT ForcedSampleCount;
+    // D3D12_CONSERVATIVE_RASTERIZATION_MODE ConservativeRaster;
 
-    D3D12_PRIMITIVE_TOPOLOGY GetTopologyMode(PrimitiveTopology primitive) {
+    D3D12_PRIMITIVE_TOPOLOGY GetTopologyMode(PrimitiveTopology primitive)
+    {
         switch (primitive)
         {
         case Wild::PrimitiveTopology::Undefined:
@@ -54,8 +57,8 @@ namespace Wild {
         }
     }
 
-
-    D3D12_PRIMITIVE_TOPOLOGY_TYPE GetTopologyModeType(PrimitiveTopology primitive) {
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE GetTopologyModeType(PrimitiveTopology primitive)
+    {
         switch (primitive)
         {
         case Wild::PrimitiveTopology::Undefined:
@@ -75,7 +78,8 @@ namespace Wild {
         }
     }
 
-    D3D12_FILL_MODE GetFillMode(FillMode fillMode) {
+    D3D12_FILL_MODE GetFillMode(FillMode fillMode)
+    {
         switch (fillMode)
         {
         case Wild::FillMode::Wireframe:
@@ -87,7 +91,8 @@ namespace Wild {
         }
     }
 
-    D3D12_CULL_MODE GetCullMode(CullMode cullMode) {
+    D3D12_CULL_MODE GetCullMode(CullMode cullMode)
+    {
         switch (cullMode)
         {
         case Wild::CullMode::None:
@@ -101,7 +106,8 @@ namespace Wild {
         }
     }
 
-    BOOL GetWindingOrder(WindingOrder order) {
+    BOOL GetWindingOrder(WindingOrder order)
+    {
         switch (order)
         {
         case Wild::WindingOrder::Clockwise:
@@ -113,8 +119,9 @@ namespace Wild {
         }
     }
 
-    D3D12_BLEND GetBlendState(Blend blend) {
-        switch (blend)  
+    D3D12_BLEND GetBlendState(Blend blend)
+    {
+        switch (blend)
         {
         case Wild::Blend::Zero:
             return D3D12_BLEND_ZERO;
@@ -155,7 +162,8 @@ namespace Wild {
         }
     }
 
-    D3D12_BLEND_OP GetBlendOpState(BlendOp blendOp) {
+    D3D12_BLEND_OP GetBlendOpState(BlendOp blendOp)
+    {
         switch (blendOp)
         {
         case Wild::BlendOp::Add:
@@ -173,8 +181,9 @@ namespace Wild {
         }
     }
 
-    D3D12_DEPTH_WRITE_MASK GetDepthWrite(DepthWriteMask depthWriteMask) {
-        switch (depthWriteMask) 
+    D3D12_DEPTH_WRITE_MASK GetDepthWrite(DepthWriteMask depthWriteMask)
+    {
+        switch (depthWriteMask)
         {
         case Wild::DepthWriteMask::Zero:
             return D3D12_DEPTH_WRITE_MASK_ZERO;
@@ -185,8 +194,9 @@ namespace Wild {
         }
     }
 
-    D3D12_COMPARISON_FUNC GetComparisonFunc(ComparisonFunc depthFunc) {
-        switch (depthFunc)  
+    D3D12_COMPARISON_FUNC GetComparisonFunc(ComparisonFunc depthFunc)
+    {
+        switch (depthFunc)
         {
         case Wild::ComparisonFunc::Never:
             return D3D12_COMPARISON_FUNC_NEVER;
@@ -209,27 +219,28 @@ namespace Wild {
         }
     }
 
-    D3D12_STENCIL_OP GetDepthStencilOp(StencilOp stencilOp) {
+    D3D12_STENCIL_OP GetDepthStencilOp(StencilOp stencilOp)
+    {
         switch (stencilOp)
         {
         case Wild::StencilOp::Keep:
-                return D3D12_STENCIL_OP_KEEP;
-            case Wild::StencilOp::Zero:
-                return D3D12_STENCIL_OP_ZERO;
-            case Wild::StencilOp::Replace:
-                return D3D12_STENCIL_OP_REPLACE;
-            case Wild::StencilOp::IncrSat:
-                return D3D12_STENCIL_OP_INCR_SAT;
-            case Wild::StencilOp::DecrSat:
-                return D3D12_STENCIL_OP_DECR_SAT;
-            case Wild::StencilOp::Invert:
-                return D3D12_STENCIL_OP_INVERT;
-            case Wild::StencilOp::Incr:
-                return D3D12_STENCIL_OP_INCR;
-            case Wild::StencilOp::Decr:
-                return D3D12_STENCIL_OP_DECR;
-            default:
-                return D3D12_STENCIL_OP_KEEP;
+            return D3D12_STENCIL_OP_KEEP;
+        case Wild::StencilOp::Zero:
+            return D3D12_STENCIL_OP_ZERO;
+        case Wild::StencilOp::Replace:
+            return D3D12_STENCIL_OP_REPLACE;
+        case Wild::StencilOp::IncrSat:
+            return D3D12_STENCIL_OP_INCR_SAT;
+        case Wild::StencilOp::DecrSat:
+            return D3D12_STENCIL_OP_DECR_SAT;
+        case Wild::StencilOp::Invert:
+            return D3D12_STENCIL_OP_INVERT;
+        case Wild::StencilOp::Incr:
+            return D3D12_STENCIL_OP_INCR;
+        case Wild::StencilOp::Decr:
+            return D3D12_STENCIL_OP_DECR;
+        default:
+            return D3D12_STENCIL_OP_KEEP;
         }
     }
-}
+} // namespace Wild

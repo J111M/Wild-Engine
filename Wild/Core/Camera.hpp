@@ -11,11 +11,12 @@
 
 #include "Renderer/Window.hpp"
 
-namespace Wild {
+namespace Wild
+{
     class Camera
     {
-    public:
-        Camera(glm::vec3 pos = { 0, 0, -10 });
+      public:
+        Camera(glm::vec3 pos = {0, 0, -10});
         ~Camera() {};
 
         void UpdateMatrix(float fov, float aspect, float nearF, float farF);
@@ -31,7 +32,8 @@ namespace Wild {
         const float GetAspect() const { return m_aspect; }
 
         const glm::quat& GetCameraQuateurnion();
-    private:
+
+      private:
         // Prevents the camera from teleporting
         bool firstClick = true;
 
@@ -43,21 +45,21 @@ namespace Wild {
         glm::vec3 m_position{};
 
         // The orientation of the camera
-        glm::vec3 m_orientation{ 0.0f, 0.0f, -1.0f };
+        glm::vec3 m_orientation{0.0f, 0.0f, -1.0f};
 
-        glm::vec2 m_lastMousePos{ 0.0f };
+        glm::vec2 m_lastMousePos{0.0f};
 
         glm::vec2 m_nearFar{};
         float m_fov{};
         float m_aspect{};
 
         // And the up of the camera
-        glm::vec3 m_up{ 0.0f, 1.0f, 0.0f };
+        glm::vec3 m_up{0.0f, 1.0f, 0.0f};
 
-        glm::mat4 m_projectionMatrix{ 1.0f };
-        glm::mat4 m_viewMatrix{ 1.0f };
-        glm::mat4 m_cameraMatrix{ 1.0f };
+        glm::mat4 m_projectionMatrix{1.0f};
+        glm::mat4 m_viewMatrix{1.0f};
+        glm::mat4 m_cameraMatrix{1.0f};
 
         glm::quat m_quaternion;
     };
-}
+} // namespace Wild
