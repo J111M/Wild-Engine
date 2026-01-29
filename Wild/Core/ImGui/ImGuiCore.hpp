@@ -18,32 +18,33 @@ namespace Wild
         void Prepare();
         void Draw();
 
-        template <typename T> void Watch(const std::string& name, T *value);
+        template <typename T> void Watch(const std::string& name, T* value);
 
         void AddPanel(const std::string& name, std::function<void()> renderFunc);
 
+        void DrawGizmo(const glm::mat4& view, const glm::mat4& projection);
+
       private:
         bool Setup(std::shared_ptr<Window> window);
+
+        void DrawEntityNode(entt::registry& registry, entt::entity entity);
+        void ConvertToImGuizmoMatrix(const glm::mat4& glmMatrix, float* guizmoMatrix);
+
+        entt::entity m_selectedEntity = entt::null;
+
+        ImGuizmo::OPERATION m_gizmoOperation = ImGuizmo::TRANSLATE;
+        ImGuizmo::MODE m_gizmoMode = ImGuizmo::WORLD;
 
         std::unordered_map<std::string, std::function<void()>> m_panels;
         std::unordered_map<std::string, std::function<void()>> m_watches;
     };
 
-    template <typename T> inline void ImguiCore::Watch(const std::string& name, T *value)
+    template <typename T> inline void ImguiCore::Watch(const std::string& name, T* value)
     {
         m_watches[name] = [value, name]() {
-            if constexpr (std::is_same_v<T, float>)
-            {
-                ImGui::Text("%s: %.2f", name.c_str(), *value);
-            }
-            else if constexpr (std::is_same_v<T, int>)
-            {
-                ImGui::Text("%s: %d", name.c_str(), *value);
-            }
-            else if constexpr (std::is_same_v<T, uint32_t>)
-            {
-                ImGui::Text("%s: %d", name.c_str(), *value);
-            }
+            if constexpr (std::is_same_v<T, float>) { ImGui::Text("%s: %.2f", name.c_str(), *value); }
+            else if constexpr (std::is_same_v<T, int>) { ImGui::Text("%s: %d", name.c_str(), *value); }
+            else if constexpr (std::is_same_v<T, uint32_t>) { ImGui::Text("%s: %d", name.c_str(), *value); }
         };
     }
 } // namespace Wild

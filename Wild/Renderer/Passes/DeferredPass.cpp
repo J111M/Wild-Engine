@@ -1,5 +1,5 @@
 #include "Renderer/Passes/DeferredPass.hpp"
-#include "Renderer/Passes/ProceduralTerrainPass.hpp"
+#include "Renderer/Passes/GrassPass.hpp"
 
 #include "Renderer/Resources/Model.hpp"
 
@@ -12,7 +12,7 @@ namespace Wild
         auto entity = ecs->CreateEntity();
         auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
         ecs->AddComponent<Model>(entity, "Assets/Models/DamagedHelmet/glTF/DamagedHelmet.gltf", entity);
-        transform.SetPosition(glm::vec3(0, 0, 0));
+        transform.SetPosition(glm::vec3(0, 5, 0));
 
         m_texture = std::make_unique<Texture>("Assets/Models/DamagedHelmet/glTF/Default_albedo.jpg");
     }
@@ -22,7 +22,7 @@ namespace Wild
     void DeferredPass::Add(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<DeferredPassData>();
-        auto* grassData = rg.GetPassData<DeferredPassData, DrawTerrainPassData>();
+        auto* grassData = rg.GetPassData<DeferredPassData, RenderGrassData>();
 
         passData->albedoRoughnessTexture = grassData->albedoRoughnessTexture;
         passData->normalMetallicTexture = grassData->normalMetallicTexture;

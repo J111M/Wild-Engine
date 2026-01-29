@@ -21,7 +21,7 @@ namespace Wild
 
     void Camera::Input(Window& window, uint32_t width, uint32_t height, float dt)
     {
-        GLFWwindow *glfwWindow = window.GetWindow();
+        GLFWwindow* glfwWindow = window.GetWindow();
 
         dt = glm::clamp(dt, 0.0f, 0.0333f);
 

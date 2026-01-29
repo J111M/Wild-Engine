@@ -75,7 +75,7 @@ namespace Wild
         return *this;
     }
 
-    ComPtr<ID3D12RootSignature> RootSignatureBuilder::Build(ID3D12Device *device)
+    ComPtr<ID3D12RootSignature> RootSignatureBuilder::Build(ID3D12Device* device)
     {
         D3D12_ROOT_SIGNATURE_DESC desc = {};
         desc.NumParameters = static_cast<UINT>(m_params.size());
@@ -94,7 +94,7 @@ namespace Wild
 
         if (error)
         {
-            const char *errStr = (const char *)error->GetBufferPointer();
+            const char* errStr = (const char*)error->GetBufferPointer();
             WD_ERROR(errStr);
         }
 

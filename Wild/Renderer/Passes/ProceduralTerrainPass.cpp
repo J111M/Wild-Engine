@@ -3,7 +3,13 @@
 
 namespace Wild
 {
-    ProceduralTerrainPass::ProceduralTerrainPass() { GenerateTerrainPlane(128); }
+    ProceduralTerrainPass::ProceduralTerrainPass()
+    {
+        GenerateTerrainPlane(128);
+        m_albedoTerrainTexture = std::make_unique<Texture>("Assets/Textures/Grass005_2K-JPG_Color.jpg");
+        m_aoTerrainTexture = std::make_unique<Texture>("Assets/Textures/Grass005_2K-JPG_AmbientOcclusion.jpg");
+        m_roughnessTerrainTexture = std::make_unique<Texture>("Assets/Textures/Grass005_2K-JPG_Roughness.jpg");
+    }
 
     void ProceduralTerrainPass::Update(const float dt) {}
 
@@ -29,22 +35,23 @@ namespace Wild
                     desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
                     desc.format = DXGI_FORMAT_R32_FLOAT;
 
-                    const uint32_t chunkWidth = 10u;
-                    const uint32_t chunkHeight = 10u;
+                    const uint32_t chunkWidth = 1u;
+                    const uint32_t chunkHeight = 1u;
 
                     // Chunk size
-                    for (uint32_t x = 0; x < chunkWidth; x++)
+                    for (uint32_t y = 0; y < chunkHeight; y++)
                     {
-                        for (uint32_t y = 0; y < chunkHeight; y++)
+                        for (uint32_t x = 0; x < chunkWidth; x++)
                         {
                             Entity chunkEntity = engine.GetECS()->CreateEntity();
                             auto& transform =
                                 engine.GetECS()->AddComponent<Transform>(chunkEntity, glm::vec3(0, 0, 0), m_chunkEntity);
-                            transform.SetPosition(glm::vec3(x * 32, 0, y * 32));
+                            transform.SetPosition(glm::vec3(x * 128, 0, y * 128));
 
                             auto& chunk = engine.GetECS()->AddComponent<TerrainChunk>(chunkEntity);
                             desc.name = "Chunk number X: " + std::to_string(x) + " | Y: " + std::to_string(y);
-                            chunk.m_heightMap = std::make_unique<Texture>(desc);
+                            chunk.heightMap = std::make_unique<Texture>(desc);
+                            chunk.id = y * chunkWidth + x;
 
                             m_terrainChunks.emplace_back(chunkEntity);
                         }
@@ -77,14 +84,17 @@ namespace Wild
 
                         size_t x = i % chunkWidth;
                         size_t y = i / chunkWidth;
-                        m_grc.chunkPosition = glm::vec2(x * 32, y * 32);
+                        m_grc.chunkPosition = glm::vec2(x * (desc.width - 1), y * (desc.Height - 1));
+
+                        auto& chunk = engine.GetECS()->GetComponent<TerrainChunk>(m_terrainChunks[i]);
 
                         list.SetRootConstant(0, m_grc);
-                        list.SetUnorderedAccessView(
-                            1, engine.GetECS()->GetComponent<TerrainChunk>(m_terrainChunks[i]).m_heightMap.get());
-                        list.GetList()->Dispatch((desc.width + 31) / 32, (desc.Height + 31) / 32, 1);
+                        list.SetUnorderedAccessView(1, chunk.heightMap.get());
+                        list.GetList()->Dispatch((desc.width) / 32, (desc.Height) / 32, 1);
 
                         list.EndRender();
+
+                        chunk.heightMap->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                     }
 
                     m_shouldGenerateChunks = false;
@@ -95,13 +105,55 @@ namespace Wild
     void ProceduralTerrainPass::DrawTerrainPass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<DrawTerrainPassData>();
-        auto* grassData = rg.GetPassData<DrawTerrainPassData, RenderGrassData>();
         auto* heightMapData = rg.GetPassData<DrawTerrainPassData, GenerateTerrainPassData>();
 
-        passData->albedoRoughnessTexture = grassData->albedoRoughnessTexture;
-        passData->normalMetallicTexture = grassData->normalMetallicTexture;
-        passData->emissiveTexture = grassData->emissiveTexture;
-        passData->depthTexture = grassData->depthTexture;
+        // Albedo
+        {
+            TextureDesc desc;
+            desc.width = engine.GetGfxContext()->GetWidth();
+            desc.Height = engine.GetGfxContext()->GetHeight();
+            desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            desc.name = "Albedo render target";
+            desc.usage = TextureDesc::gpuOnly;
+            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
+            passData->albedoRoughnessTexture = rg.CreateTransientTexture("AlbedoRoughnessTexture", desc);
+        }
+
+        // Normals
+        {
+            TextureDesc desc;
+            desc.width = engine.GetGfxContext()->GetWidth();
+            desc.Height = engine.GetGfxContext()->GetHeight();
+            desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            desc.name = "Normal render target";
+            desc.usage = TextureDesc::gpuOnly;
+            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
+            passData->normalMetallicTexture = rg.CreateTransientTexture("NormalMetallicTexture", desc);
+        }
+
+        // emissive
+        {
+            TextureDesc desc;
+            desc.width = engine.GetGfxContext()->GetWidth();
+            desc.Height = engine.GetGfxContext()->GetHeight();
+            desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            desc.name = "Emissive render target";
+            desc.usage = TextureDesc::gpuOnly;
+            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
+            passData->emissiveTexture = rg.CreateTransientTexture("EmissiveTexture", desc);
+        }
+
+        // DepthStencil
+        {
+            TextureDesc desc;
+            desc.width = engine.GetGfxContext()->GetWidth();
+            desc.Height = engine.GetGfxContext()->GetHeight();
+            desc.name = "DepthStencil Texture";
+            desc.usage = TextureDesc::gpuOnly;
+            desc.flag = static_cast<TextureDesc::ViewFlag>(
+                TextureDesc::depthStencil | TextureDesc::shaderResource); // Automatically uses depth stencil format
+            passData->depthTexture = rg.CreateTransientTexture("DepthStencil", desc);
+        }
 
         rg.AddPass<DrawTerrainPassData>(
             "Draw procedural terrain pass",
@@ -137,11 +189,12 @@ namespace Wild
                               0,
                               D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
                 bindlessUni.ranges.emplace_back(srvRange);
-                bindlessUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
                 uniforms.emplace_back(bindlessUni);
 
                 Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
+                staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                 uniforms.emplace_back(staticSampler);
 
                 auto& pipeline =
@@ -160,9 +213,10 @@ namespace Wild
 
                 list.SetPipelineState(pipeline);
                 list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
-                                 {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
-                                 {passData.depthTexture},
-                                 DSClearOperation::Store);
+                                 {ClearOperation::Clear, ClearOperation::Clear, ClearOperation::Clear},
+                                 passData.depthTexture,
+                                 DSClearOperation::DepthClear,
+                                 "PCG pass");
 
                 for (auto [entity, chunk, transform] : ecs->GetRegistry().view<TerrainChunk, Transform>().each())
                 {
@@ -172,7 +226,7 @@ namespace Wild
                         m_drc.invModel = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
                     }
 
-                    m_drc.heightMapView = chunk.m_heightMap->GetSrv()->BindlessView();
+                    m_drc.heightMapView = chunk.heightMap->GetSrv()->BindlessView();
 
                     list.SetRootConstant<DrawTerrainRootConstant>(0, m_drc);
                     list.SetBindlessHeap(1);
@@ -187,7 +241,7 @@ namespace Wild
 
     void ProceduralTerrainPass::GenerateTerrainPlane(uint32_t resolution)
     {
-        float size = 32.0f;
+        float size = 128.0f;
         float halfSize = size / 2.0f;
         float step = size / resolution;
 

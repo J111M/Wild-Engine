@@ -30,7 +30,7 @@
 
 using namespace Microsoft::WRL;
 
-inline void ThrowIfFailed(HRESULT hr, const char *msg = nullptr)
+inline void ThrowIfFailed(HRESULT hr, const char* msg = nullptr)
 {
     if (FAILED(hr))
     {

@@ -51,6 +51,7 @@ namespace Wild
             m_renderer->Update(deltaTime);
             m_renderer->Render(*m_gfxContext->GetCommandList().get(), deltaTime);
 
+            m_imguiCore->DrawGizmo(camera.GetView(), camera.GetProjection());
             m_imguiCore->Draw();
             m_gfxContext->EndFrame();
 

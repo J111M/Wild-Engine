@@ -79,7 +79,7 @@ PSOut main(PSInput input, bool isFrontFace: SV_IsFrontFace)
     PSOut psOut;
     psOut.albedo = float4(grassColor.rgb, roughness);
     psOut.normal = float4(float2(OctEncode(normal.xyz).xy), 1.0 - input.bladeHeight, metallic); // Use the 1d height coordinates for SSS and no metallic
-    psOut.emissive = float4(float3(0, 0, 0), input.bladeHeight + 0.3f);
+    psOut.emissive = float4(float3(0, 0, 0), input.bladeHeight + 0.9f);
 
     return psOut;
 }

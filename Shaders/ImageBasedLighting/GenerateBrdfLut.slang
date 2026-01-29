@@ -101,7 +101,7 @@ void main(uint3 id : SV_DispatchThreadID)
 {
     const float2 size = float2(512, 512);
 
-    if(id.x >= size.x || id.y >= size.y)
+    if(id.x > size.x || id.y > size.y)
         return;
 
     float NdotV = (id.x) / float(size.x);

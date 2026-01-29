@@ -17,7 +17,7 @@ cbuffer Constants : register(b0)
 {
     column_major float4x4 world;
     column_major float4x4 invTransposeModel;
-    uint texIndex;
+    uint heightMapIndex;
 };
 
 Texture2D textures[4096] : register(t0, space0);
@@ -35,11 +35,18 @@ float3 OctEncode(float3 n) {
 [shader("fragment")]
 PSOut main(PSInput input)
 {
-    float4 albedo = float4(0, 0, 0, 0);
-    float4 normal = float4(0, 0, 0, 0);
+
+    float3 albedo = float3(0.0f);
+    float noise = textures[NonUniformResourceIndex(heightMapIndex)].Sample(anisotropySampler, input.uv).r;
+
+    float t = 0.8f;
+    float3 terrainColor = float3(0.45f, 0.5f, 0.1f);
+    albedo.rgb = lerp(float3(noise), terrainColor, t);
+
+    float4 normal = float4(0);
     normal.xyz = normalize(mul((float3x3)invTransposeModel, input.normal.xyz));
- 
-    float roughness = 0.0f;
+
+    float roughness = 0.8f;
     float metallic = 0.0f;
     
     PSOut psOut;

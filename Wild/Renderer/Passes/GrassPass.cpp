@@ -1,12 +1,16 @@
 #include "Renderer/Passes/GrassPass.hpp"
+#include "Renderer/Passes/ProceduralTerrainPass.hpp"
 
 #include <glm/gtc/matrix_access.hpp>
 
 namespace Wild
 {
-    GrassPass::GrassPass(std::shared_ptr<Buffer> GrassBladeBuffer)
+    GrassPass::GrassPass()
     {
-        m_grassBladeInstanceBuffer = GrassBladeBuffer;
+        BufferDesc desc{};
+        desc.bufferSize = sizeof(GrassBladeData);
+        desc.numOfElements = MAXGRASSBLADES;
+        m_perBladeDataBuffer = std::make_unique<Buffer>(desc, BufferType::uav);
 
         // Generate grass mesh data
         CreateGrassMeshes();
@@ -17,7 +21,7 @@ namespace Wild
             BufferDesc desc{};
             desc.name = "Cullinstance buffer: " + std::to_string(i);
             desc.bufferSize = sizeof(CulledInstance);
-            desc.numOfElements = MAXGRASSBLADES1;
+            desc.numOfElements = MAXGRASSBLADES;
             m_culledInstancesBuffer[i] = std::make_shared<Buffer>(desc, BufferType::uav);
         }
 
@@ -75,12 +79,13 @@ namespace Wild
 
         m_chunkEntity = engine.GetECS()->CreateEntity();
         auto& transform = engine.GetECS()->AddComponent<Transform>(m_chunkEntity, glm::vec3(0, 0, 0), m_chunkEntity);
-        transform.SetPosition(glm::vec3(-16, 0, -16));
+        transform.SetPosition(glm::vec3(-64, 0, -64));
     }
 
     void GrassPass::Add(Renderer& renderer, RenderGraph& rg)
     {
         // Adds each pass to the render graph
+        AddComputePerBladeDataPass(renderer, rg);
         AddClearCounterPass(renderer, rg);
         AddGrassCulling(renderer, rg);
         AddIndirectDrawCommandsPass(renderer, rg);
@@ -131,6 +136,62 @@ namespace Wild
     }
 
     /// <summary>
+    /// Pass that computes my per blade grass data the data will be overwritten when a chunk changes
+    /// </summary>
+    void GrassPass::AddComputePerBladeDataPass(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<PerBladePassData>();
+        auto* chunkDepency = rg.GetPassData<PerBladePassData, GenerateTerrainPassData>();
+
+        rg.AddPass<PerBladePassData>(
+            "Compute per blade data pass", PassType::Compute, [&renderer, this](PerBladePassData& countData, CommandList& list) {
+                if (m_recomputeGrassBlades)
+                {
+                    PipelineStateSettings settings{};
+                    settings.ShaderState.ComputeShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputePerGrassBladeData.slang");
+
+                    std::vector<Uniform> uniforms;
+                    Uniform perBladeBuffer{
+                        0, 0, RootParams::RootResourceType::UnorderedAccessView, sizeof(GrassBladeData) * MAXGRASSBLADES};
+                    uniforms.emplace_back(perBladeBuffer);
+
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(PerBladeComputeRootConstant)};
+                    uniforms.emplace_back(rootConstant);
+
+                    m_perBladeDataBuffer->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+                    auto& pipeline = renderer.GetOrCreatePipeline(
+                        "Compute per blade data pass", PipelineStateType::Compute, settings, uniforms);
+                    list.SetPipelineState(pipeline);
+                    list.BeginRender();
+
+                    for (auto [entity, chunk, transform] : engine.GetECS()->GetRegistry().view<TerrainChunk, Transform>().each())
+                    {
+                        auto context = engine.GetGfxContext();
+                        UINT frameIndex = context->GetBackBufferIndex();
+
+                        m_pbcrc.modelMatrix = glm::mat4{1.0f}; // TODO implement later for frustum culling
+                        m_pbcrc.chunkPosition.x = transform.GetPosition().x;
+                        m_pbcrc.chunkPosition.y = transform.GetPosition().z;
+                        m_pbcrc.chunkId = chunk.id;
+
+                        list.SetUnorderedAccessView(0, m_perBladeDataBuffer.get());
+                        list.SetRootConstant<PerBladeComputeRootConstant>(1, m_pbcrc);
+
+                        list.GetList()->Dispatch(MAXBLADESPERCHUNK / 64, 1, 1);
+                    }
+
+                    list.EndRender();
+
+                    m_perBladeDataBuffer->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+                    m_recomputeGrassBlades = false;
+                }
+            });
+    }
+
+    /// <summary>
     /// The reason I clear the instance count via a compute shader is because doing it via clear uav uint had specific
     /// requirments for how the heap should be created which required me to create another heap specifically for
     /// clearing. Compute made it straight forward and simple without cluttering the code.
@@ -138,6 +199,8 @@ namespace Wild
     void GrassPass::AddClearCounterPass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<ClearCounterData>();
+        // Dependency with per blade grass computation pass
+        auto* dependency = rg.GetPassData<ClearCounterData, PerBladePassData>();
 
         rg.AddPass<ClearCounterData>(
             "Clear counter pass", PassType::Compute, [&renderer, this](ClearCounterData& countData, CommandList& list) {
@@ -217,11 +280,11 @@ namespace Wild
 
                 // Set frame data
                 list.SetConstantBufferView(0, m_frustumBuffer.get());
-                list.SetShaderResourceView(1, m_grassBladeInstanceBuffer.get());
+                list.SetShaderResourceView(1, m_perBladeDataBuffer.get());
                 list.SetUnorderedAccessView(2, m_culledInstancesBuffer[frameIndex].get());
                 list.SetUnorderedAccessView(3, m_instanceCountBuffer[frameIndex].get());
 
-                list.GetList()->Dispatch(((MAXGRASSBLADES1 + 63) / 64), 1, 1);
+                list.GetList()->Dispatch(((MAXGRASSBLADES + 63) / 64), 1, 1);
 
                 list.EndRender();
 
@@ -288,54 +351,12 @@ namespace Wild
     {
         auto* passData = rg.AllocatePassData<RenderGrassData>();
         auto indirectPass = rg.GetPassData<RenderGrassData, IndirectCommandsData>();
+        auto* pcgPass = rg.GetPassData<RenderGrassData, DrawTerrainPassData>();
 
-        // Albedo
-        {
-            TextureDesc desc;
-            desc.width = engine.GetGfxContext()->GetWidth();
-            desc.Height = engine.GetGfxContext()->GetHeight();
-            desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-            desc.name = "Albedo render target";
-            desc.usage = TextureDesc::gpuOnly;
-            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
-            passData->albedoRoughnessTexture = rg.CreateTransientTexture("AlbedoRoughnessTexture", desc);
-        }
-
-        // Normals
-        {
-            TextureDesc desc;
-            desc.width = engine.GetGfxContext()->GetWidth();
-            desc.Height = engine.GetGfxContext()->GetHeight();
-            desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-            desc.name = "Normal render target";
-            desc.usage = TextureDesc::gpuOnly;
-            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
-            passData->normalMetallicTexture = rg.CreateTransientTexture("NormalMetallicTexture", desc);
-        }
-
-        // emissive
-        {
-            TextureDesc desc;
-            desc.width = engine.GetGfxContext()->GetWidth();
-            desc.Height = engine.GetGfxContext()->GetHeight();
-            desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-            desc.name = "Emissive render target";
-            desc.usage = TextureDesc::gpuOnly;
-            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
-            passData->emissiveTexture = rg.CreateTransientTexture("EmissiveTexture", desc);
-        }
-
-        // DepthStencil
-        {
-            TextureDesc desc;
-            desc.width = engine.GetGfxContext()->GetWidth();
-            desc.Height = engine.GetGfxContext()->GetHeight();
-            desc.name = "DepthStencil Texture";
-            desc.usage = TextureDesc::gpuOnly;
-            desc.flag = static_cast<TextureDesc::ViewFlag>(
-                TextureDesc::depthStencil | TextureDesc::shaderResource); // Automatically uses depth stencil format
-            passData->depthTexture = rg.CreateTransientTexture("DepthStencil", desc);
-        }
+        passData->albedoRoughnessTexture = pcgPass->albedoRoughnessTexture;
+        passData->normalMetallicTexture = pcgPass->normalMetallicTexture;
+        passData->emissiveTexture = pcgPass->emissiveTexture;
+        passData->depthTexture = pcgPass->depthTexture;
 
         rg.AddPass<RenderGrassData>(
             "Grass render pass", PassType::Graphics, [&renderer, this](const RenderGrassData& grassData, CommandList& list) {
@@ -369,6 +390,22 @@ namespace Wild
                 Uniform culledInstanceData{1, 0, RootParams::RootResourceType::ShaderResourceView};
                 uniforms.emplace_back(culledInstanceData);
 
+                Uniform bindlessUni{0, 0, RootParams::RootResourceType::DescriptorTable};
+                CD3DX12_DESCRIPTOR_RANGE srvRange{};
+                srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                              UINT_MAX,
+                              2,
+                              0,
+                              D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+                bindlessUni.ranges.emplace_back(srvRange);
+
+                uniforms.emplace_back(bindlessUni);
+
+                Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
+                staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+                staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                uniforms.emplace_back(staticSampler);
+
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Grass render pass", PipelineStateType::Graphics, settings, uniforms);
 
@@ -384,9 +421,9 @@ namespace Wild
 
                 list.SetPipelineState(pipeline);
                 list.BeginRender({grassData.albedoRoughnessTexture, grassData.normalMetallicTexture, grassData.emissiveTexture},
-                                 {ClearOperation::Clear, ClearOperation::Clear, ClearOperation::Clear},
-                                 grassData.depthTexture,
-                                 DSClearOperation::DepthClear,
+                                 {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
+                                 {grassData.depthTexture},
+                                 DSClearOperation::Store,
                                  "Grass Pass");
 
                 auto& gfxContext = engine.GetGfxContext();
@@ -400,7 +437,18 @@ namespace Wild
                 }
                 m_rc.bladeId = 0;
 
-                list.SetShaderResourceView(1, m_grassBladeInstanceBuffer.get());
+                bool first = false;
+                for (auto [entity, chunk, transform] : ecs->GetRegistry().view<TerrainChunk, Transform>().each())
+                {
+                    if (!first)
+                    {
+                        m_rc.terrainView = chunk.heightMap->GetSrv()->BindlessView();
+                        first = true;
+                    }
+                }
+
+                list.SetRootConstant<GrassRC>(0, m_rc);
+                list.SetShaderResourceView(1, m_perBladeDataBuffer.get());
                 list.SetConstantBufferView(2, m_sceneData[gfxContext->GetBackBufferIndex()].get());
 
                 if (m_culledInstancesBuffer[frameIndex]->GetBuffer())
@@ -408,7 +456,7 @@ namespace Wild
                     list.SetShaderResourceView(3, m_culledInstancesBuffer[frameIndex].get());
                 }
 
-                list.SetRootConstant<GrassRC>(0, m_rc);
+                list.SetBindlessHeap(4);
 
                 list.GetList()->IASetVertexBuffers(0, 1, &m_grassVertices->GetVBView()->View());
                 list.GetList()->IASetIndexBuffer(&m_grassIndices->GetIBView()->View());

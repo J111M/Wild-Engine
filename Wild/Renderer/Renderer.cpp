@@ -22,14 +22,12 @@ namespace Wild
 
         m_resourceCache = std::make_shared<TransientResourceCache>();
 
-        m_grassPreCompute = std::make_unique<GrassCompute>();
-        m_grassPreCompute->Render(*engine.GetGfxContext()->GetCommandList());
-
-        m_renderFeatures.emplace_back(std::make_unique<GrassPass>(m_grassPreCompute->GetGrassData()));
         m_renderFeatures.emplace_back(std::make_unique<ProceduralTerrainPass>());
+        m_renderFeatures.emplace_back(std::make_unique<GrassPass>());
         m_renderFeatures.emplace_back(std::make_unique<DeferredPass>());
         m_renderFeatures.emplace_back(std::make_unique<PbrPass>());
-        m_renderFeatures.emplace_back(std::make_unique<SkyPass>("Assets/Textures/Skybox/the_sky_is_on_fire_4k.hdr"));
+        m_renderFeatures.emplace_back(
+            std::make_unique<SkyPass>("Assets/Textures/Skybox/kloofendal_48d_partly_cloudy_puresky_4k.hdr"));
     }
 
     Renderer::~Renderer() {}

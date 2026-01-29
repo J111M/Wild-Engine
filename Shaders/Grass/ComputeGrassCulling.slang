@@ -92,7 +92,9 @@ float CalculateLOD(float distance)
 [numthreads(64, 1, 1)]
 void main(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= 500000)
+    const uint maxGrassBlades = 2500000;
+
+    if (id.x >= maxGrassBlades)
         return;
     
     GrassData instance = grassInstance[id.x];
@@ -137,7 +139,7 @@ void main(uint3 id : SV_DispatchThreadID)
         }
     }
 
-    if (globalDrawIndex < 500000)
+    if (globalDrawIndex < maxGrassBlades)
     {
         CulledInstance culled;
         culled.instanceIndex = id.x;

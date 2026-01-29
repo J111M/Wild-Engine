@@ -16,7 +16,7 @@ namespace Wild
         sessionDesc.targets = &targetDesc;
         sessionDesc.targetCount = 1;
 
-        slang::ISession *session;
+        slang::ISession* session;
         globalSession->createSession(sessionDesc, &session);
 
         ComPtr<slang::IBlob> diagnostics;
@@ -24,7 +24,7 @@ namespace Wild
 
         if (diagnostics && diagnostics->getBufferSize() > 0)
         {
-            WD_ERROR("Shader: '{}' could not be loaded: {}", shaderPath.c_str(), (const char *)diagnostics->getBufferPointer());
+            WD_ERROR("Shader: '{}' could not be loaded: {}", shaderPath.c_str(), (const char*)diagnostics->getBufferPointer());
         }
 
         ComPtr<slang::IEntryPoint> entryPoint;
@@ -32,14 +32,14 @@ namespace Wild
 
         if (!entryPoint) WD_ERROR("Failed to find entrypoint for shader: '{}'", shaderPath.c_str());
 
-        slang::IComponentType *components[] = {module.Get(), entryPoint.Get()};
+        slang::IComponentType* components[] = {module.Get(), entryPoint.Get()};
         ComPtr<slang::IComponentType> program;
         if (SLANG_FAILED(session->createCompositeComponentType(components, 2, &program, &diagnostics)))
         {
             WD_ERROR("Failed to create slang program for shader: '{}'", shaderPath.c_str());
             if (diagnostics && diagnostics->getBufferSize() > 0)
             {
-                WD_ERROR("Diagnostics: {}", (const char *)diagnostics->getBufferPointer());
+                WD_ERROR("Diagnostics: {}", (const char*)diagnostics->getBufferPointer());
             }
         }
 
@@ -48,7 +48,7 @@ namespace Wild
             WD_ERROR("Failed to get entry point code for shader: '{}'", shaderPath.c_str());
             if (diagnostics && diagnostics->getBufferSize() > 0)
             {
-                WD_ERROR("Diagnostics: {}", (const char *)diagnostics->getBufferPointer());
+                WD_ERROR("Diagnostics: {}", (const char*)diagnostics->getBufferPointer());
             }
         }
 

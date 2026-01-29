@@ -7,8 +7,6 @@
 
 #include "Renderer/RenderGraph/RenderGraph.hpp"
 
-#include "Systems/GrassCompute.hpp"
-
 #include "Core/Transform.hpp"
 
 #include "Tools/Common3d12.hpp"
@@ -36,7 +34,7 @@ namespace Wild
         void Update(const float dt);
         void Render(CommandList& list, float deltaTime);
 
-        template <typename T> T *GetRenderFeature();
+        template <typename T> T* GetRenderFeature();
 
         bool HasPipelineInCache(const std::string& key);
         std::shared_ptr<PipelineState> GetOrCreatePipeline(const std::string& key, PipelineStateType Type,
@@ -46,25 +44,23 @@ namespace Wild
 
         void FlushResources();
 
-        Texture *irradianceMap{};
-        Texture *specularMap{};
-        Texture *brdfLut{};
-        Texture *compositeTexture = nullptr;
+        Texture* irradianceMap{};
+        Texture* specularMap{};
+        Texture* brdfLut{};
+        Texture* compositeTexture = nullptr;
 
       private:
         std::vector<std::unique_ptr<RenderFeature>> m_renderFeatures;
         std::shared_ptr<TransientResourceCache> m_resourceCache;
 
-        std::unique_ptr<GrassCompute> m_grassPreCompute;
-
         std::unordered_map<std::string, std::shared_ptr<PipelineState>> m_pipelineCache;
     };
 
-    template <typename T> inline T *Renderer::GetRenderFeature()
+    template <typename T> inline T* Renderer::GetRenderFeature()
     {
         for (auto& feature : m_renderFeatures)
         {
-            T *casted = dynamic_cast<T *>(feature.get());
+            T* casted = dynamic_cast<T*>(feature.get());
             if (casted) { return casted; }
         }
 

@@ -20,6 +20,8 @@ cbuffer Constants : register(b0)
     column_major float4x4 invModel;
     uint bladeId;
     float time;
+    uint chunkId;
+    uint terrainView;
 };
 
 cbuffer SceneData : register(b1)
@@ -51,6 +53,9 @@ struct CulledInstance
 
 StructuredBuffer<GrassData> grassBuffer : register(t0);
 StructuredBuffer<CulledInstance> culledInstances : register(t1);
+
+Texture2D textures[4096] : register(t2, space0);
+SamplerState anisotropySampler : register(s0);
 
 float3x3 rotY(float a)
 {
@@ -160,8 +165,17 @@ VSOutput main(VSInput input)
     float3 initialBladeHeight = mul(rotationMat, input.position) + grassData.position.xyz;
     float3 bladePosition = initialBladeHeight;
 
+    float terrainHeight = 0.0f;
+    if (terrainView > 0) {
+        // Offset the blade position minus the chunk position to get the local blade position
+        const float textureSize = 128;
+        float2 uv = initialBladeHeight.xz / 128;
+        terrainHeight = textures[terrainView].SampleLevel(anisotropySampler, uv, 0).r;
+    }
+
+    bladePosition.y += terrainHeight * 10.0f;
+
     float2 bladeDirection = float2(cos(grassData.rotation), sin(grassData.rotation));
-    // bladeDirection = mul(rotationMat, float3(bladeDirection.x, 0.0f, bladeDirection.y)).xz;
 
     // Wind calculation
     float2 windDir = normalize(windDirection);

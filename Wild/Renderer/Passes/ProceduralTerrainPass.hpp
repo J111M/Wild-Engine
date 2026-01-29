@@ -3,12 +3,14 @@
 #include "Renderer/RenderGraph/RenderGraph.hpp"
 #include "Renderer/Renderer.hpp"
 #include "Renderer/Resources/Mesh.hpp"
+#include "Renderer/Resources/Texture.hpp"
 
 namespace Wild
 {
     struct TerrainChunk
     {
-        std::unique_ptr<Texture> m_heightMap;
+        std::unique_ptr<Texture> heightMap;
+        uint32_t id{};
     };
 
     struct GenerateTerrainPassData
@@ -65,6 +67,10 @@ namespace Wild
 
         Entity m_chunkEntity;
         DrawTerrainRootConstant m_drc{};
+
+        std::unique_ptr<Texture> m_albedoTerrainTexture;
+        std::unique_ptr<Texture> m_aoTerrainTexture;
+        std::unique_ptr<Texture> m_roughnessTerrainTexture;
 
         std::unique_ptr<Buffer> m_terrainVertices;
         std::unique_ptr<Buffer> m_terrainIndices;
