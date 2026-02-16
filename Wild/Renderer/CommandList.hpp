@@ -5,6 +5,7 @@
 
 #include "Renderer/ShaderPipeline.hpp"
 
+#include <optional>
 #include <unordered_map>
 
 #include <glm/glm.hpp>
@@ -33,7 +34,7 @@ namespace Wild
 
         void BeginRender(const std::vector<Texture*>& renderTargets, const std::vector<ClearOperation>& clearRt,
                          Texture* depthStencil, DSClearOperation clearDs, const std::string& passName = {},
-                         uint32_t rtArrayIndex = 64);
+                         std::optional<uint32_t> rtArrayIndex = std::nullopt);
         void BeginRender(const std::string& passName = {});
 
         void EndRender();
@@ -49,7 +50,7 @@ namespace Wild
         void SetConstantBufferView(uint32_t rootIndex, Buffer* buffer);
 
         void SetUnorderedAccessView(uint32_t rootIndex, Buffer* buffer);
-        void SetUnorderedAccessView(uint32_t rootIndex, Texture* texture, uint32_t index = 64);
+        void SetUnorderedAccessView(uint32_t rootIndex, Texture* texture, std::optional<uint32_t> index = std::nullopt);
 
         void SetShaderResourceView(uint32_t rootIndex, Buffer* buffer);
 
@@ -58,7 +59,8 @@ namespace Wild
         void Draw(uint32_t size) {};
 
       private:
-        void SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil, uint32_t rtArrayIndex);
+        void SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil,
+                              std::optional<uint32_t> rtArrayIndex = std::nullopt);
 
         const bool CanPassExecute(const std::string& passName);
 

@@ -108,16 +108,16 @@ namespace Wild
         }
     }
 
-    void CommandList::SetUnorderedAccessView(uint32_t rootIndex, Texture* texture, uint32_t index)
+    void CommandList::SetUnorderedAccessView(uint32_t rootIndex, Texture* texture, std::optional<uint32_t> index)
     {
         texture->Transition(*this, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         std::shared_ptr<UnorderedAccessView> textureUav;
-        // 64 is the default index value TODO rework the array indexing system
-        if (index == 64)
+
+        if (!index.has_value())
             textureUav = texture->GetUav();
         else
-            textureUav = texture->GetUav(index);
+            textureUav = texture->GetUav(*index);
 
         switch (m_pipelineState->GetPassType())
         {
@@ -155,7 +155,7 @@ namespace Wild
 
     void CommandList::BeginRender(const std::vector<Texture*>& renderTargets, const std::vector<ClearOperation>& clearRt,
                                   Texture* depthStencil, DSClearOperation clearDs, const std::string& passName,
-                                  uint32_t rtArrayIndex)
+                                  std::optional<uint32_t> rtArrayIndex)
     {
         if (!CanPassExecute(passName)) return;
 
@@ -266,7 +266,8 @@ namespace Wild
         m_commandList->ClearRenderTargetView(renderTarget.GetRtv()->GetCpuHandle(), &color[0], 0, nullptr);
     }
 
-    void CommandList::SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil, uint32_t rtArrayIndex)
+    void CommandList::SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil,
+                                       std::optional<uint32_t> rtArrayIndex)
     {
         const uint32_t numRenderTargets = static_cast<uint32_t>(renderTargets.size());
         if (numRenderTargets >= 8) WD_ERROR("Trying to bind more render targets than possible.");
@@ -277,11 +278,11 @@ namespace Wild
         for (size_t i = 0; i < numRenderTargets; i++)
         {
             renderTargets[i]->Transition(*this, D3D12_RESOURCE_STATE_RENDER_TARGET);
-            // 64 is the default value for the array index meaning it is not set/used
-            if (rtArrayIndex == 64) { handles.push_back(renderTargets[i]->GetRtv()->GetCpuHandle()); }
+
+            if (!rtArrayIndex.has_value()) { handles.push_back(renderTargets[i]->GetRtv()->GetCpuHandle()); }
             else
             {
-                handles.push_back(renderTargets[i]->GetRtv(rtArrayIndex)->GetCpuHandle());
+                handles.push_back(renderTargets[i]->GetRtv(*rtArrayIndex)->GetCpuHandle());
             }
         }
 
