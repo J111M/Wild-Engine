@@ -41,10 +41,32 @@ PSOut main(PSInput input)
 
     float t = 0.8f;
     float3 terrainColor = float3(0.45f, 0.5f, 0.1f);
+    float3 slopeColor = float3(0.15f, 0.5f, 0.1f);
+    float3 rockColor = float3(0.55f, 0.1f, 0.4f);
     albedo.rgb = lerp(float3(noise), terrainColor, t);
 
     float4 normal = float4(0);
     normal.xyz = normalize(mul((float3x3)invTransposeModel, input.normal.xyz));
+
+    // Slope steepness of the terrain
+    float slope = 1.0f - input.normal.y;
+    float blendAmount = 0.0f;
+    if (slope < 0.2)
+    {
+        blendAmount = slope / 0.2f;
+        albedo = lerp(terrainColor, slopeColor, blendAmount);
+    }
+
+    if ((slope < 0.7) && (slope >= 0.2f))
+    {
+        blendAmount = (slope - 0.2f) * (1.0f / (0.7f - 0.2f));
+        albedo = lerp(slopeColor, rockColor, blendAmount);
+    }
+
+    if (slope >= 0.7) 
+    {
+        albedo = rockColor;
+    }
 
     float roughness = 0.8f;
     float metallic = 0.0f;

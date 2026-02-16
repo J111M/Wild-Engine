@@ -61,6 +61,11 @@ void main(uint3 id: SV_DispatchThreadID)
 {
     if (id.x >= textureSize.x || id.y >= textureSize.y) return;
 
+    // -1, 1 range
+    float2 coords = float2(id.xy) / float2(textureSize) * 2.0f - 1.0f;
+    float distance = max(abs(coords.x), abs(coords.y));
+    float falloff = smoothstep(0.0f, 1.0f, distance);
+
     float noise = 0.0f;
     float amplitude = 0.4f;
     float frequency = 0.005f;
@@ -74,6 +79,9 @@ void main(uint3 id: SV_DispatchThreadID)
         amplitude *= 0.4f;
         frequency *= 2.0f;
     }
+
+    // Subtract the falloff value from the noise to achieve an island like height map
+    noise = noise - falloff;
 
     // Output into texture
     OutputTexture[id.xy] = noise;

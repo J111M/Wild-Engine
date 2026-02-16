@@ -21,7 +21,6 @@ namespace Wild
 
     void GrassPass::Add(Renderer& renderer, RenderGraph& rg)
     {
-
         // Check mesh shader support
         if (m_meshShaderSupported)
             m_meshShaderGrass->Add(renderer, rg);
