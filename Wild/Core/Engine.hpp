@@ -10,6 +10,8 @@
 #include "Core/ImGui/ImGuiCore.hpp"
 #include "Core/Transform.hpp"
 
+#include "Tools/Profiler/Profiler.hpp"
+
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -37,9 +39,12 @@ namespace Wild
         std::shared_ptr<EntityComponentSystem> GetECS() { return m_ecs; }
         std::shared_ptr<ImguiCore> GetImGui() { return m_imguiCore; }
         std::shared_ptr<ShaderTracker> GetShaderTracker() { return m_shaderTracker; }
+        std::shared_ptr<Profiler> GetProfiler() { return m_profiler; }
 
       private:
-        bool should_close = false;
+        void SetWindowData(int& frameCount, float frameTime);
+
+        bool m_shouldClose = false;
 
         std::shared_ptr<Window> m_window;
         std::shared_ptr<GfxContext> m_gfxContext;
@@ -47,8 +52,12 @@ namespace Wild
         std::shared_ptr<EntityComponentSystem> m_ecs;
         std::shared_ptr<ImguiCore> m_imguiCore;
         std::shared_ptr<ShaderTracker> m_shaderTracker;
+        std::shared_ptr<Profiler> m_profiler;
 
         std::filesystem::path m_systemPath{};
+
+        float m_timer{};
+        int m_fps{};
     };
 
     extern Engine engine;

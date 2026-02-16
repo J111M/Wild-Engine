@@ -23,6 +23,8 @@ namespace Wild
         auto list = engine.GetGfxContext()->GetCommandList();
         for (auto& pass : Passes)
         {
+            WD_PROFILESCOPE(pass->GetName());
+
             pass->ExecuteFunction(*list);
         }
 
@@ -33,7 +35,7 @@ namespace Wild
     /// Graph builder
     ///
 
-    Texture *RenderGraph::CreateTransientTexture(const std::string& key, const TextureDesc& desc)
+    Texture* RenderGraph::CreateTransientTexture(const std::string& key, const TextureDesc& desc)
     {
         return &m_graph->ResourceInitializer.GetOrCreateTexture(key, desc);
     }

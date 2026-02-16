@@ -50,20 +50,8 @@ set_target_properties(Wild PROPERTIES
 # Always copy the assets folder after building
 add_custom_command(TARGET Wild POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:Wild>/assets
+            "${CMAKE_SOURCE_DIR}/Assets" "$<TARGET_FILE_DIR:Wild>/Assets"
     COMMENT "Copying assets folders to output directory"
-)
-
-# Define the texture folder path
-set(TEXTURE_DIR "${CMAKE_SOURCE_DIR}/Assets")
-set(OUTPUT_DIR "${CMAKE_BINARY_DIR}/Assets")
-
-# Ensure the textures folder is copied every time you build
-add_custom_command(
-    TARGET Wild POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${TEXTURE_DIR} ${OUTPUT_DIR}
-    COMMENT "Copying texture folder to output directory"
 )
 
 add_custom_command(TARGET Wild POST_BUILD

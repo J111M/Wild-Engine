@@ -18,7 +18,7 @@ namespace Wild
 
         HWND GetHandle() { return m_hwnd; }
 
-        GLFWwindow *GetWindow() { return m_window; }
+        GLFWwindow* GetWindow() { return m_window; }
 
         int GetWidth() { return m_width; }
         int GetHeight() { return m_height; }
@@ -30,13 +30,13 @@ namespace Wild
             return 0.01;
         }
 
-        static void FrameBufferResizeCallback(GLFWwindow *window, int width, int height);
+        static void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
 
       private:
         int m_width{}, m_height{};
         bool m_frameBufferResized = false;
 
-        GLFWwindow *m_window = nullptr;
+        GLFWwindow* m_window = nullptr;
 
         std::string m_windowName{};
         HWND m_hwnd{};

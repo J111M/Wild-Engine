@@ -139,7 +139,7 @@ namespace Wild
         // PerBladeCompute data
         PerBladeComputeRootConstant m_pbcrc{};
         std::unique_ptr<Buffer> m_perBladeDataBuffer;
-        bool m_recomputeGrassBlades;
+        bool m_recomputeGrassBlades = true;
 
         // Store frustum data
         std::unique_ptr<Buffer> m_frustumBuffer;

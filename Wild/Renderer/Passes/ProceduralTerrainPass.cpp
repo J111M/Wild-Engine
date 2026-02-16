@@ -3,13 +3,7 @@
 
 namespace Wild
 {
-    ProceduralTerrainPass::ProceduralTerrainPass()
-    {
-        GenerateTerrainPlane(128);
-        m_albedoTerrainTexture = std::make_unique<Texture>("Assets/Textures/Grass005_2K-JPG_Color.jpg");
-        m_aoTerrainTexture = std::make_unique<Texture>("Assets/Textures/Grass005_2K-JPG_AmbientOcclusion.jpg");
-        m_roughnessTerrainTexture = std::make_unique<Texture>("Assets/Textures/Grass005_2K-JPG_Roughness.jpg");
-    }
+    ProceduralTerrainPass::ProceduralTerrainPass() { GenerateTerrainPlane(128); }
 
     void ProceduralTerrainPass::Update(const float dt) {}
 

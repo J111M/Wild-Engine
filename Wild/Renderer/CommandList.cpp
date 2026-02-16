@@ -56,16 +56,13 @@ namespace Wild
         switch (m_pipelineState->GetPassType())
         {
         case PipelineStateType::Graphics:
+        case PipelineStateType::MeshPipeline:
             m_commandList->SetGraphicsRootDescriptorTable(
                 static_cast<UINT>(rootIndex), context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
             break;
         case PipelineStateType::Compute:
             m_commandList->SetComputeRootDescriptorTable(
                 static_cast<UINT>(rootIndex), context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
-            break;
-        case PipelineStateType::MeshPipeline:
-            break;
-        default:
             break;
         }
     }
@@ -75,16 +72,13 @@ namespace Wild
         switch (m_pipelineState->GetPassType())
         {
         case PipelineStateType::Graphics:
+        case PipelineStateType::MeshPipeline:
             m_commandList->SetGraphicsRootConstantBufferView(static_cast<UINT>(rootIndex),
                                                              buffer->GetBuffer()->GetGPUVirtualAddress());
             break;
         case PipelineStateType::Compute:
             m_commandList->SetComputeRootConstantBufferView(static_cast<UINT>(rootIndex),
                                                             buffer->GetBuffer()->GetGPUVirtualAddress());
-            break;
-        case PipelineStateType::MeshPipeline:
-            break;
-        default:
             break;
         }
     }
@@ -94,16 +88,13 @@ namespace Wild
         switch (m_pipelineState->GetPassType())
         {
         case PipelineStateType::Graphics:
+        case PipelineStateType::MeshPipeline:
             m_commandList->SetGraphicsRootUnorderedAccessView(static_cast<UINT>(rootIndex),
                                                               buffer->GetBuffer()->GetGPUVirtualAddress());
             break;
         case PipelineStateType::Compute:
             m_commandList->SetComputeRootUnorderedAccessView(static_cast<UINT>(rootIndex),
                                                              buffer->GetBuffer()->GetGPUVirtualAddress());
-            break;
-        case PipelineStateType::MeshPipeline:
-            break;
-        default:
             break;
         }
     }
@@ -122,14 +113,11 @@ namespace Wild
         switch (m_pipelineState->GetPassType())
         {
         case PipelineStateType::Graphics:
+        case PipelineStateType::MeshPipeline:
             m_commandList->SetGraphicsRootDescriptorTable(static_cast<UINT>(rootIndex), textureUav->GetGpuHandle());
             break;
         case PipelineStateType::Compute:
             m_commandList->SetComputeRootDescriptorTable(static_cast<UINT>(rootIndex), textureUav->GetGpuHandle());
-            break;
-        case PipelineStateType::MeshPipeline:
-            break;
-        default:
             break;
         }
     }
@@ -139,16 +127,13 @@ namespace Wild
         switch (m_pipelineState->GetPassType())
         {
         case PipelineStateType::Graphics:
+        case PipelineStateType::MeshPipeline:
             m_commandList->SetGraphicsRootShaderResourceView(static_cast<UINT>(rootIndex),
                                                              buffer->GetBuffer()->GetGPUVirtualAddress());
             break;
         case PipelineStateType::Compute:
             m_commandList->SetComputeRootShaderResourceView(static_cast<UINT>(rootIndex),
                                                             buffer->GetBuffer()->GetGPUVirtualAddress());
-            break;
-        case PipelineStateType::MeshPipeline:
-            break;
-        default:
             break;
         }
     }

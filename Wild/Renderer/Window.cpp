@@ -36,9 +36,9 @@ namespace Wild
         glfwTerminate();
     }
 
-    void Window::FrameBufferResizeCallback(GLFWwindow *window, int width, int height)
+    void Window::FrameBufferResizeCallback(GLFWwindow* window, int width, int height)
     {
-        auto userWindow = reinterpret_cast<Window *>(glfwGetWindowUserPointer(window));
+        auto userWindow = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
 
         userWindow->m_frameBufferResized = true;
         userWindow->m_width = width;

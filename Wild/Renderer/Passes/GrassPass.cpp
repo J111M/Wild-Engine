@@ -10,6 +10,7 @@ namespace Wild
         auto& context = engine.GetGfxContext();
         m_meshShaderSupported = context->GetCapabilities().SupportsMeshShaders();
 
+        // The mesh shader variant is not implemented yet
         m_meshShaderSupported = false;
 
         if (m_meshShaderSupported)

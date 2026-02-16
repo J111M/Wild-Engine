@@ -10,6 +10,8 @@ namespace Wild
     {
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplGlfw_Shutdown();
+
+        ImPlot::DestroyContext();
         ImGui::DestroyContext();
     }
 
@@ -77,6 +79,8 @@ namespace Wild
             gfxContext->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart();
 
         ImGui_ImplDX12_Init(&initInfo);
+
+        ImPlot::CreateContext();
 
         return true;
     }

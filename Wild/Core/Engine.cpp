@@ -15,6 +15,7 @@ namespace Wild
         m_ecs = std::make_shared<EntityComponentSystem>();
         m_imguiCore = std::make_shared<ImguiCore>(m_window);
         m_shaderTracker = std::make_shared<ShaderTracker>();
+        m_profiler = std::make_shared<Profiler>();
 
         m_renderer = std::make_shared<Renderer>();
     }
@@ -29,9 +30,12 @@ namespace Wild
         auto& camera = engine.GetECS()->AddComponent<Camera>(CameraEntity, glm::vec3(0, 0, 5));
 
         float frameTime{};
+        int frameCount = 0;
 
         while (!m_window->ShouldClose())
         {
+            frameCount++;
+
             auto currentTime = std::chrono::high_resolution_clock::now();
             float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
             previousTime = currentTime;
@@ -46,10 +50,14 @@ namespace Wild
 
             m_imguiCore->Watch("Frame time: ", &frameTime);
             m_imguiCore->Watch("delta time: ", &deltaTime);
+            m_imguiCore->Watch("FPS: ", &m_fps);
 
             // Update and render all the passes
             m_renderer->Update(deltaTime);
             m_renderer->Render(*m_gfxContext->GetCommandList().get(), deltaTime);
+
+            // Displays profiled data
+            m_profiler->Display();
 
             m_imguiCore->DrawGizmo(camera.GetView(), camera.GetProjection());
             m_imguiCore->Draw();
@@ -59,6 +67,9 @@ namespace Wild
 
             endTime = std::chrono::high_resolution_clock::now();
             frameTime = std::chrono::duration<float, std::milli>(endTime - currentTime).count();
+            m_timer += deltaTime * 1;
+
+            SetWindowData(frameCount, frameTime);
         }
     }
 
@@ -71,6 +82,21 @@ namespace Wild
         m_gfxContext->Shutdown();
         m_gfxContext.reset();
         m_window.reset();
+    }
+
+    void Engine::SetWindowData(int& frameCount, float frameTime)
+    {
+        if (m_timer >= 1.0f)
+        {
+            m_fps = static_cast<int>(frameCount / m_timer);
+
+            std::string newWindowName =
+                "Wild enigne | FPS: " + std::to_string(m_fps) + " | Frame time: " + std::to_string(frameTime) + " ms";
+            glfwSetWindowTitle(m_window->GetWindow(), newWindowName.c_str());
+
+            m_timer = 0;
+            frameCount = 0;
+        }
     }
 
     void Engine::SetSystemPath(const std::filesystem::path& path) { m_systemPath = path; }
