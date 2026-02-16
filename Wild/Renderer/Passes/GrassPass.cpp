@@ -84,12 +84,27 @@ namespace Wild
 
     void GrassPass::Add(Renderer& renderer, RenderGraph& rg)
     {
-        // Adds each pass to the render graph
-        AddComputePerBladeDataPass(renderer, rg);
-        AddClearCounterPass(renderer, rg);
-        AddGrassCulling(renderer, rg);
-        AddIndirectDrawCommandsPass(renderer, rg);
-        AddRenderGrass(renderer, rg);
+        auto& context = engine.GetGfxContext();
+
+        // Check mesh shader support
+        if (context->GetCapabilities().SupportsMeshShaders())
+        {
+            // Adds each pass to the render graph
+            AddComputePerBladeDataPass(renderer, rg);
+            AddClearCounterPass(renderer, rg);
+            AddGrassCulling(renderer, rg);
+            AddIndirectDrawCommandsPass(renderer, rg);
+            AddRenderGrass(renderer, rg);
+        }
+        else
+        {
+            // Adds each pass to the render graph
+            AddComputePerBladeDataPass(renderer, rg);
+            AddClearCounterPass(renderer, rg);
+            AddGrassCulling(renderer, rg);
+            AddIndirectDrawCommandsPass(renderer, rg);
+            AddRenderGrass(renderer, rg);
+        }
     }
 
     void GrassPass::Update(const float dt)

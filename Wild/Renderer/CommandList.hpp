@@ -31,8 +31,8 @@ namespace Wild
 
         void SetPipelineState(const std::shared_ptr<PipelineState> pipeline);
 
-        void BeginRender(const std::vector<Texture *>& renderTargets, const std::vector<ClearOperation>& clearRt,
-                         Texture *depthStencil, DSClearOperation clearDs, const std::string& passName = {},
+        void BeginRender(const std::vector<Texture*>& renderTargets, const std::vector<ClearOperation>& clearRt,
+                         Texture* depthStencil, DSClearOperation clearDs, const std::string& passName = {},
                          uint32_t rtArrayIndex = 64);
         void BeginRender(const std::string& passName = {});
 
@@ -46,19 +46,19 @@ namespace Wild
 
         template <typename rc> void SetRootConstant(uint32_t rootIndex, rc& rootConstant);
         void SetBindlessHeap(uint32_t rootIndex);
-        void SetConstantBufferView(uint32_t rootIndex, Buffer *buffer);
+        void SetConstantBufferView(uint32_t rootIndex, Buffer* buffer);
 
-        void SetUnorderedAccessView(uint32_t rootIndex, Buffer *buffer);
-        void SetUnorderedAccessView(uint32_t rootIndex, Texture *texture, uint32_t index = 64);
+        void SetUnorderedAccessView(uint32_t rootIndex, Buffer* buffer);
+        void SetUnorderedAccessView(uint32_t rootIndex, Texture* texture, uint32_t index = 64);
 
-        void SetShaderResourceView(uint32_t rootIndex, Buffer *buffer);
+        void SetShaderResourceView(uint32_t rootIndex, Buffer* buffer);
 
         void SetVertexBuffer() {};
         void SetIndexBuffer() {};
         void Draw(uint32_t size) {};
 
       private:
-        void SetRenderTargets(const std::vector<Texture *>& renderTargets, Texture *depthStencil, uint32_t rtArrayIndex);
+        void SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil, uint32_t rtArrayIndex);
 
         const bool CanPassExecute(const std::string& passName);
 
@@ -78,13 +78,18 @@ namespace Wild
 
     template <typename rc> inline void CommandList::SetRootConstant(uint32_t rootIndex, rc& rootConstant)
     {
-        if (m_pipelineState->IsComputePass())
+        switch (m_pipelineState->GetPassType())
         {
-            m_commandList->SetComputeRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
-        }
-        else
-        {
+        case PipelineStateType::Graphics:
             m_commandList->SetGraphicsRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
+            break;
+        case PipelineStateType::Compute:
+            m_commandList->SetComputeRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
+            break;
+        case PipelineStateType::MeshPipeline:
+            break;
+        default:
+            break;
         }
     }
 } // namespace Wild

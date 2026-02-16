@@ -25,7 +25,8 @@ namespace Wild
     enum class PipelineStateType : uint8_t
     {
         Graphics,
-        Compute
+        Compute,
+        MeshPipeline
     };
 
     class PipelineState
@@ -38,12 +39,13 @@ namespace Wild
         ComPtr<ID3D12RootSignature> GetRootSignature() { return m_rootSignature; }
         const PipelineStateSettings& GetPipelineSettings() { return m_settings; }
 
-        const bool IsComputePass() const { return m_isComputePass; }
+        const PipelineStateType GetPassType() const { return m_type; }
 
       private:
         void CreateRootSignature(const std::vector<Uniform>& uniforms);
         void CreateGraphicsPSO();
         void CreateComputePSO();
+        void CreateMeshPipelinePSO();
 
         PipelineStateType m_type;
         const PipelineStateSettings& m_settings;

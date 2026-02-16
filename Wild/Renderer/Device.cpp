@@ -57,6 +57,8 @@ namespace Wild
         CreateAdapter();
         CreateDevice();
 
+        m_capabilities.GetSupportedFeatures(this);
+
         m_descriptorAllocatorsRtv = std::make_shared<DescriptorAllocatorRtv>(m_device, 64);
         m_descriptorAllocatorsDsv = std::make_shared<DescriptorAllocatorDsv>(m_device, 64);
         m_desciptorAllocatorCbvSrvUav = std::make_shared<DescriptorAllocatorCbvSrvUav>(m_device, 8192);
@@ -102,7 +104,7 @@ namespace Wild
 
         ThrowIfFailed(currentCommandList->GetList()->Close());
 
-        ID3D12CommandList *const commandLists[] = {currentCommandList->GetList().Get()};
+        ID3D12CommandList* const commandLists[] = {currentCommandList->GetList().Get()};
 
         GetCommandQueue(QueueType::Direct)->GetQueue()->ExecuteCommandLists(_countof(commandLists), commandLists);
         GetCommandQueue(QueueType::Direct)->WaitForFence();
@@ -169,7 +171,7 @@ namespace Wild
     {
 #if defined(_DEBUG)
 
-        ID3D12Debug *dc;
+        ID3D12Debug* dc;
         ThrowIfFailed(D3D12GetDebugInterface(IID_PPV_ARGS(&dc)));
         ThrowIfFailed(dc->QueryInterface(IID_PPV_ARGS(&m_debugController)));
         m_debugController->EnableDebugLayer();
@@ -216,6 +218,9 @@ namespace Wild
     {
         ThrowIfFailed(D3D12CreateDevice(m_adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&m_device)));
 
+        // Create device 2 for it's features
+        ThrowIfFailed(m_device->QueryInterface(IID_PPV_ARGS(&m_device2)));
+
 #if defined(_DEBUG)
         ThrowIfFailed(m_device->QueryInterface(IID_PPV_ARGS(&m_debugDevice)));
 #endif
@@ -239,7 +244,7 @@ namespace Wild
             swapchainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
             swapchainDesc.SampleDesc.Count = 1;
 
-            IDXGISwapChain1 *new_swapchain;
+            IDXGISwapChain1* new_swapchain;
 
             ThrowIfFailed(m_factory->CreateSwapChainForHwnd(GetCommandQueue(QueueType::Direct)->GetQueue().Get(),
                                                             m_window->GetHandle(),
@@ -249,7 +254,7 @@ namespace Wild
                                                             &new_swapchain),
                           "Swapchain creation failed");
 
-            m_swapchain = reinterpret_cast<IDXGISwapChain4 *>(new_swapchain);
+            m_swapchain = reinterpret_cast<IDXGISwapChain4*>(new_swapchain);
         }
 
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)

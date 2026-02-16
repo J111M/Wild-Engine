@@ -6,6 +6,7 @@
 #include "Renderer/Window.hpp"
 
 #include "Tools/DescriptorAllocator.hpp"
+#include "Tools/DeviceCapabilities.hpp"
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -24,7 +25,10 @@ namespace Wild
         void Shutdown();
 
         ComPtr<ID3D12Device> GetDevice() { return m_device; }
+        ComPtr<ID3D12Device2> GetDevice2() { return m_device2; }
         ComPtr<IDXGIFactory4> GetFactory() { return m_factory; }
+
+        const GfxCapabilities& GetCapabilities() const { return m_capabilities; }
 
         // Get queue from input variable type
         std::shared_ptr<CommandQueue> GetCommandQueue(QueueType type) { return m_commandQueue[static_cast<uint32_t>(type)]; }
@@ -77,7 +81,10 @@ namespace Wild
         ComPtr<ID3D12Debug1> m_debugController;
         ComPtr<IDXGIAdapter1> m_adapter;
         ComPtr<ID3D12Device> m_device;
+        ComPtr<ID3D12Device2> m_device2;
         ComPtr<ID3D12DebugDevice> m_debugDevice;
+
+        GfxCapabilities m_capabilities;
 
         // Swapchain
         ComPtr<IDXGISwapChain3> m_swapchain;

@@ -28,7 +28,7 @@ float4 main(VSOutput input) : SV_Target0
     // Calculate uv for equirectangular map
     // float2 uv = SampleSphericalMap(dir);
 
-    float sampleDelta = 0.025;
+    float sampleDelta = 0.050; // ..025
     float numSamples = 0.0;
     for (float phi = 0.0; phi < 2.0 * PI; phi += sampleDelta)
     {

@@ -18,7 +18,8 @@ namespace Wild
     {
         Default,
         Graphics,
-        Compute
+        Compute,
+        MeshShader
     };
 
     class RenderPassBase

@@ -188,6 +188,7 @@ namespace Wild
 
         std::shared_ptr<Shader> VertexShader;
         std::shared_ptr<Shader> FragShader;
+        std::shared_ptr<Shader> MeshShader;
         std::shared_ptr<Shader> ComputeShader;
     };
 

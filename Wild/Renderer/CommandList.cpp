@@ -53,47 +53,62 @@ namespace Wild
     void CommandList::SetBindlessHeap(uint32_t rootIndex)
     {
         auto context = engine.GetGfxContext();
-        if (m_pipelineState->IsComputePass())
+        switch (m_pipelineState->GetPassType())
         {
-            m_commandList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(rootIndex), context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
-        }
-        else
-        {
+        case PipelineStateType::Graphics:
             m_commandList->SetGraphicsRootDescriptorTable(
                 static_cast<UINT>(rootIndex), context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
+            break;
+        case PipelineStateType::Compute:
+            m_commandList->SetComputeRootDescriptorTable(
+                static_cast<UINT>(rootIndex), context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
+            break;
+        case PipelineStateType::MeshPipeline:
+            break;
+        default:
+            break;
         }
     }
 
-    void CommandList::SetConstantBufferView(uint32_t rootIndex, Buffer *buffer)
+    void CommandList::SetConstantBufferView(uint32_t rootIndex, Buffer* buffer)
     {
-        if (m_pipelineState->IsComputePass())
+        switch (m_pipelineState->GetPassType())
         {
-            m_commandList->SetComputeRootConstantBufferView(static_cast<UINT>(rootIndex),
-                                                            buffer->GetBuffer()->GetGPUVirtualAddress());
-        }
-        else
-        {
+        case PipelineStateType::Graphics:
             m_commandList->SetGraphicsRootConstantBufferView(static_cast<UINT>(rootIndex),
                                                              buffer->GetBuffer()->GetGPUVirtualAddress());
+            break;
+        case PipelineStateType::Compute:
+            m_commandList->SetComputeRootConstantBufferView(static_cast<UINT>(rootIndex),
+                                                            buffer->GetBuffer()->GetGPUVirtualAddress());
+            break;
+        case PipelineStateType::MeshPipeline:
+            break;
+        default:
+            break;
         }
     }
 
-    void CommandList::SetUnorderedAccessView(uint32_t rootIndex, Buffer *buffer)
+    void CommandList::SetUnorderedAccessView(uint32_t rootIndex, Buffer* buffer)
     {
-        if (m_pipelineState->IsComputePass())
+        switch (m_pipelineState->GetPassType())
         {
-            m_commandList->SetComputeRootUnorderedAccessView(static_cast<UINT>(rootIndex),
-                                                             buffer->GetBuffer()->GetGPUVirtualAddress());
-        }
-        else
-        {
+        case PipelineStateType::Graphics:
             m_commandList->SetGraphicsRootUnorderedAccessView(static_cast<UINT>(rootIndex),
                                                               buffer->GetBuffer()->GetGPUVirtualAddress());
+            break;
+        case PipelineStateType::Compute:
+            m_commandList->SetComputeRootUnorderedAccessView(static_cast<UINT>(rootIndex),
+                                                             buffer->GetBuffer()->GetGPUVirtualAddress());
+            break;
+        case PipelineStateType::MeshPipeline:
+            break;
+        default:
+            break;
         }
     }
 
-    void CommandList::SetUnorderedAccessView(uint32_t rootIndex, Texture *texture, uint32_t index)
+    void CommandList::SetUnorderedAccessView(uint32_t rootIndex, Texture* texture, uint32_t index)
     {
         texture->Transition(*this, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
@@ -104,32 +119,42 @@ namespace Wild
         else
             textureUav = texture->GetUav(index);
 
-        if (m_pipelineState->IsComputePass())
+        switch (m_pipelineState->GetPassType())
         {
-            m_commandList->SetComputeRootDescriptorTable(static_cast<UINT>(rootIndex), textureUav->GetGpuHandle());
-        }
-        else
-        {
+        case PipelineStateType::Graphics:
             m_commandList->SetGraphicsRootDescriptorTable(static_cast<UINT>(rootIndex), textureUav->GetGpuHandle());
+            break;
+        case PipelineStateType::Compute:
+            m_commandList->SetComputeRootDescriptorTable(static_cast<UINT>(rootIndex), textureUav->GetGpuHandle());
+            break;
+        case PipelineStateType::MeshPipeline:
+            break;
+        default:
+            break;
         }
     }
 
-    void CommandList::SetShaderResourceView(uint32_t rootIndex, Buffer *buffer)
+    void CommandList::SetShaderResourceView(uint32_t rootIndex, Buffer* buffer)
     {
-        if (m_pipelineState->IsComputePass())
+        switch (m_pipelineState->GetPassType())
         {
-            m_commandList->SetComputeRootShaderResourceView(static_cast<UINT>(rootIndex),
-                                                            buffer->GetBuffer()->GetGPUVirtualAddress());
-        }
-        else
-        {
+        case PipelineStateType::Graphics:
             m_commandList->SetGraphicsRootShaderResourceView(static_cast<UINT>(rootIndex),
                                                              buffer->GetBuffer()->GetGPUVirtualAddress());
+            break;
+        case PipelineStateType::Compute:
+            m_commandList->SetComputeRootShaderResourceView(static_cast<UINT>(rootIndex),
+                                                            buffer->GetBuffer()->GetGPUVirtualAddress());
+            break;
+        case PipelineStateType::MeshPipeline:
+            break;
+        default:
+            break;
         }
     }
 
-    void CommandList::BeginRender(const std::vector<Texture *>& renderTargets, const std::vector<ClearOperation>& clearRt,
-                                  Texture *depthStencil, DSClearOperation clearDs, const std::string& passName,
+    void CommandList::BeginRender(const std::vector<Texture*>& renderTargets, const std::vector<ClearOperation>& clearRt,
+                                  Texture* depthStencil, DSClearOperation clearDs, const std::string& passName,
                                   uint32_t rtArrayIndex)
     {
         if (!CanPassExecute(passName)) return;
@@ -141,7 +166,7 @@ namespace Wild
 
         m_commandList->SetGraphicsRootSignature(m_pipelineState->GetRootSignature().Get());
 
-        ID3D12DescriptorHeap *heaps[] = {engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get()};
+        ID3D12DescriptorHeap* heaps[] = {engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get()};
         m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
 
         auto settings = m_pipelineState->GetPipelineSettings();
@@ -190,7 +215,7 @@ namespace Wild
     {
         if (!CanPassExecute(passName)) return;
 
-        if (!m_pipelineState->IsComputePass())
+        if (m_pipelineState->GetPassType() != PipelineStateType::Compute)
         {
             WD_WARN("Pass is not a compute pass please provide render targets.");
             return;
@@ -201,7 +226,7 @@ namespace Wild
 
         m_commandList->SetComputeRootSignature(m_pipelineState->GetRootSignature().Get());
 
-        ID3D12DescriptorHeap *heaps[] = {engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get()};
+        ID3D12DescriptorHeap* heaps[] = {engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get()};
         m_commandList->SetDescriptorHeaps(1, heaps);
     }
 
@@ -241,7 +266,7 @@ namespace Wild
         m_commandList->ClearRenderTargetView(renderTarget.GetRtv()->GetCpuHandle(), &color[0], 0, nullptr);
     }
 
-    void CommandList::SetRenderTargets(const std::vector<Texture *>& renderTargets, Texture *depthStencil, uint32_t rtArrayIndex)
+    void CommandList::SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil, uint32_t rtArrayIndex)
     {
         const uint32_t numRenderTargets = static_cast<uint32_t>(renderTargets.size());
         if (numRenderTargets >= 8) WD_ERROR("Trying to bind more render targets than possible.");
@@ -261,7 +286,7 @@ namespace Wild
         }
 
         // Depth stencil
-        const D3D12_CPU_DESCRIPTOR_HANDLE *dsvHandle = nullptr;
+        const D3D12_CPU_DESCRIPTOR_HANDLE* dsvHandle = nullptr;
         if (depthStencil)
         {
             depthStencil->Transition(*this, D3D12_RESOURCE_STATE_DEPTH_WRITE);
