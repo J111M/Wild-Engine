@@ -65,6 +65,8 @@ PSOut main(PSInput input)
         normal.xyz = normalize(normal.xyz * 2.0 - 1.0);
     }
 
+    
+
     float4 emissive = float4(0, 0, 0, 0);
     if (emissiveView != 0)
     {
@@ -73,6 +75,7 @@ PSOut main(PSInput input)
 
     float roughness = 0.0f;
     float metallic = 0.0f;
+    
     if (roughnessMetallicView != 0)
     {
         float2 rm = textures[NonUniformResourceIndex(roughnessMetallicView)].Sample(anisotropySampler, input.uv).gb;

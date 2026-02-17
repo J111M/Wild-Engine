@@ -22,6 +22,11 @@ namespace Wild
     {
         glm::vec2 textureSize;
         glm::vec2 chunkPosition;
+        float amplitude = 0.4f;
+        float frequency = 0.005f;
+        float amplitudeScalar = 0.4f;
+        float frequencyScalar = 2.0f;
+        int octaves = 6;
     };
 
     struct DrawTerrainPassData
@@ -59,6 +64,10 @@ namespace Wild
         std::vector<uint32_t> m_freedIndices;
 
         bool m_shouldGenerateChunks = true;
+        bool m_keepGeneratingTerrain = false;
+
+        // TODO remove temp value
+        int tempChunkID = 0;
 
         GenerateTerrainRootConstant m_grc{};
 

@@ -2,6 +2,11 @@ cbuffer Constants : register(b0)
 {
     float2 textureSize;
     float2 chunkPosition;
+    float amplitude;
+    float frequency;
+    float amplitudeScalar;
+    float frequencyScalar;
+    int octaves;
 };
 
 // Terrain heigth map
@@ -66,18 +71,18 @@ void main(uint3 id: SV_DispatchThreadID)
     float distance = max(abs(coords.x), abs(coords.y));
     float falloff = smoothstep(0.0f, 1.0f, distance);
 
-    float noise = 0.0f;
-    float amplitude = 0.4f;
-    float frequency = 0.005f;
-    int octaves = 6;
-
     float2 positionInChunk = (chunkPosition + float2(id.xy)) + float2(0.1f);
+
+    float noise = 0.0f;
+
+    float amp = amplitude;
+    float freq = frequency;
 
     // Layer the noise at different scales FBM
     for (int i = 0; i < octaves; i++) {
-        noise += amplitude * evaluateNoise(positionInChunk * frequency);
-        amplitude *= 0.4f;
-        frequency *= 2.0f;
+        noise += amp * evaluateNoise(positionInChunk * freq);
+        amp *= amplitudeScalar;
+        freq *= frequencyScalar;
     }
 
     // Subtract the falloff value from the noise to achieve an island like height map

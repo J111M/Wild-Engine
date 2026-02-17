@@ -5,7 +5,21 @@ namespace Wild
 {
     ProceduralTerrainPass::ProceduralTerrainPass() { GenerateTerrainPlane(64); }
 
-    void ProceduralTerrainPass::Update(const float dt) {}
+    void ProceduralTerrainPass::Update(const float dt)
+    {
+        engine.GetImGui()->AddPanel("Terrain Settings", [this]() {
+            ImGui::SliderFloat("Amplitude", &m_grc.amplitude, 0.01f, 1.0f);
+            ImGui::SliderFloat("Frequency", &m_grc.frequency, 0.001f, 0.1f);
+            ImGui::SliderFloat("Amplitude Scalar", &m_grc.amplitudeScalar, 0.01f, 1.0f);
+            ImGui::SliderFloat("Frequency Scalar", &m_grc.frequencyScalar, 0.1f, 10.0f);
+            ImGui::SliderInt("Octaves", &m_grc.octaves, 1, 12);
+            if (ImGui::Button("Generate new terrain")) { m_shouldGenerateChunks = true; }
+
+            ImGui::Checkbox("Repeat generation", &m_keepGeneratingTerrain);
+
+            if (m_keepGeneratingTerrain) { m_shouldGenerateChunks = true; }
+        });
+    }
 
     void ProceduralTerrainPass::Add(Renderer& renderer, RenderGraph& rg)
     {
@@ -23,32 +37,40 @@ namespace Wild
             [&renderer, this](GenerateTerrainPassData& passData, CommandList& list) {
                 if (m_shouldGenerateChunks)
                 {
-                    TextureDesc desc{};
-                    desc.width = 512;
-                    desc.Height = 512;
-                    desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
-                    desc.format = DXGI_FORMAT_R32_FLOAT;
-
                     const uint32_t chunkWidth = 1u;
                     const uint32_t chunkHeight = 1u;
 
-                    // Chunk size
-                    for (uint32_t y = 0; y < chunkHeight; y++)
+                    const uint32_t texWidth = 512;
+                    const uint32_t texHeight = 512;
+
+                    if (tempChunkID == 0)
                     {
-                        for (uint32_t x = 0; x < chunkWidth; x++)
+                        TextureDesc desc{};
+                        desc.width = texWidth;
+                        desc.Height = texHeight;
+                        desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
+                        desc.format = DXGI_FORMAT_R32_FLOAT;
+
+                        // Chunk size
+                        for (uint32_t y = 0; y < chunkHeight; y++)
                         {
-                            Entity chunkEntity = engine.GetECS()->CreateEntity();
-                            auto& transform =
-                                engine.GetECS()->AddComponent<Transform>(chunkEntity, glm::vec3(0, 0, 0), m_chunkEntity);
-                            transform.SetPosition(glm::vec3(x * 128, 0, y * 128));
+                            for (uint32_t x = 0; x < chunkWidth; x++)
+                            {
+                                Entity chunkEntity = engine.GetECS()->CreateEntity();
+                                auto& transform =
+                                    engine.GetECS()->AddComponent<Transform>(chunkEntity, glm::vec3(0, 0, 0), m_chunkEntity);
+                                transform.SetPosition(glm::vec3(x * 128, 0, y * 128));
 
-                            auto& chunk = engine.GetECS()->AddComponent<TerrainChunk>(chunkEntity);
-                            desc.name = "Chunk number X: " + std::to_string(x) + " | Y: " + std::to_string(y);
-                            chunk.heightMap = std::make_unique<Texture>(desc);
-                            chunk.id = y * chunkWidth + x;
+                                auto& chunk = engine.GetECS()->AddComponent<TerrainChunk>(chunkEntity);
+                                desc.name = "Chunk number X: " + std::to_string(x) + " | Y: " + std::to_string(y);
+                                chunk.heightMap = std::make_unique<Texture>(desc);
+                                chunk.id = y * chunkWidth + x;
 
-                            m_terrainChunks.emplace_back(chunkEntity);
+                                m_terrainChunks.emplace_back(chunkEntity);
+                            }
                         }
+
+                        tempChunkID++;
                     }
 
                     PipelineStateSettings computeSettings{};
@@ -74,17 +96,17 @@ namespace Wild
                     {
                         list.SetPipelineState(pipeline);
                         list.BeginRender();
-                        m_grc.textureSize = glm::vec2(desc.width, desc.Height);
+                        m_grc.textureSize = glm::vec2(texWidth, texHeight);
 
                         size_t x = i % chunkWidth;
                         size_t y = i / chunkWidth;
-                        m_grc.chunkPosition = glm::vec2(x * (desc.width - 1), y * (desc.Height - 1));
+                        m_grc.chunkPosition = glm::vec2(x * (texWidth - 1), y * (texHeight - 1));
 
                         auto& chunk = engine.GetECS()->GetComponent<TerrainChunk>(m_terrainChunks[i]);
 
                         list.SetRootConstant(0, m_grc);
                         list.SetUnorderedAccessView(1, chunk.heightMap.get());
-                        list.GetList()->Dispatch((desc.width) / 32, (desc.Height) / 32, 1);
+                        list.GetList()->Dispatch((texWidth) / 32, (texHeight) / 32, 1);
 
                         list.EndRender();
 
