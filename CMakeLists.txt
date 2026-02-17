@@ -21,9 +21,16 @@ target_include_directories(Wild PRIVATE "./Wild")
 # Pre-compiled header
 target_precompile_headers(Wild PRIVATE "./Wild/precomp.hpp")
 
+# Exclude mikktspcae from my precomp header
+set_source_files_properties(
+    Wild/Tools/TangentGeneration/mikktspace.c
+    PROPERTIES SKIP_PRECOMPILE_HEADERS ON
+)
+
 # Glob all source files
 file(GLOB_RECURSE SOURCES
 	"Wild/*.cpp"
+	"Wild/*.c"
 )
 
 # Add source files to the program

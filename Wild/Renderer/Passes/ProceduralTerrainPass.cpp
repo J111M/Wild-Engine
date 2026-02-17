@@ -3,7 +3,7 @@
 
 namespace Wild
 {
-    ProceduralTerrainPass::ProceduralTerrainPass() { GenerateTerrainPlane(128); }
+    ProceduralTerrainPass::ProceduralTerrainPass() { GenerateTerrainPlane(64); }
 
     void ProceduralTerrainPass::Update(const float dt) {}
 

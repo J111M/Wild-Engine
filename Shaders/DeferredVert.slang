@@ -4,6 +4,7 @@ struct VSInput
     float3 color : COLOR;
     float3 normal : NORMAL;
     float2 uv : TEXCOORD;
+    float4 tangent : TANGENT;
 };
 
 struct VSOutput
@@ -12,6 +13,7 @@ struct VSOutput
     float3 color : COLOR;
     float3 normal : NORMAL;
     float2 uv : TEXCOORD;
+    float4 tangent : TANGENT;
 };
 
 cbuffer Constants : register(b0)
@@ -28,5 +30,6 @@ VSOutput main(VSInput input)
     output.color = input.color;
     output.normal = input.normal;
     output.uv = input.uv;
+    output.tangent = input.tangent;
     return output;
 }

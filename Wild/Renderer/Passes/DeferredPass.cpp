@@ -32,8 +32,8 @@ namespace Wild
         rg.AddPass<DeferredPassData>(
             "Deferred pass", PassType::Graphics, [&renderer, this](const DeferredPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
-                settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/VertDeferred.slang");
-                settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/FragDeferred.slang");
+                settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DeferredVert.slang");
+                settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DeferredFrag.slang");
                 settings.DepthStencilState.DepthEnable = true;
 
                 // Setting up the input layout
@@ -44,6 +44,8 @@ namespace Wild
                     InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
                 settings.ShaderState.InputLayout.emplace_back(
                     InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
+                settings.ShaderState.InputLayout.emplace_back(
+                    InputElement("TANGENT", DXGI_FORMAT_R32G32B32A32_FLOAT, sizeof(glm::vec3) * 3 + sizeof(glm::vec2)));
 
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Albedo
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Normal

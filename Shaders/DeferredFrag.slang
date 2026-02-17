@@ -4,6 +4,7 @@ struct PSInput
     float3 color : COLOR;
     float3 normal : NORMAL;
     float2 uv : TEXCOORD;
+    float4 tangent : TANGENT;
 };
 
 struct PSOut
@@ -27,11 +28,10 @@ Texture2D textures[4096] : register(t0, space0);
 SamplerState anisotropySampler : register(s0);
 
 // Octahedral encoding
-float3 OctEncode(float3 n) {
+float3 OctEncode(float3 n)
+{
     n /= (abs(n.x) + abs(n.y) + abs(n.z));
-    if (n.z < 0.0) {
-        n.xy = (1.0 - abs(n.yx)) * select(n.xy >= 0.0, 1.0, -1.0);
-    }
+    if (n.z < 0.0) { n.xy = (1.0 - abs(n.yx)) * select(n.xy >= 0.0, 1.0, -1.0); }
     return float3(n.xy * 0.5 + 0.5, 0.0);
 }
 
@@ -39,23 +39,31 @@ float3 OctEncode(float3 n) {
 PSOut main(PSInput input)
 {
     float4 albedo = float4(0, 0, 0, 0);
-    if (albedoView != 0)
-    {
-        albedo = textures[NonUniformResourceIndex(albedoView)].Sample(anisotropySampler, input.uv);
-    }
+    if (albedoView != 0) { albedo = textures[NonUniformResourceIndex(albedoView)].Sample(anisotropySampler, input.uv); }
 
     float4 normal = float4(0, 0, 0, 0);
     if (normalView != 0)
     {
-        normal.xyz = mul((float3x3)invTransposeModel, input.normal.xyz);
-        // normal = textures[NonUniformResourceIndex(normalView)].Sample(anisotropySampler, input.uv);
-    }
-    else
-    {
-        normal.xyz = mul((float3x3)invTransposeModel, input.normal.xyz);
-    }
+        normal.xyz = textures[NonUniformResourceIndex(normalView)].Sample(anisotropySampler, input.uv).xyz;
+        normal.xyz = normal.xyz * 2.0 - 1.0;
+        //normal.xyz = mul((float3x3)invTransposeModel, normal.xyz);
 
-    normal.xyz = normalize(normal.xyz);
+        float3 geoNormal = normalize(mul((float3x3)invTransposeModel, input.normal.xyz));
+
+        float4 tangent = input.tangent;
+
+        float3 T = normalize(mul((float3x3)model, tangent.xyz));
+        T = normalize(T - dot(T, geoNormal) * geoNormal);
+        float3 B = cross(geoNormal, T) * tangent.w;
+
+        float3x3 TBN = float3x3(T, B, geoNormal);
+
+        normal.xyz = normalize(mul((normal.xyz), TBN));
+    }
+    else {
+        normal.xyz = mul((float3x3)invTransposeModel, input.normal.xyz);
+        normal.xyz = normalize(normal.xyz * 2.0 - 1.0);
+    }
 
     float4 emissive = float4(0, 0, 0, 0);
     if (emissiveView != 0)
