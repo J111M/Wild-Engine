@@ -104,6 +104,8 @@ namespace Wild
             ImGui::SliderFloat("Frequency", &m_grassSceneData.frequency, 0.01f, 0.4f);
             ImGui::SliderFloat("Amplitude", &m_grassSceneData.amplitude, 0.01f, 1.0f);
             ImGui::SliderFloat2("Wind Direction", &m_grassSceneData.windDirection.x, -10.0f, 10.0f);
+
+            if (ImGui::Button("Recompute blades")) { m_recomputeGrassBlades = true; }
         });
 
         SceneData SceneCbv{};
@@ -159,6 +161,22 @@ namespace Wild
                     Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(PerBladeComputeRootConstant)};
                     uniforms.emplace_back(rootConstant);
 
+                    Uniform bindlessUni{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE srvRange{};
+                    srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                                  UINT_MAX,
+                                  0,
+                                  0,
+                                  D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+                    bindlessUni.ranges.emplace_back(srvRange);
+
+                    uniforms.emplace_back(bindlessUni);
+
+                    Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
+                    staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                    staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                    uniforms.emplace_back(staticSampler);
+
                     m_perBladeDataBuffer->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                     auto& pipeline = renderer.GetOrCreatePipeline(
@@ -175,9 +193,10 @@ namespace Wild
                         m_pbcrc.chunkPosition.x = transform.GetPosition().x;
                         m_pbcrc.chunkPosition.y = transform.GetPosition().z;
                         m_pbcrc.chunkId = chunk.id;
-
+                        m_pbcrc.terrainHeightView = chunk.heightMap->GetSrv()->BindlessView();
                         list.SetUnorderedAccessView(0, m_perBladeDataBuffer.get());
                         list.SetRootConstant<PerBladeComputeRootConstant>(1, m_pbcrc);
+                        list.SetBindlessHeap(2);
 
                         list.GetList()->Dispatch(MAXBLADESPERCHUNK / 64, 1, 1);
                     }
@@ -402,7 +421,7 @@ namespace Wild
                 uniforms.emplace_back(bindlessUni);
 
                 Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
-                staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+                staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
                 staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                 uniforms.emplace_back(staticSampler);
 

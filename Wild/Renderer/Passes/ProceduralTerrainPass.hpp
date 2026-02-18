@@ -22,10 +22,17 @@ namespace Wild
     {
         glm::vec2 textureSize;
         glm::vec2 chunkPosition;
-        float amplitude = 0.4f;
-        float frequency = 0.005f;
+        float amplitude = 0.7f;
+        float frequency = 0.012f;
         float amplitudeScalar = 0.4f;
         float frequencyScalar = 2.0f;
+
+        float warpStrength = 0.5f;
+        float elevationPower = 1.5f;
+        float ridgeBlend = 0.4f;
+        float waterLevel = 0.02;
+
+        float valleyScalar = 0.3;
         int octaves = 6;
     };
 

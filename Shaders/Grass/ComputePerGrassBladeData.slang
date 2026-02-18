@@ -14,7 +14,11 @@ cbuffer RootConsant : register(b0)
     float2 minMaxHeight;
     uint seed;
     uint chunkId;
+    uint heightMapView;
 };
+
+Texture2D textures[4096] : register(t0, space0);
+SamplerState anisotropySampler : register(s0);
 
 // https://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11
 float HashFloat(uint x)
@@ -74,6 +78,17 @@ float rescale(float value, float min, float max)
     return min + value * (max - min);
 }
 
+float GetTerrainHeight(float2 position, float maxBladePos) {
+    float terrainHeight = 0.0f;
+    if (heightMapView > 0) {
+
+        float2 uv = float2(position.xy) / maxBladePos;
+        terrainHeight = textures[heightMapView].SampleLevel(anisotropySampler, uv, 0).r;
+    }
+
+    return terrainHeight;
+}
+
 [shader("compute")]
 [numthreads(64, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
@@ -84,8 +99,34 @@ void main(uint3 DTid : SV_DispatchThreadID)
     const uint chunkOffset = chunkId * 25000;
     uint offsetId = chunkOffset + DTid.x;
 
-    // TODO modify PerBladeData to match chunk and chunk id
-    float2 rHash1 = HashFloat2InRange(offsetId + 1, 0, 128); // 128 units per chunk for now
+    const float maxBladePosition = 128;
+    float2 rHash1;
+    float terrainHeight;
+    float slopeAngle;
+    int attempt = 0;
+    const int maxAttempts = 50;
+
+    // Keep checking for a position that is not on a slope or sand/water level
+    do {
+        rHash1 = HashFloat2InRange(offsetId * maxAttempts + attempt, 0, maxBladePosition);
+
+        float step = 1.0; // tune this relative to your terrain scale
+        float hPosX = GetTerrainHeight(rHash1 + float2(step, 0.0), maxBladePosition);
+        float hNegX = GetTerrainHeight(rHash1 - float2(step, 0.0), maxBladePosition);
+        float hPosZ = GetTerrainHeight(rHash1 + float2(0.0, step), maxBladePosition);
+        float hNegZ = GetTerrainHeight(rHash1 - float2(0.0, step), maxBladePosition);
+
+        float dX = (hPosX - hNegX) / (2.0 * step);
+        float dZ = (hPosZ - hNegZ) / (2.0 * step);
+
+        slopeAngle = degrees(atan(sqrt(dX * dX + dZ * dZ)));
+
+        attempt++;
+    } while (slopeAngle >= 5.5f && attempt < maxAttempts);
+
+    if (slopeAngle >= 5.5f) {
+        return;
+    }
 
     float3 bladePosition = float3(rHash1.x + chunkPosition.x, 0, rHash1.y + chunkPosition.y);
 

@@ -13,6 +13,16 @@ namespace Wild
             ImGui::SliderFloat("Amplitude Scalar", &m_grc.amplitudeScalar, 0.01f, 1.0f);
             ImGui::SliderFloat("Frequency Scalar", &m_grc.frequencyScalar, 0.1f, 10.0f);
             ImGui::SliderInt("Octaves", &m_grc.octaves, 1, 12);
+
+            if (ImGui::CollapsingHeader("Advanced Settings"))
+            {
+                ImGui::SliderFloat("Warp Strength", &m_grc.warpStrength, 0.0f, 2.0f);
+                ImGui::SliderFloat("Elevation Power", &m_grc.elevationPower, 0.5f, 5.0f);
+                ImGui::SliderFloat("Ridge Blend", &m_grc.ridgeBlend, 0.0f, 1.0f);
+                ImGui::SliderFloat("Valley Strength", &m_grc.valleyScalar, 0.0f, 0.8f);
+                ImGui::SliderFloat("Water Level", &m_grc.waterLevel, -0.1f, 0.3f);
+            }
+
             if (ImGui::Button("Generate new terrain")) { m_shouldGenerateChunks = true; }
 
             ImGui::Checkbox("Repeat generation", &m_keepGeneratingTerrain);

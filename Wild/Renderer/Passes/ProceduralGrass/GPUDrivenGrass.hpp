@@ -5,7 +5,7 @@
 
 namespace Wild
 {
-#define MAXBLADESPERCHUNK 300000
+#define MAXBLADESPERCHUNK 100000
 #define MAXGRASSBLADES 2500000
 
     /// <summary>
@@ -30,6 +30,7 @@ namespace Wild
         glm::vec2 minMaxHeight{};
         uint32_t seed{};
         uint32_t chunkId{};
+        uint32_t terrainHeightView{};
     };
 
     /// <summary>
