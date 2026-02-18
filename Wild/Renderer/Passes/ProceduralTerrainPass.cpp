@@ -3,7 +3,55 @@
 
 namespace Wild
 {
-    ProceduralTerrainPass::ProceduralTerrainPass() { GenerateTerrainPlane(64); }
+    ProceduralTerrainPass::ProceduralTerrainPass()
+    {
+        GenerateTerrainPlane(64);
+
+        // Create buffer for all terrain textures
+        BufferDesc desc{};
+        desc.bufferSize = sizeof(TerrainTextures);
+        m_terrainTexturesCbv = std::make_unique<Buffer>(desc, BufferType::constant);
+
+        // Load all terrain textures
+        sandTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sandAlpha.png");
+        sandNormalTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sand_01_normal_gl_2k.png");
+        sandRoughTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sand_01_roughness_2k.png");
+        sandAOTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sand_01_ambient_occlusion_2k.png");
+
+        grassTexture = std::make_unique<Texture>("Assets/Textures/grass_02_2k/grassAlpha.png");
+        grassNormalTexture = std::make_unique<Texture>("Assets/Textures/grass_02_2k/grass_02_normal_gl_2k.png");
+        grassRoughTexture = std::make_unique<Texture>("Assets/Textures/grass_02_2k/grass_02_roughness_2k.png");
+        grassAOTexture = std::make_unique<Texture>("Assets/Textures/grass_02_2k/grass_02_amibent_occlusion_2k.png");
+
+        rockTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/rocksAlpha.png");
+        rockNormalTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/cliff_rocks_05_normal_gl_2k.png");
+        rockRoughTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/cliff_rocks_05_roughness_2k.png");
+        rockAOTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/cliff_rocks_05_ambientocclusion_2k.png");
+
+        noiseBlendTexture = std::make_unique<Texture>("Assets/Textures/noiseBlend.png");
+
+        // Sand texture
+        m_terrainTexturesView.sandTexture = sandTexture->GetSrv()->BindlessView();
+        m_terrainTexturesView.sandNormalTexture = sandNormalTexture->GetSrv()->BindlessView();
+        m_terrainTexturesView.sandRoughTexture = sandRoughTexture->GetSrv()->BindlessView();
+        m_terrainTexturesView.sandAOTexture = sandAOTexture->GetSrv()->BindlessView();
+
+        // Grass texture
+        m_terrainTexturesView.grassTexture = grassTexture->GetSrv()->BindlessView();
+        m_terrainTexturesView.grassNormalTexture = grassNormalTexture->GetSrv()->BindlessView();
+        m_terrainTexturesView.grassRoughTexture = grassRoughTexture->GetSrv()->BindlessView();
+        m_terrainTexturesView.grassAOTexture = grassAOTexture->GetSrv()->BindlessView();
+
+        // Rock texture
+        m_terrainTexturesView.rockTexture = rockTexture->GetSrv()->BindlessView();
+        m_terrainTexturesView.rockNormalTexture = rockNormalTexture->GetSrv()->BindlessView();
+        m_terrainTexturesView.rockRoughTexture = rockRoughTexture->GetSrv()->BindlessView();
+        m_terrainTexturesView.rockAOTexture = rockAOTexture->GetSrv()->BindlessView();
+
+        m_terrainTexturesView.noiseBlendTexture = noiseBlendTexture->GetSrv()->BindlessView();
+
+        m_terrainTexturesCbv->Allocate(&m_terrainTexturesView);
+    }
 
     void ProceduralTerrainPass::Update(const float dt)
     {
@@ -207,6 +255,9 @@ namespace Wild
                 Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DrawTerrainRootConstant)};
                 uniforms.emplace_back(rootConstant);
 
+                Uniform TextureViewBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(TextureViewBuffer);
+
                 Uniform bindlessUni{0, 0, RootParams::RootResourceType::DescriptorTable};
                 CD3DX12_DESCRIPTOR_RANGE srvRange{};
                 srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
@@ -222,6 +273,11 @@ namespace Wild
                 staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
                 staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                 uniforms.emplace_back(staticSampler);
+
+                Uniform staticAnisotrophicSampler{1, 0, RootParams::RootResourceType::StaticSampler};
+                staticAnisotrophicSampler.filter = D3D12_FILTER_ANISOTROPIC;
+                staticAnisotrophicSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+                uniforms.emplace_back(staticAnisotrophicSampler);
 
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Draw terrain chunks pass", PipelineStateType::Graphics, settings, uniforms);
@@ -255,7 +311,8 @@ namespace Wild
                     m_drc.heightMapView = chunk.heightMap->GetSrv()->BindlessView();
 
                     list.SetRootConstant<DrawTerrainRootConstant>(0, m_drc);
-                    list.SetBindlessHeap(1);
+                    list.SetConstantBufferView(1, m_terrainTexturesCbv.get());
+                    list.SetBindlessHeap(2);
                     list.GetList()->IASetVertexBuffers(0, 1, &m_terrainVertices->GetVBView()->View());
                     list.GetList()->IASetIndexBuffer(&m_terrainIndices->GetIBView()->View());
                     list.GetList()->DrawIndexedInstanced(m_drawCount, 1, 0, 0, 0);

@@ -51,6 +51,26 @@ namespace Wild
         uint32_t heightMapView{};
     };
 
+    struct TerrainTextures
+    {
+        uint32_t sandTexture{};
+        uint32_t sandNormalTexture{};
+        uint32_t sandRoughTexture{};
+        uint32_t sandAOTexture{};
+
+        uint32_t grassTexture{};
+        uint32_t grassNormalTexture{};
+        uint32_t grassRoughTexture{};
+        uint32_t grassAOTexture{};
+
+        uint32_t rockTexture{};
+        uint32_t rockNormalTexture{};
+        uint32_t rockRoughTexture{};
+        uint32_t rockAOTexture{};
+
+        uint32_t noiseBlendTexture{};
+    };
+
     class ProceduralTerrainPass : public RenderFeature
     {
       public:
@@ -88,6 +108,29 @@ namespace Wild
         std::unique_ptr<Texture> m_aoTerrainTexture;
         std::unique_ptr<Texture> m_roughnessTerrainTexture;
 
+        // Terrain textures
+        std::unique_ptr<Texture> sandTexture;
+        std::unique_ptr<Texture> sandNormalTexture;
+        std::unique_ptr<Texture> sandRoughTexture;
+        std::unique_ptr<Texture> sandAOTexture;
+
+        std::unique_ptr<Texture> grassTexture;
+        std::unique_ptr<Texture> grassNormalTexture;
+        std::unique_ptr<Texture> grassRoughTexture;
+        std::unique_ptr<Texture> grassAOTexture;
+
+        std::unique_ptr<Texture> rockTexture;
+        std::unique_ptr<Texture> rockNormalTexture;
+        std::unique_ptr<Texture> rockRoughTexture;
+        std::unique_ptr<Texture> rockAOTexture;
+
+        std::unique_ptr<Texture> noiseBlendTexture;
+
+        std::unique_ptr<Buffer> m_terrainTexturesCbv;
+
+        TerrainTextures m_terrainTexturesView{};
+
+        // Terrain mesh
         std::unique_ptr<Buffer> m_terrainVertices;
         std::unique_ptr<Buffer> m_terrainIndices;
         uint32_t m_drawCount{};
