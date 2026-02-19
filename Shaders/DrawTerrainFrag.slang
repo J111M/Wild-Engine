@@ -159,6 +159,22 @@ float4 RandomizedTextureColor(float2 uv, float3 bright, float3 dark, float3 vari
     return saturate(float4(baseColor, baseRoughness));
 }
 
+float HeightFromColor(float3 color) { return dot(color, float3(0.299, 0.587, 0.114)); }
+
+float2 MaskedBlending(float h0, float h1, float mask, float contrast) {
+    // Get the depth of both textures
+    float b0 = h0 + (1.0 - mask);
+    float b1 = h1 + mask;
+
+    // Sharpness of the transition
+    float depth = lerp(1.0, 0.001, contrast);
+
+    // Get tallest surface
+    float rcpSum = rcp(b0 + b1);
+
+    return float2(b0 * rcpSum, b1 * rcpSum);
+}
+
 [shader("fragment")]
 PSOut main(PSInput input)
 {
@@ -167,6 +183,10 @@ PSOut main(PSInput input)
     float blendedRoughness = 0.0f;
 
     const float textureScale = 40.0f;
+
+    float contrast = 0.6;
+    // Blend weight
+    float2 w;
 
     //  Blend values
     float t = 0.8f;
@@ -178,19 +198,25 @@ PSOut main(PSInput input)
         RandomizedTextureColor(input.uv, float3(0.58, 0.976, 0.53), float3(0.345, 0.525, 0.07), float3(0.933, 0.784, 0.067));
     float grassRoughness = grassColor.w;
 
-    float4 dirtColor =
-        RandomizedTextureColor(input.uv, float3(0.561, 0.396, 0.215), float3(0.701, 0.519, 0.215), float3(0.886, 0.643, 0.215));
+    grassColor.w = HeightFromColor(grassColor.rgb);
+
+    float4 dirtColor = RandomizedTextureColor(
+    input.uv, float3(0.561, 0.396, 0.215), float3(0.701, 0.519, 0.215), float3(0.886, 0.643, 0.215));
     float dirtRoughness = dirtColor.w;
+
+    dirtColor.w = HeightFromColor(dirtColor.rgb);
 
     float4 sandColor = textures[NonUniformResourceIndex(sandTexture)].Sample(anisotropy2Sampler, input.uv * textureScale);
     float3 sandNormal =
         textures[NonUniformResourceIndex(sandNormalTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).rgb * 2.0 - 1.0f;
-    float sandRoughness = textures[NonUniformResourceIndex(sandRoughTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).r;
+    float sandRoughness =
+        textures[NonUniformResourceIndex(sandRoughTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).r;
 
     float4 rockColor = textures[NonUniformResourceIndex(rockTexture)].Sample(anisotropy2Sampler, input.uv * textureScale);
     float3 rockNormal =
         textures[NonUniformResourceIndex(rockNormalTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).rgb * 2.0 - 1.0f;
-    float rockRoughness = textures[NonUniformResourceIndex(rockRoughTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).r;
+    float rockRoughness =
+        textures[NonUniformResourceIndex(rockRoughTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).r;
 
     // Slope steepness of the terrain
     float slope = 1.0f - input.normal.y;
@@ -200,18 +226,24 @@ PSOut main(PSInput input)
     if (maskedSlope < 0.2)
     {
         blendAmount = maskedSlope / 0.2f;
-        albedo = lerp(grassColor.rgb, dirtColor.rgb, blendAmount);
-        geoNormal = lerp(float3(0, 0, 1), float3(0, 0, 1), blendAmount);
-        blendedRoughness = lerp(grassRoughness, dirtRoughness, blendAmount);
+
+        w = MaskedBlending(grassColor.a, dirtColor.a, blendAmount, contrast);
+
+        albedo = grassColor.rgb * w.x + dirtColor.rgb * w.y;
+        geoNormal = float3(0, 0, 1);
+        blendedRoughness = grassRoughness * w.x + dirtRoughness * w.y;
     }
 
     if ((maskedSlope < 0.7) && (maskedSlope >= 0.2f))
     {
         blendAmount = (maskedSlope - 0.2f) * (1.0f / (0.7f - 0.2f));
         blendAmount = pow(blendAmount, 0.55f);
-        albedo = lerp(dirtColor.rgb, rockColor.rgb, blendAmount);
-        geoNormal = lerp(float3(0, 0, 1), rockNormal, blendAmount);
-        blendedRoughness = lerp(dirtRoughness, rockRoughness, blendAmount);
+
+        w = MaskedBlending(dirtColor.a, rockColor.a, blendAmount, contrast);
+
+        albedo = dirtColor.rgb * w.x + rockColor.rgb * w.y;
+        geoNormal = normalize(float3(0, 0, 1) * w.x + rockNormal * w.y);
+        blendedRoughness = dirtRoughness * w.x + rockRoughness * w.y;
     }
 
     if (maskedSlope >= 0.7)
@@ -221,11 +253,13 @@ PSOut main(PSInput input)
         blendedRoughness = rockRoughness;
     }
 
-    float sandMaxHeight = -0.9f;
-    float sandFadeHeight = -0.4f;
+
 
     float elevation = input.elevation;
     float noisyHeight = (elevation / 10.0f) + (noiseBlend.r * 0.05f);
+
+    float sandMaxHeight = -0.7f;
+    float sandFadeHeight = -0.65f;
 
     float sandBlend = 1.0f - saturate((noisyHeight - sandMaxHeight) / (sandFadeHeight - sandMaxHeight));
     sandBlend = pow(sandBlend, 1.5f);
