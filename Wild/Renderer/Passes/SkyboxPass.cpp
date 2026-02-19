@@ -1,5 +1,5 @@
 #include "Renderer/Passes/SkyboxPass.hpp"
-#include "Renderer/Passes/PbrPass.hpp"
+#include "Renderer/Passes/OceanPass.hpp"
 
 namespace Wild
 {
@@ -91,11 +91,11 @@ namespace Wild
     /// <param name="rg">Render Graph</param>
     void SkyPass::AddSkyboxPass(Renderer& renderer, RenderGraph& rg)
     {
-        auto *passData = rg.AllocatePassData<SkyPassData>();
-        auto *pbrData = rg.GetPassData<SkyPassData, PbrPassData>();
+        auto* passData = rg.AllocatePassData<SkyPassData>();
+        auto* oceanPassData = rg.GetPassData<SkyPassData, OceanPassData>();
 
-        passData->finalTexture = pbrData->finalTexture;
-        passData->depthTexture = pbrData->depthTexture;
+        passData->finalTexture = oceanPassData->finalTexture;
+        passData->depthTexture = oceanPassData->depthTexture;
 
         rg.AddPass<SkyPassData>(
             "Skybox pass", PassType::Graphics, [&renderer, this](const SkyPassData& passData, CommandList& list) {
@@ -210,7 +210,7 @@ namespace Wild
     /// <param name="rg">Render Graph</param>
     void SkyPass::AddIBLPass(Renderer& renderer, RenderGraph& rg)
     {
-        auto *passData = rg.AllocatePassData<IBLPassData>();
+        auto* passData = rg.AllocatePassData<IBLPassData>();
 
         {
             TextureDesc desc;

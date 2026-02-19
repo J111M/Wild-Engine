@@ -5,6 +5,7 @@
 
 #include "Renderer/Passes/DeferredPass.hpp"
 #include "Renderer/Passes/GrassPass.hpp"
+#include "Renderer/Passes/OceanPass.hpp"
 #include "Renderer/Passes/PbrPass.hpp"
 #include "Renderer/Passes/ProceduralTerrainPass.hpp"
 #include "Renderer/Passes/SkyboxPass.hpp"
@@ -26,6 +27,7 @@ namespace Wild
         m_renderFeatures.emplace_back(std::make_unique<GrassPass>());
         m_renderFeatures.emplace_back(std::make_unique<DeferredPass>());
         m_renderFeatures.emplace_back(std::make_unique<PbrPass>());
+        m_renderFeatures.emplace_back(std::make_unique<OceanPass>());
         m_renderFeatures.emplace_back(
             std::make_unique<SkyPass>("Assets/Textures/Skybox/kloofendal_48d_partly_cloudy_puresky_4k.hdr"));
     }
