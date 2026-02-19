@@ -7,6 +7,8 @@ namespace Wild
     {
         GenerateTerrainPlane(64);
 
+        m_drc.waterLevel = m_grc.waterLevel;
+
         // Create buffer for all terrain textures
         BufferDesc desc{};
         desc.bufferSize = sizeof(TerrainTextures);
@@ -14,17 +16,12 @@ namespace Wild
 
         // Load all terrain textures
         sandTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sandAlpha.png");
-        sandNormalTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sand_01_normal_gl_2k.png");
+        sandNormalTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sand_01_normal_dx_2k.png");
         sandRoughTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sand_01_roughness_2k.png");
         sandAOTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sand_01_ambient_occlusion_2k.png");
 
-        grassTexture = std::make_unique<Texture>("Assets/Textures/grass_02_2k/grassAlpha.png");
-        grassNormalTexture = std::make_unique<Texture>("Assets/Textures/grass_02_2k/grass_02_normal_gl_2k.png");
-        grassRoughTexture = std::make_unique<Texture>("Assets/Textures/grass_02_2k/grass_02_roughness_2k.png");
-        grassAOTexture = std::make_unique<Texture>("Assets/Textures/grass_02_2k/grass_02_amibent_occlusion_2k.png");
-
         rockTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/rocksAlpha.png");
-        rockNormalTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/cliff_rocks_05_normal_gl_2k.png");
+        rockNormalTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/cliff_rocks_05_normal_dx_2k.png");
         rockRoughTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/cliff_rocks_05_roughness_2k.png");
         rockAOTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/cliff_rocks_05_ambientocclusion_2k.png");
 
@@ -35,12 +32,6 @@ namespace Wild
         m_terrainTexturesView.sandNormalTexture = sandNormalTexture->GetSrv()->BindlessView();
         m_terrainTexturesView.sandRoughTexture = sandRoughTexture->GetSrv()->BindlessView();
         m_terrainTexturesView.sandAOTexture = sandAOTexture->GetSrv()->BindlessView();
-
-        // Grass texture
-        m_terrainTexturesView.grassTexture = grassTexture->GetSrv()->BindlessView();
-        m_terrainTexturesView.grassNormalTexture = grassNormalTexture->GetSrv()->BindlessView();
-        m_terrainTexturesView.grassRoughTexture = grassRoughTexture->GetSrv()->BindlessView();
-        m_terrainTexturesView.grassAOTexture = grassAOTexture->GetSrv()->BindlessView();
 
         // Rock texture
         m_terrainTexturesView.rockTexture = rockTexture->GetSrv()->BindlessView();
@@ -62,6 +53,8 @@ namespace Wild
             ImGui::SliderFloat("Frequency Scalar", &m_grc.frequencyScalar, 0.1f, 10.0f);
             ImGui::SliderInt("Octaves", &m_grc.octaves, 1, 12);
 
+            ImGui::SliderFloat("Noise blend: ", &m_drc.noiseBlend, 0.0f, 1.0f);
+
             if (ImGui::CollapsingHeader("Advanced Settings"))
             {
                 ImGui::SliderFloat("Warp Strength", &m_grc.warpStrength, 0.0f, 2.0f);
@@ -69,6 +62,7 @@ namespace Wild
                 ImGui::SliderFloat("Ridge Blend", &m_grc.ridgeBlend, 0.0f, 1.0f);
                 ImGui::SliderFloat("Valley Strength", &m_grc.valleyScalar, 0.0f, 0.8f);
                 ImGui::SliderFloat("Water Level", &m_grc.waterLevel, -0.1f, 0.3f);
+                m_drc.waterLevel = m_grc.waterLevel;
             }
 
             if (ImGui::Button("Generate new terrain")) { m_shouldGenerateChunks = true; }

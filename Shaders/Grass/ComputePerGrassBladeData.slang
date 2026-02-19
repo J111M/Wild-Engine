@@ -103,13 +103,15 @@ void main(uint3 DTid : SV_DispatchThreadID)
     float2 rHash1;
     float terrainHeight;
     float slopeAngle;
+    float elevation = 0.0f;
     int attempt = 0;
-    const int maxAttempts = 50;
+    const int maxAttempts = 80;
 
     // Keep checking for a position that is not on a slope or sand/water level
     do {
         rHash1 = HashFloat2InRange(offsetId * maxAttempts + attempt, 0, maxBladePosition);
 
+        // Check slope position
         float step = 1.0; // tune this relative to your terrain scale
         float hPosX = GetTerrainHeight(rHash1 + float2(step, 0.0), maxBladePosition);
         float hNegX = GetTerrainHeight(rHash1 - float2(step, 0.0), maxBladePosition);
@@ -121,10 +123,15 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
         slopeAngle = degrees(atan(sqrt(dX * dX + dZ * dZ)));
 
-        attempt++;
-    } while (slopeAngle >= 5.5f && attempt < maxAttempts);
+        // Check sand/water level
+        float avgPos = (hPosX + hNegX + hPosZ + hNegZ) / 4;
 
-    if (slopeAngle >= 5.5f) {
+        elevation = avgPos;
+
+        attempt++;
+    } while (slopeAngle >= 5.5f && attempt < maxAttempts && elevation < -0.4f);
+
+    if (slopeAngle >= 5.5f || elevation < -0.4) {
         return;
     }
 

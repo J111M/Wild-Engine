@@ -49,6 +49,8 @@ namespace Wild
         glm::mat4 worldMatix{};
         glm::mat4 invModel{};
         uint32_t heightMapView{};
+        float noiseBlend = 0.155;
+        float waterLevel = 0.02f;
     };
 
     struct TerrainTextures
@@ -57,11 +59,6 @@ namespace Wild
         uint32_t sandNormalTexture{};
         uint32_t sandRoughTexture{};
         uint32_t sandAOTexture{};
-
-        uint32_t grassTexture{};
-        uint32_t grassNormalTexture{};
-        uint32_t grassRoughTexture{};
-        uint32_t grassAOTexture{};
 
         uint32_t rockTexture{};
         uint32_t rockNormalTexture{};

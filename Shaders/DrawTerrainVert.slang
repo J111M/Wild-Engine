@@ -14,6 +14,7 @@ struct VSOutput
     float3 tangent : TANGENT;
     float3 bitangent : BITANGENT;
     float2 uv : TEXCOORD;
+    float elevation : ELEVATION;
 };
 
 cbuffer Constants : register(b0)
@@ -22,6 +23,8 @@ cbuffer Constants : register(b0)
     column_major float4x4 invTransposeModel;
 
     uint heightMapIndex;
+    float noiseFade;
+    float waterLevel;
 };
 
 cbuffer TextureViews : register(b1)
@@ -30,11 +33,6 @@ cbuffer TextureViews : register(b1)
     uint sandNormalTexture;
     uint sandRoughTexture;
     uint sandAOTexture;
-
-    uint grassTexture;
-    uint grassNormalTexture;
-    uint grassRoughTexture;
-    uint grassAOTexture;
 
     uint rockTexture;
     uint rockNormalTexture;
@@ -86,5 +84,6 @@ VSOutput main(VSInput input)
     output.tangent = tangent;
     output.bitangent = bitangent;
     output.uv = input.uv;
+    output.elevation = outputPosition.y;
     return output;
 }
