@@ -15,12 +15,29 @@ cbuffer Constants : register(b0)
 
     float valleyScalar;
     int octaves;
+    uint seed;
 };
 
 // Terrain heigth map
 RWTexture2D<float> OutputTexture : register(u0);
 
-// Modified version of https://www.shadertoy.com/view/ttc3zr to work with hlsl
+// RNG hash from https://gist.github.com/mpottinger/54d99732d4831d8137d178b4a6007d1a
+uint murmurHash11(uint src)
+{
+    const uint M = 0x5bd1e995u;
+    uint h = 1190494759u;
+    src *= M;
+    src ^= src >> 24u;
+    src *= M;
+    h *= M;
+    h ^= src;
+    h ^= h >> 13u;
+    h *= M;
+    h ^= h >> 15u;
+    return h;
+}
+
+// Modified version of https://www.shadertoy.com/view/ttc3zr modified to work with hlsl
 uint2 murmurHash22(uint2 src)
 {
     const uint M = 0x5bd1e995u;
@@ -63,6 +80,8 @@ float evaluateNoise(float2 p)
     const float K1 = 0.366025404; // (sqrt(3)-1)/2;
     const float K2 = 0.211324865; // (3-sqrt(3))/6;
 
+    float2 seedOffset = hash22(float2(seed, seed * 1.61803398));
+
     float2 i = floor(p + (p.x + p.y) * K1);
     float2 a = p - i + (i.x + i.y) * K2;
     float m = step(a.y, a.x);
@@ -70,7 +89,8 @@ float evaluateNoise(float2 p)
     float2 b = a - o + K2;
     float2 c = a - 1.0 + 2.0 * K2;
     float3 h = max(0.5 - float3(dot(a, a), dot(b, b), dot(c, c)), 0.0);
-    float3 n = h * h * h * h * float3(dot(a, hash22(i + 0.0)), dot(b, hash22(i + o)), dot(c, hash22(i + 1.0)));
+    float3 n = h * h * h * h *
+        float3(dot(a, hash22(i + seedOffset + 0.0)), dot(b, hash22(i + seedOffset + o)), dot(c, hash22(i + seedOffset + 1.0)));
     return dot(n, float3(70.0));
 }
 
@@ -124,15 +144,18 @@ void main(uint3 id: SV_DispatchThreadID)
     // -1, 1 range
     float2 center = float2(0.5f, 0.5f);
     float2 uv = float2(id.xy) / float2(textureSize);
-    float dist = length(uv - center) * 2.0f;
+    float dist = max(abs(uv.x - center.x), abs(uv.y - center.y));
 
     float2 positionInChunk = (chunkPosition + float2(id.xy)) + float2(0.1f);
 
-    float warpNoise = evaluateNoise(positionInChunk * 0.005f + float2(4.5f, 3.5f));
-    dist += warpNoise * 0.45;
+    float2 falloffWarp = float2(evaluateNoise(positionInChunk * 0.003f + float2(1.7f, 9.2f)),
+                                evaluateNoise(positionInChunk * 0.003f + float2(8.3f, 2.8f)));
 
-    float falloff = smoothstep(0.2f, 1.0f, dist);
-    falloff = falloff * falloff;
+    float2 warpedUV = dist + (falloffWarp * 0.05f);
+    dist = length(warpedUV) * 2.0f;
+
+    float falloff = smoothstep(0.0f, 1.0f, dist);
+    //falloff = falloff * falloff;
 
     float noise = 0.0f;
 
@@ -164,13 +187,15 @@ void main(uint3 id: SV_DispatchThreadID)
     float coastDetail = evaluateNoise(positionInChunk * frequency * 4.0f + float2(77.7f, 33.3f));
     blendedElevation += coastDetail * 0.05f * coastProximity;
 
+    float border = min(min(uv.x, 1.0f - uv.x), min(uv.y, 1.0f - uv.y));
+    float borderMask = saturate(border * 2.0f);
+
     // Subtract the falloff value from the noise to achieve an island like height map
     float height = blendedElevation - falloff;
 
-    if (height > 0.0f)
-    {
-        height = pow(height, elevationPower);
-    }
+    height = height * borderMask - (1.0f - borderMask);
+
+    if (height > 0.0f) { height = pow(height, elevationPower); }
 
     height -= waterLevel;
 

@@ -34,6 +34,7 @@ namespace Wild
 
         float valleyScalar = 0.3;
         int octaves = 6;
+        uint32_t seed = 0;
     };
 
     struct DrawTerrainPassData

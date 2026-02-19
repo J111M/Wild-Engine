@@ -166,6 +166,8 @@ PSOut main(PSInput input)
     float3 geoNormal = float3(0.0f);
     float blendedRoughness = 0.0f;
 
+    const float textureScale = 40.0f;
+
     //  Blend values
     float t = 0.8f;
     float4 noiseBlend = textures[NonUniformResourceIndex(noiseBlendView)].Sample(anisotropy2Sampler, input.uv);
@@ -180,15 +182,15 @@ PSOut main(PSInput input)
         RandomizedTextureColor(input.uv, float3(0.561, 0.396, 0.215), float3(0.701, 0.519, 0.215), float3(0.886, 0.643, 0.215));
     float dirtRoughness = dirtColor.w;
 
-    float4 sandColor = textures[NonUniformResourceIndex(sandTexture)].Sample(anisotropy2Sampler, input.uv * 20.0);
+    float4 sandColor = textures[NonUniformResourceIndex(sandTexture)].Sample(anisotropy2Sampler, input.uv * textureScale);
     float3 sandNormal =
-        textures[NonUniformResourceIndex(sandNormalTexture)].Sample(anisotropy2Sampler, input.uv * 20.0).rgb * 2.0 - 1.0f;
-    float sandRoughness = textures[NonUniformResourceIndex(sandRoughTexture)].Sample(anisotropy2Sampler, input.uv * 20.0).r;
+        textures[NonUniformResourceIndex(sandNormalTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).rgb * 2.0 - 1.0f;
+    float sandRoughness = textures[NonUniformResourceIndex(sandRoughTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).r;
 
-    float4 rockColor = textures[NonUniformResourceIndex(rockTexture)].Sample(anisotropy2Sampler, input.uv * 20.0);
+    float4 rockColor = textures[NonUniformResourceIndex(rockTexture)].Sample(anisotropy2Sampler, input.uv * textureScale);
     float3 rockNormal =
-        textures[NonUniformResourceIndex(rockNormalTexture)].Sample(anisotropy2Sampler, input.uv * 20.0).rgb * 2.0 - 1.0f;
-    float rockRoughness = textures[NonUniformResourceIndex(rockRoughTexture)].Sample(anisotropy2Sampler, input.uv * 20.0).r;
+        textures[NonUniformResourceIndex(rockNormalTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).rgb * 2.0 - 1.0f;
+    float rockRoughness = textures[NonUniformResourceIndex(rockRoughTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).r;
 
     // Slope steepness of the terrain
     float slope = 1.0f - input.normal.y;
