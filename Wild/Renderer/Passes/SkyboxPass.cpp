@@ -107,6 +107,7 @@ namespace Wild
                 settings.DepthStencilState.DepthFunc = ComparisonFunc::LessEqual;
                 settings.RasterizerState.CullMode = CullMode::None;
                 // settings.RasterizerState.WindingMode = WindingOrder::Clockwise;
+                settings.renderTargetsFormat.push_back(passData.finalTexture->GetDesc().format);
 
                 // Setting up the input layout
                 settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));

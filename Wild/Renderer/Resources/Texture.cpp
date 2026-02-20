@@ -207,7 +207,7 @@ namespace Wild
         if (desc.flag & TextureDesc::renderTarget)
         {
             D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-            rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            rtvDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
             rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
             m_rtv = std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc);

@@ -28,6 +28,8 @@ namespace Wild
                 settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/OceanRenderFrag.slang");
                 settings.DepthStencilState.DepthEnable = true;
 
+                settings.renderTargetsFormat.push_back(passData.finalTexture->GetDesc().format);
+
                 settings.RasterizerState.BlendDesc.RenderTarget[0].BlendEnable = true;
                 // settings.RasterizerState.BlendDesc.RenderTarget[0].logic = FALSE;
                 settings.RasterizerState.BlendDesc.RenderTarget[0].SrcBlend = Blend::SrcAlpha;

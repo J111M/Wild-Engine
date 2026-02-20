@@ -78,7 +78,7 @@ namespace Wild
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
             desc.Height = engine.GetGfxContext()->GetHeight();
-            desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            desc.format = DXGI_FORMAT_R10G10B10A2_UNORM;
             desc.name = "FinalPbrTexture";
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
@@ -94,6 +94,7 @@ namespace Wild
                 settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/PbrFrag.slang");
                 settings.DepthStencilState.DepthEnable = false;
                 settings.RasterizerState.WindingMode = WindingOrder::Clockwise;
+                settings.renderTargetsFormat.push_back(passData.finalTexture->GetDesc().format);
 
                 std::vector<Uniform> uniforms;
 

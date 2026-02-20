@@ -62,6 +62,7 @@ namespace Wild
         settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/FragCopyRT.slang");
         settings.DepthStencilState.DepthEnable = false;
         settings.RasterizerState.WindingMode = WindingOrder::Clockwise;
+        settings.renderTargetsFormat.push_back(compositeTexture->GetDesc().format);
 
         std::vector<Uniform> uniforms;
 

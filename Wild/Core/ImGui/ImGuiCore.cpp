@@ -71,7 +71,7 @@ namespace Wild
         initInfo.Device = gfxContext->GetDevice().Get();
         initInfo.CommandQueue = gfxContext->GetCommandQueue(QueueType::Direct)->GetQueue().Get();
         initInfo.NumFramesInFlight = BACK_BUFFER_COUNT;
-        initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+        initInfo.RTVFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
         initInfo.SrvDescriptorHeap = gfxContext->GetCbvSrvUavAllocator()->GetHeap().Get();
         initInfo.LegacySingleSrvCpuDescriptor =
             gfxContext->GetCbvSrvUavAllocator()->GetHeap()->GetCPUDescriptorHandleForHeapStart();

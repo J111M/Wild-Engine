@@ -239,7 +239,7 @@ namespace Wild
             swapchainDesc.BufferCount = BACK_BUFFER_COUNT;
             swapchainDesc.Width = m_window->GetWidth();
             swapchainDesc.Height = m_window->GetHeight();
-            swapchainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            swapchainDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
             swapchainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
             swapchainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
             swapchainDesc.SampleDesc.Count = 1;
