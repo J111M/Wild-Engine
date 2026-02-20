@@ -127,9 +127,6 @@ float4 main(VSOutput input) : SV_TARGET0
     // Reconstruct the position from the depth
     float3 positionNDC =
         float3(input.uv.x * 2.0 - 1.0, 1.0 - input.uv.y * 2.0, textures[depthView].Sample(pointSampler, input.uv).x);
-    // positionNDC.xy = (input.uv * 2) - 1;
-    // positionNDC.y *= -1.0f;
-    // positionNDC.z = ;
 
     float3 positionWS = RestorePositionWS(positionNDC).xyz;
 

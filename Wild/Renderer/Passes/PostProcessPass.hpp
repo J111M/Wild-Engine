@@ -14,8 +14,17 @@ namespace Wild
     struct VolumetricRC
     {
         glm::vec2 textureSize{};
+        glm::vec2 nearFar{};
+        float aspect;
         uint32_t srcTextureView{};
         uint32_t depthView{};
+    };
+
+    struct SceneBuffer
+    {
+        glm::mat4 inverseProj;
+        glm::mat4 inverseView;
+        glm::vec3 cameraPosition;
     };
 
     class PostProcessPass : public RenderFeature
@@ -31,5 +40,6 @@ namespace Wild
         void VolumetricsPass(Renderer& renderer, RenderGraph& rg);
 
         VolumetricRC m_vrc;
+        std::unique_ptr<Buffer> m_sceneDataBuffer[BACK_BUFFER_COUNT];
     };
 } // namespace Wild

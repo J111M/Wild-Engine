@@ -3,11 +3,43 @@
 
 namespace Wild
 {
-    PostProcessPass::PostProcessPass() {}
+    PostProcessPass::PostProcessPass()
+    {
+        BufferDesc desc{};
+        desc.bufferSize = sizeof(SceneBuffer);
+        for (size_t i = 0; i < BACK_BUFFER_COUNT; i++)
+        {
+            m_sceneDataBuffer[i] = std::make_unique<Buffer>(desc, BufferType::constant);
+        }
+    }
 
     void PostProcessPass::Add(Renderer& renderer, RenderGraph& rg) { VolumetricsPass(renderer, rg); }
 
-    void PostProcessPass::Update(const float dt) {}
+    void PostProcessPass::Update(const float dt)
+    {
+        auto ecs = engine.GetECS();
+        auto& cameras = ecs->View<Camera>();
+
+        SceneBuffer sceneData{};
+
+        // Loop over all camera's TODO make the code run for each camera entity
+        for (auto& cameraEntity : cameras)
+        {
+            if (ecs->HasComponent<Camera>(cameraEntity))
+            {
+                auto& cam = ecs->GetComponent<Camera>(cameraEntity);
+
+                sceneData.inverseView = glm::inverse(cam.GetView());
+                sceneData.inverseProj = glm::inverse(cam.GetProjection());
+                sceneData.cameraPosition = cam.GetPosition();
+                m_vrc.nearFar = cam.GetNearFar();
+                m_vrc.aspect = cam.GetAspect();
+            }
+        }
+
+        int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
+        m_sceneDataBuffer[frameIndex]->Allocate(&sceneData);
+    }
 
     void PostProcessPass::VolumetricsPass(Renderer& renderer, RenderGraph& rg)
     {
@@ -38,8 +70,13 @@ namespace Wild
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/PostProcess/Volumetrics.slang");
 
                 std::vector<Uniform> uniforms;
+                uniforms.reserve(5);
+
                 Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(VolumetricRC)};
                 uniforms.emplace_back(rootConstant);
+
+                Uniform cameraBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(cameraBuffer);
 
                 // Output render target
                 Uniform outputTexture{0, 0, RootParams::RootResourceType::DescriptorTable};
@@ -48,45 +85,47 @@ namespace Wild
                 outputTexture.ranges.emplace_back(outputUAVRange);
                 uniforms.emplace_back(outputTexture);
 
-                // Bindless resources
-                {
-                    Uniform uni{0, 0, RootParams::RootResourceType::DescriptorTable};
-                    CD3DX12_DESCRIPTOR_RANGE textures{};
-                    textures.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-                                  UINT_MAX,
-                                  0,
-                                  0,
-                                  D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
-                    uni.ranges.emplace_back(textures);
+                Uniform uni{0, 0, RootParams::RootResourceType::DescriptorTable};
+                CD3DX12_DESCRIPTOR_RANGE textures{};
+                textures.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                              UINT_MAX,
+                              0,
+                              0,
+                              D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+                uni.ranges.emplace_back(textures);
 
-                    CD3DX12_DESCRIPTOR_RANGE cubeMaps{};
-                    cubeMaps.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-                                  UINT_MAX,
-                                  0,
-                                  1,
-                                  D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for cube maps
-                    uni.ranges.emplace_back(cubeMaps);
+                CD3DX12_DESCRIPTOR_RANGE cubeMaps{};
+                cubeMaps.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                              UINT_MAX,
+                              0,
+                              1,
+                              D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for cube maps
+                uni.ranges.emplace_back(cubeMaps);
 
-                    uniforms.emplace_back(uni);
-                }
+                uniforms.emplace_back(uni);
 
                 Uniform pointSampler{0, 0, RootParams::RootResourceType::StaticSampler};
                 pointSampler.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
                 pointSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                 uniforms.emplace_back(pointSampler);
 
+                int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
+
                 auto& pipeline = renderer.GetOrCreatePipeline("Volumetrics pass", PipelineStateType::Compute, settings, uniforms);
                 list.SetPipelineState(pipeline);
                 list.BeginRender();
 
-                skyboxData->finalTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                skyboxData->finalTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                passData.depthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 m_vrc.srcTextureView = skyboxData->finalTexture->GetSrv()->BindlessView();
+                m_vrc.depthView = passData.depthTexture->GetSrv()->BindlessView();
 
                 m_vrc.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
 
                 list.SetRootConstant<VolumetricRC>(0u, m_vrc);
-                list.SetUnorderedAccessView(1u, passData.finalTexture);
-                list.SetBindlessHeap(2u);
+                list.SetConstantBufferView(1u, m_sceneDataBuffer[frameIndex].get());
+                list.SetUnorderedAccessView(2u, passData.finalTexture);
+                list.SetBindlessHeap(3u);
 
                 // Thread group size of 8 to reduce occupancy
                 list.GetList()->Dispatch(

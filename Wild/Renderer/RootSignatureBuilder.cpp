@@ -87,6 +87,12 @@ namespace Wild
         ComPtr<ID3DBlob> signature, error;
         D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
 
+        if (error)
+        {
+            const char* errStr = (const char*)error->GetBufferPointer();
+            WD_ERROR(errStr);
+        }
+
         ComPtr<ID3D12RootSignature> rootSignature;
         ThrowIfFailed(device->CreateRootSignature(
                           0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&rootSignature)),
