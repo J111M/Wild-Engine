@@ -131,9 +131,9 @@ float cellNoise(float2 p)
     return hash22(cell).x;
 }
 
-float4 RandomizedTextureColor(float2 uv, float3 bright, float3 dark, float3 variation)
+float4 RandomizedTextureColor(float2 uv, float3 bright, float3 dark, float3 variation, float seed)
 {
-    float2 warpOffset = float2(fbm(uv * 1.5, float2(1.7, 9.2)), fbm(uv * 1.5, float2(8.3, 2.8))) * 0.4;
+    float2 warpOffset = float2(fbm(uv * 1.5, float2(1.7 + seed, 9.2 + seed)), fbm(uv * 1.5, float2(8.3 + seed, 2.8 + seed))) * 0.4;
 
     float largePatch = fbm(uv * 2.0 + warpOffset, float2(0.0, 0.0));
     largePatch = saturate(largePatch * 0.5 + 0.5);
@@ -182,7 +182,7 @@ PSOut main(PSInput input)
     float3 geoNormal = float3(0.0f);
     float blendedRoughness = 0.0f;
 
-    const float textureScale = 40.0f;
+    const float textureScale = 96.0f;
 
     float contrast = 0.6;
     // Blend weight
@@ -195,13 +195,13 @@ PSOut main(PSInput input)
 
     // Load terrain texture data
     float4 grassColor =
-        RandomizedTextureColor(input.uv, float3(0.58, 0.976, 0.53), float3(0.345, 0.525, 0.07), float3(0.933, 0.784, 0.067));
+        RandomizedTextureColor(input.uv, float3(0.58, 0.976, 0.53), float3(0.345, 0.525, 0.07), float3(0.933, 0.784, 0.067), 612.51f);
     float grassRoughness = grassColor.w;
 
     grassColor.w = HeightFromColor(grassColor.rgb);
 
     float4 dirtColor = RandomizedTextureColor(
-    input.uv, float3(0.561, 0.396, 0.215), float3(0.701, 0.519, 0.215), float3(0.886, 0.643, 0.215));
+    input.uv, float3(0.561, 0.396, 0.215), float3(0.701, 0.519, 0.215), float3(0.886, 0.643, 0.215), 152.61f);
     float dirtRoughness = dirtColor.w;
 
     dirtColor.w = HeightFromColor(dirtColor.rgb);

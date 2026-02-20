@@ -17,7 +17,6 @@ cbuffer PbrData : register(b2)
     float4 cameraPosition;
     float4 lightDirection;
     uint debugViewMode;
- 
 }
 
 cbuffer envData : register(b3)
@@ -93,10 +92,7 @@ float3 OctDecode(float2 enc)
 {
     enc = enc * 2.0 - 1.0;
     float3 n = float3(enc, 1.0 - abs(enc.x) - abs(enc.y));
-    if (n.z < 0.0)
-    {
-        n.xy = (1.0 - abs(n.yx)) * select(n.xy >= 0.0, 1.0, -1.0);
-    }
+    if (n.z < 0.0) { n.xy = (1.0 - abs(n.yx)) * select(n.xy >= 0.0, 1.0, -1.0); }
     return normalize(n);
 }
 
@@ -104,8 +100,7 @@ float3 OctDecode(float2 enc)
 float4 main(VSOutput input) : SV_TARGET0
 {
     float4 albedo = float4(0);
-    if (albedoView != 0)
-        albedo = textures[albedoView].Sample(pointSampler, input.uv);
+    if (albedoView != 0) albedo = textures[albedoView].Sample(pointSampler, input.uv);
 
     float4 normal = float4(0);
     if (normalView != 0)
@@ -115,8 +110,7 @@ float4 main(VSOutput input) : SV_TARGET0
     }
 
     float4 emissive = float4(0);
-    if (emissiveView != 0)
-        emissive = textures[emissiveView].Sample(pointSampler, input.uv);
+    if (emissiveView != 0) emissive = textures[emissiveView].Sample(pointSampler, input.uv);
 
     // srgb to linear
     albedo.rgb = pow(albedo.rgb, float3(2.2f));
@@ -125,14 +119,14 @@ float4 main(VSOutput input) : SV_TARGET0
     float roughness = albedo.a;
     float metallic = normal.a;
     float ao = emissive.a;
-    if (ao > 1.0f)
-        ao = 1.0f;
+    if (ao > 1.0f) ao = 1.0f;
 
     // SSS and translucency
     float thickness = normal.b;
 
     // Reconstruct the position from the depth
-    float3 positionNDC = float3(input.uv.x * 2.0 - 1.0, 1.0 - input.uv.y * 2.0, textures[depthView].Sample(pointSampler, input.uv).x);
+    float3 positionNDC =
+        float3(input.uv.x * 2.0 - 1.0, 1.0 - input.uv.y * 2.0, textures[depthView].Sample(pointSampler, input.uv).x);
     // positionNDC.xy = (input.uv * 2) - 1;
     // positionNDC.y *= -1.0f;
     // positionNDC.z = ;
@@ -178,10 +172,7 @@ float4 main(VSOutput input) : SV_TARGET0
     float3 irradiance = float3(0.0f);
     if (irradianceMapView > 0)
         irradiance = cubeTextures[irradianceMapView].Sample(pointSampler, N).rgb;
-    else
-    {
-        irradiance = float3(0.2f, 0.2f, 0.2f);
-    }
+    else { irradiance = float3(0.2f, 0.2f, 0.2f); }
 
     float3 iblF = FresnelSchlickRough(ndotv, F0, roughness);
     float3 iblkS = iblF;
@@ -191,28 +182,42 @@ float4 main(VSOutput input) : SV_TARGET0
     // Precomputed specular reflection
     const float maxLod = 4.0f;
     float3 prefilteredReflection = float3(0.0f);
-    if (specularView > 0)
-        prefilteredReflection = cubeTextures[specularView].SampleLevel(pointSampler, R, roughness * maxLod).rgb;
+    if (specularView > 0) prefilteredReflection = cubeTextures[specularView].SampleLevel(pointSampler, R, roughness * maxLod).rgb;
 
     float2 envBrdf = float2(1.0f, 0.0f);
-    if (brdfView > 0)
-        envBrdf = textures[brdfView].Sample(pointSampler, float2(ndotv, roughness)).rg;
+    if (brdfView > 0) envBrdf = textures[brdfView].Sample(pointSampler, float2(ndotv, roughness)).rg;
 
     // envBrdf = max(envBrdf, 0.0f);
 
-    float3 specularIBL = prefilteredReflection * iblkS; //(iblF * envBrdf.x + envBrdf.y); // Temporary disabled because the brdf is not correct
+    float3 specularIBL =
+        prefilteredReflection * iblkS; //(iblF * envBrdf.x + envBrdf.y); // Temporary disabled because the brdf is not correct
 
     float3 diffuse = albedo.rgb * irradiance;
 
     // Translucency
-    float wrap = 0.5;
-    float backlit = saturate((dot(V, -L) + wrap) / (1.0 + wrap));
+    float wrap = 0.5f;
+
+    // Wrap the diffuse
+    float NdotL = (dot(N, L) + wrap) / (1.0f + wrap);
+    float scatterDiffuse = max(0.0f, NdotL);
+
+    // TODO modify it so it is physically accurate
+    const float distortion = 0.4f;
+    float3 backScatter = normalize(L + N * distortion);
+
+    const float p = 4.0f;
+    float vDotBS = pow(saturate(dot(V, -backScatter)), p);
+
     float falloff = 1.3;
-    float translucencyMask = (1 - thickness) * falloff; // invert thickness to 0 being most thin and 1 having no effect;
+    float translucencyMask = (scatterDiffuse + vDotBS) * thickness;
+
+    float3 backFaceIrradiance = float3(0.0f);
+    if (irradianceMapView > 0)
+        irradiance = cubeTextures[irradianceMapView].Sample(pointSampler, N).rgb;
+    else { irradiance = float3(0.2f, 0.2f, 0.2f); }
 
     float3 scatterColor = float3(0.0f);
-    if (thickness > 0)
-        scatterColor = float3(1.1, 1.2, 0.9) * backlit * albedo.rgb * translucencyMask;
+    if (thickness > 0) scatterColor = translucencyMask * float3(0.3f, 0.7f, 0.1f) * backFaceIrradiance;
 
     float3 ambient = (iblkD * diffuse + specularIBL + scatterColor) * ao;
 

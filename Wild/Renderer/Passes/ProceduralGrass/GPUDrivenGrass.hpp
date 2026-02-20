@@ -5,7 +5,7 @@
 
 namespace Wild
 {
-#define MAXBLADESPERCHUNK 100000
+#define MAXBLADESPERCHUNK 300000
 #define MAXGRASSBLADES 2500000
 
     /// <summary>
