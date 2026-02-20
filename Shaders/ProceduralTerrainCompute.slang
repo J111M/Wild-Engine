@@ -151,10 +151,10 @@ void main(uint3 id: SV_DispatchThreadID)
     float2 falloffWarp = float2(evaluateNoise(positionInChunk * 0.003f + float2(1.7f, 9.2f)),
                                 evaluateNoise(positionInChunk * 0.003f + float2(8.3f, 2.8f)));
 
-    float2 warpedUV = dist + (falloffWarp * 0.05f);
-    dist = length(warpedUV) * 2.0f;
+    float2 warpedUV = float2(dist, dist) + (falloffWarp * 0.25f);
+    dist = length(warpedUV);
 
-    float falloff = smoothstep(0.0f, 1.0f, dist);
+    float falloff = smoothstep(0.5f, 1.0f, dist);
     //falloff = falloff * falloff;
 
     float noise = 0.0f;
@@ -193,7 +193,8 @@ void main(uint3 id: SV_DispatchThreadID)
     // Subtract the falloff value from the noise to achieve an island like height map
     float height = blendedElevation - falloff;
 
-    height = height * borderMask - (1.0f - borderMask);
+    height -= (1.0f - borderMask) * 2.0f;
+    //height = height * borderMask - (1.0f - borderMask);
 
     if (height > 0.0f) { height = pow(height, elevationPower); }
 
