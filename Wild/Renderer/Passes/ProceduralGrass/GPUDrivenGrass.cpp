@@ -36,10 +36,11 @@ namespace Wild
         }
 
         // Frustum constant buffer
+        for (int i = 0; i < BACK_BUFFER_COUNT; i++)
         {
             BufferDesc desc{};
             desc.bufferSize = sizeof(FrustumBuffer);
-            m_frustumBuffer = std::make_unique<Buffer>(desc, BufferType::constant);
+            m_frustumBuffer[i] = std::make_unique<Buffer>(desc, BufferType::constant);
         }
 
         // We need to create the commands on the gpu we do that in this buffer
@@ -94,7 +95,6 @@ namespace Wild
 
     void GPUDriveGrass::Update(const float dt)
     {
-        UpdateFrustumData();
         auto& device = engine.GetGfxContext();
         auto& ecs = engine.GetECS();
 
@@ -129,9 +129,8 @@ namespace Wild
             }
         }
 
-        m_sceneData[device->GetBackBufferIndex()]->Map();
-        m_sceneData[device->GetBackBufferIndex()]->WriteData(&SceneCbv);
-        m_sceneData[device->GetBackBufferIndex()]->Unmap();
+        m_sceneData[device->GetBackBufferIndex()]->Allocate(&SceneCbv);
+        UpdateFrustumData(static_cast<int>(device->GetBackBufferIndex()));
 
         m_accumulatedTime += dt * 1;
         m_rc.time = m_accumulatedTime;
@@ -223,6 +222,14 @@ namespace Wild
 
         rg.AddPass<ClearCounterData>(
             "Clear counter pass", PassType::Compute, [&renderer, this](ClearCounterData& countData, CommandList& list) {
+                auto context = engine.GetGfxContext();
+                UINT frameIndex = context->GetBackBufferIndex();
+
+                // Set all uav buffers to the correct state
+                m_culledInstancesBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                m_instanceCountBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                m_drawCommandsBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
                 PipelineStateSettings settings{};
                 settings.ShaderState.ComputeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeClearCounter.slang");
@@ -236,8 +243,6 @@ namespace Wild
                 list.SetPipelineState(pipeline);
                 list.BeginRender();
 
-                auto context = engine.GetGfxContext();
-                UINT frameIndex = context->GetBackBufferIndex();
                 list.SetUnorderedAccessView(0, m_instanceCountBuffer[frameIndex].get());
 
                 list.GetList()->Dispatch(1, 1, 1);
@@ -298,7 +303,7 @@ namespace Wild
                 UINT frameIndex = context->GetBackBufferIndex();
 
                 // Set frame data
-                list.SetConstantBufferView(0, m_frustumBuffer.get());
+                list.SetConstantBufferView(0, m_frustumBuffer[frameIndex].get());
                 list.SetShaderResourceView(1, m_perBladeDataBuffer.get());
                 list.SetUnorderedAccessView(2, m_culledInstancesBuffer[frameIndex].get());
                 list.SetUnorderedAccessView(3, m_instanceCountBuffer[frameIndex].get());
@@ -309,7 +314,7 @@ namespace Wild
 
                 D3D12_RESOURCE_BARRIER barriers[1] = {};
 
-                // Barrier for instance count buffer
+                // Barrier for instance count buffer and culled instances
                 barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
                 barriers[0].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
                 barriers[0].UAV.pResource = m_instanceCountBuffer[frameIndex]->GetBuffer();
@@ -493,7 +498,7 @@ namespace Wild
             });
     }
 
-    void GPUDriveGrass::UpdateFrustumData()
+    void GPUDriveGrass::UpdateFrustumData(const int frameIndex)
     {
         auto ecs = engine.GetECS();
         auto& cameras = ecs->View<Camera>();
@@ -533,9 +538,7 @@ namespace Wild
         FrustumData.maxDistance = 70.0f;
         FrustumData.lodBlendRange = 5.0f;
 
-        m_frustumBuffer->Map();
-        m_frustumBuffer->WriteData(&FrustumData);
-        m_frustumBuffer->Unmap();
+        m_frustumBuffer[frameIndex]->Allocate(&FrustumData);
     }
 
     void GPUDriveGrass::CreateGrassMeshes()

@@ -5,6 +5,12 @@
 
 namespace Wild
 {
+    struct VolumetricPassData
+    {
+        Texture* finalTexture;
+        Texture* depthTexture;
+    };
+
     class PostProcessPass : RenderFeature
     {
       public:
@@ -15,5 +21,6 @@ namespace Wild
         virtual void Update(const float dt) override;
 
       private:
+        void VolumetricsPass(Renderer& renderer, RenderGraph& rg);
     };
 } // namespace Wild

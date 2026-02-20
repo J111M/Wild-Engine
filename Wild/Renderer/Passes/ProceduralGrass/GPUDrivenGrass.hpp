@@ -133,7 +133,7 @@ namespace Wild
         void AddGrassCulling(Renderer& renderer, RenderGraph& rg);
         void AddIndirectDrawCommandsPass(Renderer& renderer, RenderGraph& rg);
         void AddRenderGrass(Renderer& renderer, RenderGraph& rg);
-        void UpdateFrustumData();
+        void UpdateFrustumData(const int frameIndex);
 
         void CreateGrassMeshes();
 
@@ -143,7 +143,7 @@ namespace Wild
         bool m_recomputeGrassBlades = true;
 
         // Store frustum data
-        std::unique_ptr<Buffer> m_frustumBuffer;
+        std::unique_ptr<Buffer> m_frustumBuffer[BACK_BUFFER_COUNT];
 
         // Keeps track of all instances that need to be culled
         std::shared_ptr<Buffer> m_culledInstancesBuffer[BACK_BUFFER_COUNT];
