@@ -198,8 +198,6 @@ namespace Wild
 
                 list.GetList()->DrawInstanced(36, 1, 0, 0);
                 list.EndRender();
-
-                renderer.compositeTexture = passData.finalTexture;
             });
     }
 
