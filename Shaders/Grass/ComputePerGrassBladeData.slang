@@ -129,9 +129,10 @@ void main(uint3 DTid : SV_DispatchThreadID)
         elevation = avgPos;
 
         attempt++;
-    } while (slopeAngle >= 5.5f && attempt < maxAttempts && elevation < -0.4f);
+    } while (slopeAngle >= 4.7f && attempt < maxAttempts && elevation < -0.63f);
 
-    if (slopeAngle >= 5.5f || elevation < -0.4) {
+    // Values are determined through testing
+    if (slopeAngle >= 4.7f || elevation < -0.63) {
         return;
     }
 

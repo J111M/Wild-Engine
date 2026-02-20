@@ -10,9 +10,13 @@ namespace Wild
         m_drc.waterLevel = m_grc.waterLevel;
 
         // Create buffer for all terrain textures
-        BufferDesc desc{};
-        desc.bufferSize = sizeof(TerrainTextures);
-        m_terrainTexturesCbv = std::make_unique<Buffer>(desc, BufferType::constant);
+        BufferDesc terrainTextureBuffer{};
+        terrainTextureBuffer.bufferSize = sizeof(TerrainTextures);
+        m_terrainTexturesCbv = std::make_unique<Buffer>(terrainTextureBuffer, BufferType::constant);
+
+        BufferDesc cameraBufferDesc{};
+        cameraBufferDesc.bufferSize = sizeof(ProjViewCamera);
+        m_cameraCbv = std::make_unique<Buffer>(cameraBufferDesc, BufferType::constant);
 
         // Load all terrain textures
         sandTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sandAlpha.png");
@@ -254,6 +258,9 @@ namespace Wild
                 Uniform TextureViewBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
                 uniforms.emplace_back(TextureViewBuffer);
 
+                Uniform projViewBuffer{2, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(projViewBuffer);
+
                 Uniform bindlessUni{0, 0, RootParams::RootResourceType::DescriptorTable};
                 CD3DX12_DESCRIPTOR_RANGE srvRange{};
                 srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
@@ -289,6 +296,12 @@ namespace Wild
                     break;
                 }
 
+                if (camera)
+                {
+                    m_pvc.m_viewProj = camera->GetProjection() * camera->GetView();
+                    m_cameraCbv->Allocate(&m_pvc);
+                }
+
                 list.SetPipelineState(pipeline);
                 list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
                                  {ClearOperation::Clear, ClearOperation::Clear, ClearOperation::Clear},
@@ -300,7 +313,7 @@ namespace Wild
                 {
                     if (camera)
                     {
-                        m_drc.worldMatix = camera->GetProjection() * camera->GetView() * transform.GetWorldMatrix();
+                        m_drc.worldMatix = transform.GetWorldMatrix();
                         m_drc.invModel = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
                     }
 
@@ -308,7 +321,9 @@ namespace Wild
 
                     list.SetRootConstant<DrawTerrainRootConstant>(0, m_drc);
                     list.SetConstantBufferView(1, m_terrainTexturesCbv.get());
-                    list.SetBindlessHeap(2);
+                    list.SetConstantBufferView(2, m_cameraCbv.get());
+                    list.SetBindlessHeap(3);
+
                     list.GetList()->IASetVertexBuffers(0, 1, &m_terrainVertices->GetVBView()->View());
                     list.GetList()->IASetIndexBuffer(&m_terrainIndices->GetIBView()->View());
                     list.GetList()->DrawIndexedInstanced(m_drawCount, 1, 0, 0, 0);

@@ -9,11 +9,11 @@ struct VSInput
 struct VSOutput
 {
     float4 position : SV_POSITION;
-    float3 color : COLOR;
     float3 normal : NORMAL;
     float3 tangent : TANGENT;
     float3 bitangent : BITANGENT;
-    float2 uv : TEXCOORD;
+    float2 uv : TEXCOORD0;
+    float3 worldPosition : TEXCOORD1;
     float elevation : ELEVATION;
 };
 
@@ -42,8 +42,13 @@ cbuffer TextureViews : register(b1)
     uint noiseBlendView;
 }
 
+cbuffer Camera : register(b2)
+{
+     column_major float4x4 projView;
+}
+
 Texture2D textures[4096] : register(t0, space0);
-SamplerState anisotropySampler : register(s0);
+SamplerState linearSampler : register(s0);
 
 [shader("vertex")]
 VSOutput main(VSInput input)
@@ -61,12 +66,12 @@ VSOutput main(VSInput input)
     float terrainHeight = 0.0f;
     if (heightMapIndex > 0)
     {
-        terrainHeight = textures[heightMapIndex].SampleLevel(anisotropySampler, input.uv, 0).r;
+        terrainHeight = textures[heightMapIndex].SampleLevel(linearSampler, input.uv, 0).r;
 
-        float hL = textures[heightMapIndex].SampleLevel(anisotropySampler, input.uv + float2(-texelSize.x, 0), 0).r;
-        float hR = textures[heightMapIndex].SampleLevel(anisotropySampler, input.uv + float2(texelSize.x, 0), 0).r;
-        float hD = textures[heightMapIndex].SampleLevel(anisotropySampler, input.uv + float2(0, -texelSize.y), 0).r;
-        float hU = textures[heightMapIndex].SampleLevel(anisotropySampler, input.uv + float2(0, texelSize.y), 0).r;
+        float hL = textures[heightMapIndex].SampleLevel(linearSampler, input.uv + float2(-texelSize.x, 0), 0).r;
+        float hR = textures[heightMapIndex].SampleLevel(linearSampler, input.uv + float2(texelSize.x, 0), 0).r;
+        float hD = textures[heightMapIndex].SampleLevel(linearSampler, input.uv + float2(0, -texelSize.y), 0).r;
+        float hU = textures[heightMapIndex].SampleLevel(linearSampler, input.uv + float2(0, texelSize.y), 0).r;
 
         float scale = 2.0 * texelSize.x * 128;
 
@@ -78,8 +83,8 @@ VSOutput main(VSInput input)
     float3 outputPosition = input.position;
     outputPosition.y += terrainHeight * maxHeight;
 
-    output.position = mul(world, float4(outputPosition, 1.0f));
-    output.color = input.color;
+    output.worldPosition = mul(world, float4(outputPosition, 1.0f)).xyz;
+    output.position = mul(projView, float4(output.worldPosition, 1.0f));
     output.normal = normal;
     output.tangent = tangent;
     output.bitangent = bitangent;

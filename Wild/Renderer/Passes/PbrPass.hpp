@@ -7,8 +7,8 @@ namespace Wild
 {
     struct PbrPassData
     {
-        Texture *finalTexture;
-        Texture *depthTexture;
+        Texture* finalTexture;
+        Texture* depthTexture;
     };
 
     struct InverseCamera
@@ -20,7 +20,7 @@ namespace Wild
     struct PBRData
     {
         glm::vec3 cameraPosition{};
-        glm::vec3 lightDirection = glm::vec4(-0.3, -6.0, -2.5, 1.0f);
+        glm::vec3 lightDirection = glm::vec4(-0.3, 14.0, -2.5, 1.0f);
         uint32_t viewMode = 0;
     };
 

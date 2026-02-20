@@ -69,6 +69,11 @@ namespace Wild
         uint32_t noiseBlendTexture{};
     };
 
+    struct ProjViewCamera
+    {
+        glm::mat4 m_viewProj{};
+    };
+
     class ProceduralTerrainPass : public RenderFeature
     {
       public:
@@ -125,8 +130,10 @@ namespace Wild
         std::unique_ptr<Texture> noiseBlendTexture;
 
         std::unique_ptr<Buffer> m_terrainTexturesCbv;
+        std::unique_ptr<Buffer> m_cameraCbv;
 
         TerrainTextures m_terrainTexturesView{};
+        ProjViewCamera m_pvc{};
 
         // Terrain mesh
         std::unique_ptr<Buffer> m_terrainVertices;

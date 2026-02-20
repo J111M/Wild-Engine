@@ -1,11 +1,11 @@
 struct PSInput
 {
     float4 position : SV_POSITION;
-    float3 color : COLOR;
     float3 normal : NORMAL;
     float3 tangent : TANGENT;
     float3 bitangent : BITANGENT;
-    float2 uv : TEXCOORD;
+    float2 uv : TEXCOORD0;
+    float3 worldPosition : TEXCOORD1;
     float elevation : ELEVATION;
 };
 
@@ -41,9 +41,14 @@ cbuffer TextureViews : register(b1)
     uint noiseBlendView;
 }
 
+cbuffer Camera : register(b2)
+{
+     column_major float4x4 projView;
+}
+
 Texture2D textures[4096] : register(t0, space0);
-SamplerState anisotropySampler : register(s0);
-SamplerState anisotropy2Sampler : register(s1);
+SamplerState linearSampler : register(s0);
+SamplerState anisotropySampler : register(s1);
 
 // Octahedral encoding
 float3 OctEncode(float3 n)
@@ -133,7 +138,8 @@ float cellNoise(float2 p)
 
 float4 RandomizedTextureColor(float2 uv, float3 bright, float3 dark, float3 variation, float seed)
 {
-    float2 warpOffset = float2(fbm(uv * 1.5, float2(1.7 + seed, 9.2 + seed)), fbm(uv * 1.5, float2(8.3 + seed, 2.8 + seed))) * 0.4;
+    float2 warpOffset =
+        float2(fbm(uv * 1.5, float2(1.7 + seed, 9.2 + seed)), fbm(uv * 1.5, float2(8.3 + seed, 2.8 + seed))) * 0.4;
 
     float largePatch = fbm(uv * 2.0 + warpOffset, float2(0.0, 0.0));
     largePatch = saturate(largePatch * 0.5 + 0.5);
@@ -161,18 +167,51 @@ float4 RandomizedTextureColor(float2 uv, float3 bright, float3 dark, float3 vari
 
 float HeightFromColor(float3 color) { return dot(color, float3(0.299, 0.587, 0.114)); }
 
-float2 MaskedBlending(float h0, float h1, float mask, float contrast) {
+float2 MaskedBlending(float h0, float h1, float mask, float contrast)
+{
     // Get the depth of both textures
     float b0 = h0 + (1.0 - mask);
     float b1 = h1 + mask;
 
     // Sharpness of the transition
     float depth = lerp(1.0, 0.001, contrast);
+    //float ma     = max(b0, b1) - depth;
+    //b0 = max(b0 - ma, 0.0);
+    //b1 = max(b1 - ma, 0.0);
 
     // Get tallest surface
     float rcpSum = rcp(b0 + b1);
 
     return float2(b0 * rcpSum, b1 * rcpSum);
+}
+
+// Source of information https://www.martinpalko.com/triplanar-mapping/
+float4 TriplanarSample(uint textureView, float3 worldPosition, float3 blendWeights, float textureScale)
+{
+    float4 xSample = textures[NonUniformResourceIndex(textureView)].Sample(anisotropySampler, worldPosition.zy * textureScale);
+    float4 ySample = textures[NonUniformResourceIndex(textureView)].Sample(anisotropySampler, worldPosition.xz * textureScale);
+    float4 zSample = textures[NonUniformResourceIndex(textureView)].Sample(anisotropySampler, worldPosition.xy * textureScale);
+
+    return xSample * blendWeights.x + ySample * blendWeights.y + zSample * blendWeights.z;
+}
+
+float3 TriplanarNormalSample(uint textureView, float3 worldPosition, float3 worldNormal, float3 blendWeights, float textureScale)
+{
+    float3 xSample =
+        textures[NonUniformResourceIndex(textureView)].Sample(anisotropySampler, worldPosition.zy * textureScale).xyz * 2.0 -
+        1.0;
+    float3 ySample =
+        textures[NonUniformResourceIndex(textureView)].Sample(anisotropySampler, worldPosition.xz * textureScale).xyz * 2.0 -
+        1.0;
+    float3 zSample =
+        textures[NonUniformResourceIndex(textureView)].Sample(anisotropySampler, worldPosition.xy * textureScale).xyz * 2.0 -
+        1.0;
+
+    xSample = float3(xSample.xy + worldNormal.zy, abs(xSample.z) * worldNormal.x);
+    ySample = float3(ySample.xy + worldNormal.xz, abs(ySample.z) * worldNormal.y);
+    zSample = float3(zSample.xy + worldNormal.xy, abs(zSample.z) * worldNormal.z);
+
+    return normalize(xSample * blendWeights.x + ySample * blendWeights.y + zSample * blendWeights.z);
 }
 
 [shader("fragment")]
@@ -182,44 +221,68 @@ PSOut main(PSInput input)
     float3 geoNormal = float3(0.0f);
     float blendedRoughness = 0.0f;
 
-    const float textureScale = 96.0f;
+    const float textureScale = 1.1f;
+    float sharpness = 6.0;
 
-    float contrast = 0.6;
+    float3 normal = normalize(mul((float3x3)invTransposeModel, input.normal.xyz));
+    float3 blendWeights = pow(abs(normal), sharpness);
+    blendWeights /= blendWeights.x + blendWeights.y + blendWeights.z;
+
+    float contrast = 0.5;
+
     // Blend weight
     float2 w;
 
     //  Blend values
     float t = 0.8f;
-    float4 noiseBlend = textures[NonUniformResourceIndex(noiseBlendView)].Sample(anisotropy2Sampler, input.uv);
+    float4 noiseBlend = textures[NonUniformResourceIndex(noiseBlendView)].Sample(anisotropySampler, input.uv);
     noiseBlend = noiseBlend * 2.0f - 1.0f; // Remap -1, 1
 
     // Load terrain texture data
-    float4 grassColor =
-        RandomizedTextureColor(input.uv, float3(0.58, 0.976, 0.53), float3(0.345, 0.525, 0.07), float3(0.933, 0.784, 0.067), 612.51f);
+    float4 grassColor = RandomizedTextureColor(
+        input.uv, float3(0.58, 0.976, 0.53), float3(0.345, 0.525, 0.07), float3(0.933, 0.784, 0.067), 612.51f);
     float grassRoughness = grassColor.w;
-
     grassColor.w = HeightFromColor(grassColor.rgb);
 
     float4 dirtColor = RandomizedTextureColor(
-    input.uv, float3(0.561, 0.396, 0.215), float3(0.701, 0.519, 0.215), float3(0.886, 0.643, 0.215), 152.61f);
+        input.uv, float3(0.561, 0.396, 0.215), float3(0.701, 0.519, 0.215), float3(0.886, 0.643, 0.215), 152.61f);
     float dirtRoughness = dirtColor.w;
-
     dirtColor.w = HeightFromColor(dirtColor.rgb);
 
-    float4 sandColor = textures[NonUniformResourceIndex(sandTexture)].Sample(anisotropy2Sampler, input.uv * textureScale);
-    float3 sandNormal =
-        textures[NonUniformResourceIndex(sandNormalTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).rgb * 2.0 - 1.0f;
-    float sandRoughness =
-        textures[NonUniformResourceIndex(sandRoughTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).r;
+    float4 sandColor = TriplanarSample(
+        sandTexture,
+        input.worldPosition,
+        blendWeights,
+        textureScale);
 
-    float4 rockColor = textures[NonUniformResourceIndex(rockTexture)].Sample(anisotropy2Sampler, input.uv * textureScale);
-    float3 rockNormal =
-        textures[NonUniformResourceIndex(rockNormalTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).rgb * 2.0 - 1.0f;
-    float rockRoughness =
-        textures[NonUniformResourceIndex(rockRoughTexture)].Sample(anisotropy2Sampler, input.uv * textureScale).r;
+    sandColor.w = HeightFromColor(sandColor.rgb);
+
+    float3 sandNormal = TriplanarNormalSample(sandNormalTexture, input.worldPosition, normal, blendWeights, textureScale);
+
+    float sandRoughness = TriplanarSample(
+        sandRoughTexture,
+        input.worldPosition,
+        blendWeights,
+        textureScale).r;
+
+    float4 rockColor = TriplanarSample(
+        rockTexture,
+        input.worldPosition,
+        blendWeights,
+        textureScale);
+
+    rockColor.w = HeightFromColor(rockColor.rgb);
+
+    float3 rockNormal = TriplanarNormalSample(rockNormalTexture, input.worldPosition, normal, blendWeights, textureScale);
+
+    float rockRoughness = TriplanarSample(
+        rockRoughTexture,
+        input.worldPosition,
+        blendWeights,
+        textureScale).r;
 
     // Slope steepness of the terrain
-    float slope = 1.0f - input.normal.y;
+    float slope = 1.0f - normal.y;
     float blendAmount = 0.0f;
     float maskedSlope = slope + noiseBlend.r * (noiseFade + 0.05);
 
@@ -236,8 +299,8 @@ PSOut main(PSInput input)
 
     if ((maskedSlope < 0.7) && (maskedSlope >= 0.2f))
     {
-        blendAmount = (maskedSlope - 0.2f) * (1.0f / (0.7f - 0.2f));
-        blendAmount = pow(blendAmount, 0.55f);
+        blendAmount = (maskedSlope - 0.2) * (1.0f / (0.7f - 0.2f));
+        blendAmount = pow(blendAmount, 0.35f);
 
         w = MaskedBlending(dirtColor.a, rockColor.a, blendAmount, contrast);
 
@@ -249,11 +312,9 @@ PSOut main(PSInput input)
     if (maskedSlope >= 0.7)
     {
         albedo = rockColor.rgb;
-        geoNormal = rockNormal;
+        geoNormal = normalize(rockNormal);
         blendedRoughness = rockRoughness;
     }
-
-
 
     float elevation = input.elevation;
     float noisyHeight = (elevation / 10.0f) + (noiseBlend.r * 0.05f);
@@ -275,11 +336,11 @@ PSOut main(PSInput input)
 
     float3 T = normalize(input.tangent);
     float3 B = normalize(input.bitangent);
-    float3 N = normalize(mul((float3x3)invTransposeModel, input.normal.xyz));
+    float3 N = normal;
 
     float3x3 TBN = float3x3(T, B, N);
 
-    float3 normal = normalize(mul((geoNormal.xyz), TBN));
+    normal = normalize(mul((geoNormal.xyz), TBN));
 
     albedo = pow(abs(albedo), 1 / 1.65);
 
