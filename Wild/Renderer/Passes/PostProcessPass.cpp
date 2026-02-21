@@ -33,9 +33,11 @@ namespace Wild
                 sceneData.inverseProj = glm::inverse(cam.GetProjection());
                 sceneData.cameraPosition = cam.GetPosition();
                 m_vrc.nearFar = cam.GetNearFar();
-                m_vrc.aspect = cam.GetAspect();
             }
         }
+
+        sceneData.sunDirection = glm::vec3(-0.3, 14.0, -2.5);
+        sceneData.fogDensity = 0.03f;
 
         int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
         m_sceneDataBuffer[frameIndex]->Allocate(&sceneData);
@@ -64,6 +66,7 @@ namespace Wild
             PassType::Compute,
             [&renderer, skyboxData, this](VolumetricPassData& passData, CommandList& list) {
                 passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                renderer.irradianceMap->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
                 PipelineStateSettings settings{};
                 settings.ShaderState.ComputeShader =
@@ -120,6 +123,7 @@ namespace Wild
                 m_vrc.srcTextureView = skyboxData->finalTexture->GetSrv()->BindlessView();
                 m_vrc.depthView = passData.depthTexture->GetSrv()->BindlessView();
 
+                if (renderer.irradianceMap) { m_vrc.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView(); }
                 m_vrc.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
 
                 list.SetRootConstant<VolumetricRC>(0u, m_vrc);
@@ -132,6 +136,7 @@ namespace Wild
                     (passData.finalTexture->Width() + 7u) / 8u, (passData.finalTexture->Height() + 7u) / 8u, 1u);
                 list.EndRender();
 
+                renderer.irradianceMap->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 renderer.compositeTexture = passData.finalTexture;
             });

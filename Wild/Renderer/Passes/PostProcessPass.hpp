@@ -15,9 +15,9 @@ namespace Wild
     {
         glm::vec2 textureSize{};
         glm::vec2 nearFar{};
-        float aspect;
         uint32_t srcTextureView{};
         uint32_t depthView{};
+        uint32_t irradianceView{};
     };
 
     struct SceneBuffer
@@ -25,6 +25,9 @@ namespace Wild
         glm::mat4 inverseProj;
         glm::mat4 inverseView;
         glm::vec3 cameraPosition;
+        float pad;
+        glm::vec3 sunDirection;
+        float fogDensity;
     };
 
     class PostProcessPass : public RenderFeature
