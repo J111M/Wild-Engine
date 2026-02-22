@@ -1,4 +1,8 @@
 #include "Core/ImGui/ImGuiCore.hpp"
+#include "Renderer/Resources/Mesh.hpp"
+#include "Renderer/Passes/PbrPass.hpp"
+
+#include <imgui_internal.h>
 
 #include "Tools/Common3d12.hpp"
 
@@ -39,6 +43,24 @@ namespace Wild
             }
             transform.SetFromMatrix(model);
         }
+    }
+
+    void ImguiCore::DrawViewport(Renderer* renderer)
+    {
+        ImGui::SetNextWindowContentSize(ImVec2(0.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        std::string window_label = "Viewport ";
+        ImGui::Begin(window_label.c_str(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+        // Get the available size of the content region
+        ImVec2 scenePos = ImGui::GetWindowPos();
+        ImVec2 sceneSize = ImGui::GetWindowSize();
+
+        ImGui::SetCursorPos(ImVec2(0, 0));
+        ImGui::Image((ImTextureID)renderer->compositeTexture->GetSrv()->GetGpuHandle().ptr, sceneSize);
+
+        ImGui::End();
+        ImGui::PopStyleVar();
     }
 
     bool ImguiCore::Setup(std::shared_ptr<Window> window)
@@ -84,6 +106,209 @@ namespace Wild
 
         return true;
     }
+
+    void ImguiCore::DisplayTexture(std::shared_ptr<Texture> texture)
+    {
+        if (texture)
+            ImGui::Image((ImTextureID)texture->GetSrv()->GetGpuHandle().ptr, ImVec2(150, 150));
+    }
+
+    void ImguiCore::DrawInspectorWindow()
+    {
+        auto& ecs = engine.GetECS();
+        auto& registry = ecs->GetRegistry();
+
+        ImGui::SetNextWindowBgAlpha(1.0f);
+        ImGui::Begin("Inspector");
+
+        if (m_selectedEntity == entt::null)
+        {
+            ImGui::Text("No entity selected");
+
+            ImGui::End();
+            return;
+        }
+
+        ImGui::Text("Name:");
+        ImGui::Text("Entity ID: %u", entt::to_integral(m_selectedEntity));
+
+        if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            if (ecs->HasComponent<Transform>(m_selectedEntity))
+            {
+                auto& transform = registry.get<Transform>(m_selectedEntity);
+
+                // Position
+                if (SeperateDragFloat3("Position", transform.GetPosition())) { transform.MarkDirty(); };
+
+                glm::vec3 eulerRotation = glm::degrees(glm::eulerAngles(transform.GetRotation()));
+
+                // Rotation
+                if (SeperateDragFloat3("Rotation", eulerRotation))
+                {
+                    transform.SetRotation(glm::quat(glm::radians(eulerRotation)));
+                    transform.MarkDirty();
+                }
+
+                // Scale
+                if (SeperateDragFloat3("Scale", transform.GetScale())) { transform.MarkDirty(); }
+            }
+        }
+
+        if (ecs->HasComponent<Mesh>(m_selectedEntity))
+        {
+            if (ImGui::CollapsingHeader("Materials", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                auto& mesh = registry.get<Mesh>(m_selectedEntity);
+
+                auto& material = mesh.GetMaterial();
+
+                DisplayTexture(material.m_albedo);
+                DisplayTexture(material.m_normal);
+                DisplayTexture(material.m_emissive);
+                DisplayTexture(material.m_roughnessMetallic);
+                DisplayTexture(material.m_occlusion);
+
+                ImGui::Separator();
+            }
+        }
+        static bool Update = false;
+
+        if (ecs->HasComponent<PointLight>(m_selectedEntity))
+        {
+            if (ImGui::CollapsingHeader("Planet", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                auto& ptLight = registry.get<PointLight>(m_selectedEntity);
+
+                ImGui::ColorEdit3("Point Light Color: ", &ptLight.colorIntensity[0]);
+                ImGui::DragFloat("Intensity: ", &ptLight.colorIntensity.w);
+            }
+        }
+        /*if (ecs.HasComponent<DirectionalLight>(m_selectedEntity))
+        {
+            if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                auto& dLight = registry.get<DirectionalLight>(m_selectedEntity);
+
+                if (SeperateDragFloat3("Direction: ", dLight.lightDir)) {}
+            }
+        }*/
+
+        ImGui::End();
+    }
+
+    bool ImguiCore::SeperateDragFloat3(const char* name, glm::vec3& value)
+    {
+        ImGui::PushID(name);
+        ImGui::BeginGroup();
+        ImGui::PushItemWidth((ImGui::CalcItemWidth() - 6) / 4.0f);
+        bool isChanged = false;
+
+        {
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.2f, 0.05f, 0.05f, 1.0f));
+            isChanged |= ImGui::DragFloat("##x", &value.x, 0.1f);
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::PopStyleColor(2);
+        }
+
+        {
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.05f, 0.2f, 0.05f, 1.0f));
+            isChanged |= ImGui::DragFloat("##y", &value.y, 0.1f);
+            ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::PopStyleColor(2);
+        }
+
+        {
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 1.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.05f, 0.05f, 0.2f, 1.0f));
+            isChanged |= ImGui::DragFloat("##z", &value.z, 0.1);
+            ImGui::PopStyleColor(2);
+        }
+
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::TextUnformatted(name);
+
+        ImGui::PopStyleVar();
+        ImGui::PopItemWidth();
+        ImGui::EndGroup();
+        ImGui::PopID();
+        return isChanged;
+    }
+
+    void ImguiCore::AddStatsBar()
+    {
+        ImGuiWindowFlags window_flags =
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar;
+
+        const float barHeight = 20.0f;
+        ImGui::BeginViewportSideBar("##StatsBar", ImGui::GetMainViewport(), ImGuiDir_Down, barHeight, window_flags);
+
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        ImVec2 wpos = ImGui::GetWindowPos();
+        ImVec2 wsz = ImGui::GetWindowSize();
+
+        ImU32 bg = ImGui::GetColorU32(ImGuiCol_FrameBg);
+        ImU32 outline = ImGui::GetColorU32(ImGuiCol_Border);
+        const float pad = 4.0f;
+        const float rounding = 6.0f;
+        dl->AddRectFilled(ImVec2(wpos.x + pad, wpos.y + pad),
+                          ImVec2(wpos.x + wsz.x - pad, wpos.y + wsz.y - pad),
+                          ImGui::GetColorU32(ImGuiCol_FrameBgActive),
+                          rounding);
+        // thin outline
+        dl->AddRect(ImVec2(wpos.x + pad, wpos.y + pad),
+                    ImVec2(wpos.x + wsz.x - pad, wpos.y + wsz.y - pad),
+                    outline,
+                    rounding,
+                    ImDrawFlags_RoundCornersAll,
+                    1.0f);
+
+        ImGui::BeginMenuBar();
+
+        auto& context = engine.GetGfxContext();
+        std::string deviceName = context->GetAdapterName();
+        std::string deviceDisplay = "Device: " + deviceName;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 4));
+        ImGui::TextUnformatted(deviceDisplay.c_str());
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::TextUnformatted("Version: 0.2");
+        ImGui::PopStyleVar();
+
+        // compute FPS and color
+        float fps = ImGui::GetIO().Framerate;
+        float ms = ImGui::GetIO().DeltaTime * 1000.0f;
+
+        ImVec4 fps_col;
+        if (fps >= 55.0f)
+            fps_col = ImVec4(0.4f, 0.95f, 0.4f, 1.0f);
+        else if (fps >= 30.0f)
+            fps_col = ImVec4(1.0f, 0.85f, 0.2f, 1.0f);
+        else
+            fps_col = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+
+        // move to right edge area
+        float availX = ImGui::GetContentRegionAvail().x;
+        ImGui::SetCursorPosX(ImGui::GetWindowSize().x - 360.0f);
+
+        // show FPS and ms
+        ImGui::PushStyleColor(ImGuiCol_Text, fps_col);
+        ImGui::Text("fps: %3.1f", fps);
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::Text("%2.2f ms", ms);
+
+        ImGui::EndMenuBar();
+        ImGui::End();
+    }
+
 
     void ImguiCore::DrawEntityNode(entt::registry& registry, entt::entity entity)
     {
@@ -139,6 +364,43 @@ namespace Wild
         ImGui::NewFrame();
         ImGuizmo::BeginFrame();
 
+        ImGuiID dockspace_id = ImGui::GetID("DockSpace");
+        ImGui::DockSpaceOverViewport(ImGui::GetID("DockSpace"), nullptr, ImGuiDockNodeFlags_None);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 6.0f));
+        if (ImGui::BeginMainMenuBar())
+        {
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_BorderShadow, ImVec4(0, 0, 0, 0));
+
+            ImVec2 barPos = ImGui::GetWindowPos();
+            ImVec2 barSize = ImGui::GetWindowSize();
+
+            float panelHeight = barSize.y - 8.0f;
+            float panelWidth = barSize.x * 0.6f;
+            auto panelPos = ImVec2(barPos.x + (barSize.x - panelWidth) * 0.5f, barPos.y + 4.0f);
+            auto panelEnd = ImVec2(panelPos.x + panelWidth, panelPos.y + panelHeight);
+
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(panelPos, panelEnd, IM_COL32(40, 40, 40, 255), 6.0f);
+
+            ImGui::SameLine((ImGui::GetContentRegionMax().x / 2.f) - 15.f);
+
+            ImGui::PopStyleColor(3);
+
+            ImGui::EndMenuBar();
+            ImGui::End();
+        }
+        ImGui::PopStyleVar();
+
+        AddStatsBar();
+    }
+
+    void ImguiCore::Draw()
+    {
+        DrawInspectorWindow();
         AddPanel("Hierachy window", [this]() {
             int rowCount = 0;
             float rowHeight = ImGui::GetTextLineHeightWithSpacing();
@@ -174,10 +436,8 @@ namespace Wild
 
             if (ImGui::RadioButton("Scale", m_gizmoOperation == ImGuizmo::SCALE)) m_gizmoOperation = ImGuizmo::SCALE;
         });
-    }
 
-    void ImguiCore::Draw()
-    {
+        // Draw panels
         for (auto& [name, func] : m_panels)
         {
             if (ImGui::Begin(name.c_str())) { func(); }

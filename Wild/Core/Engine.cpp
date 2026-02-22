@@ -46,21 +46,28 @@ namespace Wild
             if (m_gfxContext->ResizeWindow()) { m_renderer->FlushResources(); }
 
             m_gfxContext->BeginFrame();
+
+#ifdef DEBUG
             m_imguiCore->Prepare();
 
             m_imguiCore->Watch("Frame time: ", &frameTime);
             m_imguiCore->Watch("delta time: ", &deltaTime);
             m_imguiCore->Watch("FPS: ", &m_fps);
+#endif
 
             // Update and render all the passes
             m_renderer->Update(deltaTime);
             m_renderer->Render(*m_gfxContext->GetCommandList().get(), deltaTime);
 
+#ifdef DEBUG
             // Displays profiled data
             m_profiler->Display();
 
             m_imguiCore->DrawGizmo(camera.GetView(), camera.GetProjection());
+
+            m_imguiCore->DrawViewport(m_renderer.get());
             m_imguiCore->Draw();
+#endif
             m_gfxContext->EndFrame();
 
             glfwPollEvents();

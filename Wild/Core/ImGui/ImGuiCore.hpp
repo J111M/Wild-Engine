@@ -23,10 +23,16 @@ namespace Wild
         void AddPanel(const std::string& name, std::function<void()> renderFunc);
 
         void DrawGizmo(const glm::mat4& view, const glm::mat4& projection);
+        void DrawViewport(Renderer* renderer);
 
+        bool SeperateDragFloat3(const char* name, glm::vec3& value);
       private:
         bool Setup(std::shared_ptr<Window> window);
 
+        void DisplayTexture(std::shared_ptr<Texture> texture);
+
+        void DrawInspectorWindow();
+        void AddStatsBar();
         void DrawEntityNode(entt::registry& registry, entt::entity entity);
         void ConvertToImGuizmoMatrix(const glm::mat4& glmMatrix, float* guizmoMatrix);
 

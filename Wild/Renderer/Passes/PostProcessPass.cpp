@@ -20,7 +20,7 @@ namespace Wild
         auto ecs = engine.GetECS();
         auto& cameras = ecs->View<Camera>();
 
-        SceneBuffer sceneData{};
+        
 
         // Loop over all camera's TODO make the code run for each camera entity
         for (auto& cameraEntity : cameras)
@@ -29,18 +29,23 @@ namespace Wild
             {
                 auto& cam = ecs->GetComponent<Camera>(cameraEntity);
 
-                sceneData.inverseView = glm::inverse(cam.GetView());
-                sceneData.inverseProj = glm::inverse(cam.GetProjection());
-                sceneData.cameraPosition = cam.GetPosition();
+                m_sceneData.inverseView = glm::inverse(cam.GetView());
+                m_sceneData.inverseProj = glm::inverse(cam.GetProjection());
+                m_sceneData.cameraPosition = cam.GetPosition();
                 m_vrc.nearFar = cam.GetNearFar();
             }
         }
 
-        sceneData.sunDirection = glm::vec3(-0.3, 14.0, -2.5);
-        sceneData.fogDensity = 0.03f;
+        m_sceneData.lightDirection = glm::vec3(-0.3, 14.0, -2.5);
+       
+
+        engine.GetImGui()->AddPanel("Post process settings", [this]() {
+            ImGui::SliderFloat("Fog density: ", &m_sceneData.fogDensity, 0.001, 0.3f);
+
+        });
 
         int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
-        m_sceneDataBuffer[frameIndex]->Allocate(&sceneData);
+        m_sceneDataBuffer[frameIndex]->Allocate(&m_sceneData);
     }
 
     void PostProcessPass::VolumetricsPass(Renderer& renderer, RenderGraph& rg)

@@ -27,6 +27,7 @@ namespace Wild
         ComPtr<ID3D12Device> GetDevice() { return m_device; }
         ComPtr<ID3D12Device2> GetDevice2() { return m_device2; }
         ComPtr<IDXGIFactory4> GetFactory() { return m_factory; }
+        std::string GetAdapterName();
 
         const GfxCapabilities& GetCapabilities() const { return m_capabilities; }
 

@@ -51,6 +51,14 @@ namespace Wild
 #endif
     }
 
+    std::string GfxContext::GetAdapterName()
+    {
+        DXGI_ADAPTER_DESC1 desc;
+        m_adapter->GetDesc1(&desc);
+
+        return WStringToString(desc.Description);
+    }
+
     void GfxContext::Initialize()
     {
         SetupFactory();

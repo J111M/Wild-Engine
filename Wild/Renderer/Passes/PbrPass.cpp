@@ -6,6 +6,30 @@ namespace Wild
 {
     PbrPass::PbrPass()
     {
+        auto ecs = engine.GetECS();
+        for (size_t y = 1; y < 2; y++) {
+            for (size_t x = 1; x < 2; x++) {
+                auto entity = ecs->CreateEntity();
+                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+                auto& light = ecs->AddComponent<PointLight>(entity);
+
+                transform.Name = std::string("Light: " + std::to_string(x + y));
+
+                transform.SetPosition(glm::vec3(x * 5, 15, y * 5));
+                light.position = transform.GetPosition();
+
+                float intensity = ((x + y) / 2.0f) + 1.0f;
+                light.colorIntensity = glm::vec4(glm::vec3(1.0,0.0,0.0), 20.0f);
+            }
+        }
+
+        // Create point light buffer
+        {
+            BufferDesc desc{};
+            desc.bufferSize = sizeof(PointLight) * MAX_POINT_LIGHTS;
+            m_pointLightsBuffer = std::make_unique<Buffer>(desc, BufferType::constant);
+        }
+
         {
             BufferDesc desc{};
             desc.bufferSize = sizeof(InverseCamera);
@@ -35,10 +59,24 @@ namespace Wild
     {
         auto context = engine.GetGfxContext();
         auto ecs = engine.GetECS();
-        auto& cameras = ecs->View<Camera>();
+        
+        std::vector<PointLight> lightData;
+        auto& lightsView = ecs->GetRegistry().view<PointLight, Transform>();
+
+        for (auto [entity, light, transform] : lightsView.each()) {
+            auto& light = lightsView.get<PointLight>(entity);
+            PointLight gpuLight{};
+            gpuLight.position = transform.GetPosition();
+            gpuLight.colorIntensity = light.colorIntensity;
+            lightData.push_back(gpuLight);
+        }
+
+        m_pbrData.numOfPointLights = lightData.size();
+        m_pointLightsBuffer->Allocate(lightData.data());
 
         InverseCamera inverseCamData{};
 
+        auto& cameras = ecs->View<Camera>();
         // Loop over all camera's TODO make the code run for each camera entity
         for (auto& cameraEntity : cameras)
         {
@@ -71,6 +109,7 @@ namespace Wild
         auto* passData = rg.AllocatePassData<PbrPassData>();
         auto* deferredData = rg.GetPassData<PbrPassData, DeferredPassData>();
 
+        passData->pointlights = m_pointLightsBuffer;
         passData->depthTexture = deferredData->depthTexture;
 
         // Final texture
@@ -121,6 +160,12 @@ namespace Wild
                     Uniform envData{3, 0, RootParams::RootResourceType::ConstantBufferView};
                     envData.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
                     uniforms.emplace_back(envData);
+                }
+
+                 {
+                    Uniform pointLightData{4, 0, RootParams::RootResourceType::ConstantBufferView};
+                     pointLightData.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                    uniforms.emplace_back(pointLightData);
                 }
 
                 // Bindless resources
@@ -189,7 +234,8 @@ namespace Wild
                 list.SetConstantBufferView(1, m_inverseCamera[frameIndex].get());
                 list.SetConstantBufferView(2, m_pbrDataBuffer[frameIndex].get());
                 list.SetConstantBufferView(3, m_environmentData.get());
-                list.SetBindlessHeap(4);
+                list.SetConstantBufferView(4, m_pointLightsBuffer.get());
+                list.SetBindlessHeap(5);
 
                 list.GetList()->DrawInstanced(3, 1, 0, 0);
                 list.EndRender();

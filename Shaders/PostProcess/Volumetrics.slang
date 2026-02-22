@@ -21,14 +21,16 @@ cbuffer SceneData : register(b1)
     float pad;
     float3 sunDirection;
     float fogDensity;
-    PointLight pointLights[50];
+    //PointLight pointLights[50];
 };
 
-RWTexture2D outputTexture : register(u0);
+RWTexture2D<float4> outputTexture : register(u0);
 
 Texture2D textures[4096] : register(t0, space0);
 TextureCube textureCubes[4096] : register(t0, space1);
 SamplerState pointSampler : register(s0);
+
+#define PI 3.14159265358979323846
 
 float4 GetWorldSpacePosition(float3 position)
 {
@@ -40,63 +42,20 @@ float4 GetWorldSpacePosition(float3 position)
 
 float LinearizeDepth(float depth) { return (nearFar.x * nearFar.y) / (nearFar.y - depth * (nearFar.y - nearFar.x)); }
 
-float HenyeyGreenstein(float cosTheta, float g)
-{
-    float g2 = g * g;
-    return (1.0 - g2) / (4.0 * 3.14159265 * pow(abs(1.0 + g2 - 2.0 * g * cosTheta), 1.5));
-}
-
-// TODO cash fog in 3d texture
-float3 Hash3(float3 p)
-{
-    p = frac(p * float3(443.8975, 397.2973, 491.1871));
-    p += dot(p, p.yzx + 19.19);
-    return frac((p.xxy + p.yzz) * p.zyx);
-}
-
-float ValueNoise(float3 p)
-{
-    float3 i = floor(p);
-    float3 f = frac(p);
-    float3 u = f * f * (3.0 - 2.0 * f); // smoothstep
-
-    float n000 = Hash3(i + float3(0, 0, 0)).x;
-    float n100 = Hash3(i + float3(1, 0, 0)).x;
-    float n010 = Hash3(i + float3(0, 1, 0)).x;
-    float n110 = Hash3(i + float3(1, 1, 0)).x;
-    float n001 = Hash3(i + float3(0, 0, 1)).x;
-    float n101 = Hash3(i + float3(1, 0, 1)).x;
-    float n011 = Hash3(i + float3(0, 1, 1)).x;
-    float n111 = Hash3(i + float3(1, 1, 1)).x;
-
-    return lerp(
-        lerp(lerp(n000, n100, u.x), lerp(n010, n110, u.x), u.y), lerp(lerp(n001, n101, u.x), lerp(n011, n111, u.x), u.y), u.z);
-}
-
-// Two-octave FBM for a bit of shape detail without killing perf
-float FogNoise(float3 worldPos)
-{
-    float3 p = worldPos * 0.05f + normalize(float3(1.0f, 0.0f, 0.3f)) * 1.5f;
-    float n = ValueNoise(p) * 0.65 + ValueNoise(p * 2.1 + 7.3) * 0.35;
-    return n;
-}
-
-float SampleDensity(float3 worldPos)
-{
-    float heightAbove = max(0.0, worldPos.y - 0);
-    float heightMask = exp(-0.4 * heightAbove);
-
-    float noise = FogNoise(worldPos);
-
-    float noiseMod = saturate((noise - (1.0 - 0.85f)) / max(0.85f, 1e-5));
-
-    return fogDensity * heightMask * noiseMod;
-}
-
 // source https://lonvanettinger.com/portfolio-pages/fog-ray-march-article-1
 float CalculateAbsorption(float density, float distance)
 {
     return exp(-distance * density);
+}
+
+float PhaseFunctionSchlick(float3 w0, float3 w1)
+{
+    const float k = 0.5f;
+
+    float cosTheta = dot(w0, w1) / (length(w0) * length(w1));
+    float nom = 1.0 - k * k;
+    float denom = 4.0 * PI * (1.0 + k * cosTheta) * (1.0 + k * cosTheta);
+    return nom / denom;
 }
 
 [shader("compute")]
@@ -106,9 +65,14 @@ void main(uint3 id: SV_DispatchThreadID)
     if (id.x >= textureSize.x || id.y >= textureSize.y) return;
     uint2 coords = id.xy;
 
-    const int stepCount = 32;
+    const int stepCount = 64;
     const float maxDistance = 100.0f;
-    const float stepSize = 0.8f;
+    const float stepSize = 0.5f;
+
+    const float scatteringDensity = 0.01f;
+    const float desnity = 0.03f;
+
+    const float3 scatteringColor = float3(1.0, 1.0, 1.0);
 
     float2 uv = coords / textureSize.xy;
 
@@ -125,12 +89,14 @@ void main(uint3 id: SV_DispatchThreadID)
 
     float sceneDepth = length(worldPosition.xyz - cameraPosition);
     float rayDistance = min(sceneDepth, maxDistance);
-    
+
+    float3 worldToCamera = normalize(cameraPosition - worldPosition.xyz);
+
     // Steps along the ray
     float3 stepVector = rayDirection * stepSize;
 
     // Current position in the march
-    float3 marchPosition = worldPosition.xyz;
+    float3 marchPosition = rayOrigin;
 
     // Radiance out
     float3 radiance = float3(0.0);
@@ -141,17 +107,27 @@ void main(uint3 id: SV_DispatchThreadID)
     [loop]
     for (float i = 0; i < rayDistance; i += stepSize)
     {
+        // 1.0f - shadow sample
+        float visibility = 1.0f;
+        float3 lightToMarchPos = marchPosition - float3(15.0f, 15.0f, 15.0f);
+        float lightDistance = length(lightToMarchPos);
 
-        float3 inScatter = float3(0.6, 0.6, 0.6) * fogDensity * stepSize * transmittance;
+        // In Scattering
+        float phi = 50.0f; // Light intensity
+        float denom = 4.0 * PI * lightDistance * lightDistance;
+        float3 lightIn = CalculateAbsorption(desnity, lightDistance) * float3(15,15.0,15.0f) * visibility * phi / denom;
 
-        transmittance *= CalculateAbsorption(fogDensity, stepSize);
+        float3 inScatter = lightIn * scatteringDensity * scatteringColor * PhaseFunctionSchlick(normalize(lightToMarchPos), worldToCamera);
+
+        transmittance *= CalculateAbsorption(desnity, stepSize);
         radiance += inScatter * transmittance * stepSize;
-        //radiance += transmittance * stepSize;
 
         marchPosition += stepVector;
     }
 
-    float3 finalColor = srcTexture.rgb * transmittance + radiance;
+    float3 finalColor = srcTexture.rgb;
+    finalColor *= transmittance;
+    finalColor += radiance;
 
-    outputTexture.Store(coords, float4(finalColor, 1.0f));
+    outputTexture.Store(coords, float4(float3(finalColor), 1.0f));
 }

@@ -26,8 +26,8 @@ namespace Wild
         glm::mat4 inverseView;
         glm::vec3 cameraPosition;
         float pad;
-        glm::vec3 sunDirection;
-        float fogDensity;
+        glm::vec3 lightDirection;
+        float fogDensity = 0.03f;
     };
 
     class PostProcessPass : public RenderFeature
@@ -43,6 +43,7 @@ namespace Wild
         void VolumetricsPass(Renderer& renderer, RenderGraph& rg);
 
         VolumetricRC m_vrc;
+        SceneBuffer m_sceneData{};
         std::unique_ptr<Buffer> m_sceneDataBuffer[BACK_BUFFER_COUNT];
     };
 } // namespace Wild

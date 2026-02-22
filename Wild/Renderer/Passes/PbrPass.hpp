@@ -5,10 +5,13 @@
 
 namespace Wild
 {
+    #define MAX_POINT_LIGHTS 50;
+
     struct PbrPassData
     {
         Texture* finalTexture;
         Texture* depthTexture;
+        std::shared_ptr<Buffer> pointlights;
     };
 
     struct InverseCamera
@@ -19,9 +22,10 @@ namespace Wild
 
     struct PBRData
     {
-        glm::vec3 cameraPosition{};
+        glm::vec3 cameraPosition{};        
         glm::vec3 lightDirection = glm::vec4(-0.3, 14.0, -2.5, 1.0f);
         uint32_t viewMode = 0;
+        uint32_t numOfPointLights{};
     };
 
     struct EnvironmentData
@@ -39,6 +43,12 @@ namespace Wild
         uint32_t depthView{};
     };
 
+    struct PointLight
+    {
+        glm::vec4 colorIntensity{}; // w component stores intensity
+        glm::vec3 position{};
+    };
+
     class PbrPass : public RenderFeature
     {
       public:
@@ -54,6 +64,9 @@ namespace Wild
 
         std::unique_ptr<Buffer> m_inverseCamera[BACK_BUFFER_COUNT];
         std::unique_ptr<Buffer> m_pbrDataBuffer[BACK_BUFFER_COUNT];
+
+        std::shared_ptr<Buffer> m_pointLightsBuffer;
+
         std::unique_ptr<Buffer> m_environmentData;
     };
 } // namespace Wild

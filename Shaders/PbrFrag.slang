@@ -17,6 +17,7 @@ cbuffer PbrData : register(b2)
     float4 cameraPosition;
     float4 lightDirection;
     uint debugViewMode;
+    uint numPointLights;
 }
 
 cbuffer envData : register(b3)
@@ -24,6 +25,18 @@ cbuffer envData : register(b3)
     uint irradianceMapView;
     uint specularView;
     uint brdfView;
+}
+
+struct PointLight {
+    float4 colorIntensity; // rgb = color, w = intensity
+    float4 lightPosition;
+};
+
+#define MAX_POINT_LIGHTS 50
+
+cbuffer PointLightData : register(b4)
+{
+    PointLight pointLights[MAX_POINT_LIGHTS];
 }
 
 Texture2D textures[4096] : register(t0, space0);
@@ -96,6 +109,40 @@ float3 OctDecode(float2 enc)
     return normalize(n);
 }
 
+// Outgoing radiance
+float3 EvaluateDirectBRDF(
+    float3 N,
+    float3 V,
+    float3 L,
+    float3 albedo,
+    float3 F0,
+    float roughness,
+    float metallic)
+{
+    float3 H = normalize(V + L);
+
+    float ndotl = max(dot(N, L), 0.0f);
+    float ndotv = max(dot(N, V), 0.0f);
+    float hdotv = max(dot(H, V), 0.0f);
+    float ndoth = max(dot(N, H), 0.0f);
+
+    float NDF = DistributionGGX(ndoth, roughness);
+    float G = GeometrySmith(ndotv, ndotl, roughness);
+    float3 F = FresnelSchlick(hdotv, F0);
+
+    float3 numerator = NDF * G * F;
+    float denominator = max(4.0f * ndotv * ndotl, 0.0001f);
+    float3 specular = max(numerator / denominator, float3(0.0f, 0.0f, 0.0f));
+
+    float3 kS = F;
+    float3 kD = 1.0f - kS;
+    kD *= (1.0f - metallic);
+
+    float3 lambertianDiffuse = (albedo / PI);
+
+    return (kD * lambertianDiffuse + specular) * ndotl;
+}
+
 [shader("fragment")]
 float4 main(VSOutput input) : SV_TARGET0
 {
@@ -137,34 +184,28 @@ float4 main(VSOutput input) : SV_TARGET0
     float3 V = normalize(cameraPosition.xyz - positionWS);
     float3 R = reflect(-V, N);
 
-    float3 L = normalize(lightDirection.xyz);
-    float3 H = normalize(V + L);
-
     float3 F0 = float3(0.04f, 0.04f, 0.04f);
     F0 = lerp(F0, albedo.rgb, metallic);
 
-    float ndotl = max(dot(N, L), 0.0f);
     float ndotv = max(dot(N, V), 0.0f);
-    float hdotv = max(dot(H, V), 0.0f);
-    float ndoth = max(dot(N, H), 0.0f);
 
-    float NDF = DistributionGGX(ndoth, roughness);
-    float G = GeometrySmith(ndotv, ndotl, roughness);
-    float3 F = FresnelSchlick(ndotv, F0);
+    // Directional light
+    float3 L = normalize(lightDirection.xyz);
+    float3 Lo = EvaluateDirectBRDF(N, V, L, albedo.rgb, F0, roughness, metallic);
 
-    float3 numerator = NDF * G * F;
-    float denominator = max(4.0f * ndotv * ndotl, 0.0001f);
-    float3 specular = max(numerator / denominator, float3(0.0f, 0.0f, 0.0f));
+    // Point lights
+    for (uint i = 0; i < numPointLights; i++)
+    {
+        float3 pL = pointLights[i].lightPosition.xyz - positionWS;
+        float distance = length(pL);
+        pL = normalize(pL);
 
-    float3 kS = F;
-    float3 kD = 1.0f - kS;
-    kD *= (1.0f - metallic);
+        float3 plColor = pointLights[i].colorIntensity.rgb;
+        float plIntensity = pointLights[i].colorIntensity.w;
+        float attenuation = plIntensity / (distance * distance);
 
-    float3 Lo = float3(0.0f, 0.0f, 0.0f);
-    float3 lambertianDiffuse = (albedo.rgb / PI);
-
-    // IBL contribution
-    Lo = (kD * lambertianDiffuse + specular) * ndotl; // add light color
+        Lo += EvaluateDirectBRDF(N, V, pL, albedo.rgb, F0, roughness, metallic) * plColor * attenuation;
+    }
 
     float3 irradiance = float3(0.0f);
     if (irradianceMapView > 0)
