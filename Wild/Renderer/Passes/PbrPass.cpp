@@ -77,8 +77,6 @@ namespace Wild
         m_pbrData.numOfPointLights = lightData.size();
         m_pointLightsBuffer->Allocate(lightData.data());
 
-      
-
         auto& cameras = ecs->View<Camera>();
         // Loop over all camera's TODO make the code run for each camera entity
         for (auto& cameraEntity : cameras)
@@ -128,7 +126,7 @@ namespace Wild
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
             desc.Height = engine.GetGfxContext()->GetHeight();
-            desc.format = DXGI_FORMAT_R10G10B10A2_UNORM;
+            desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
             desc.name = "FinalPbrTexture";
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);

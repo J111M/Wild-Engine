@@ -34,6 +34,18 @@ namespace Wild
         float pad[3];
     };
 
+    struct FinalPostProcessPassData
+    {
+        Texture* finalTexture;
+    };
+
+    struct PostProcessRC
+    {
+        glm::vec2 textureSize{};
+        uint32_t srcTextureView{};
+        uint32_t pad{};
+    };
+
     struct SceneBuffer
     {
         glm::mat4 inverseProj;
@@ -54,9 +66,12 @@ namespace Wild
 
       private:
         void VolumetricsPass(Renderer& renderer, RenderGraph& rg);
+        void FinalPostProcessPass(Renderer& renderer, RenderGraph& rg);
 
-        VolumetricRC m_vrc;
+        VolumetricRC m_vrc{};
         SceneBuffer m_sceneData{};
         std::unique_ptr<Buffer> m_sceneDataBuffer[BACK_BUFFER_COUNT];
+
+        PostProcessRC m_pprc{};
     };
 } // namespace Wild

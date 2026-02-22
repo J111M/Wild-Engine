@@ -14,7 +14,11 @@ namespace Wild
         }
     }
 
-    void PostProcessPass::Add(Renderer& renderer, RenderGraph& rg) { VolumetricsPass(renderer, rg); }
+    void PostProcessPass::Add(Renderer& renderer, RenderGraph& rg)
+    {
+        VolumetricsPass(renderer, rg);
+        FinalPostProcessPass(renderer, rg);
+    }
 
     void PostProcessPass::Update(const float dt)
     {
@@ -62,7 +66,7 @@ namespace Wild
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
             desc.Height = engine.GetGfxContext()->GetHeight();
-            desc.format = DXGI_FORMAT_R10G10B10A2_UNORM;
+            desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
             desc.name = "Post Process Texture";
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::shaderResource | TextureDesc::readWrite);
@@ -152,6 +156,84 @@ namespace Wild
                 list.EndRender();
 
                 renderer.irradianceMap->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                // renderer.compositeTexture = passData.finalTexture;
+            });
+    }
+
+    void PostProcessPass::FinalPostProcessPass(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<FinalPostProcessPassData>();
+        auto* volumetricData = rg.GetPassData<FinalPostProcessPassData, VolumetricPassData>();
+
+        {
+            TextureDesc desc;
+            desc.width = engine.GetGfxContext()->GetWidth();
+            desc.Height = engine.GetGfxContext()->GetHeight();
+            desc.format = DXGI_FORMAT_R10G10B10A2_UNORM;
+            desc.name = "Final Post Process Assemble texture";
+            desc.usage = TextureDesc::gpuOnly;
+            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::shaderResource | TextureDesc::readWrite);
+            passData->finalTexture = rg.CreateTransientTexture("Final Post Process Assemble texture", desc);
+        }
+
+        rg.AddPass<FinalPostProcessPassData>(
+            "Final post process pass",
+            PassType::Compute,
+            [&renderer, volumetricData, this](FinalPostProcessPassData& passData, CommandList& list) {
+                passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+                PipelineStateSettings settings{};
+                settings.ShaderState.ComputeShader =
+                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/PostProcess/FinalPostProcess.slang");
+
+                std::vector<Uniform> uniforms;
+
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(PostProcessRC)};
+                uniforms.emplace_back(rootConstant);
+
+                // Output render target
+                Uniform outputTexture{0, 0, RootParams::RootResourceType::DescriptorTable};
+                CD3DX12_DESCRIPTOR_RANGE outputUAVRange{};
+                outputUAVRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                outputTexture.ranges.emplace_back(outputUAVRange);
+                uniforms.emplace_back(outputTexture);
+
+                Uniform bindlessTexture{0, 0, RootParams::RootResourceType::DescriptorTable};
+                CD3DX12_DESCRIPTOR_RANGE textures{};
+                textures.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                              UINT_MAX,
+                              0,
+                              0,
+                              D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+                bindlessTexture.ranges.emplace_back(textures);
+
+                uniforms.emplace_back(bindlessTexture);
+
+                Uniform pointSampler{0, 0, RootParams::RootResourceType::StaticSampler};
+                pointSampler.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+                pointSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                uniforms.emplace_back(pointSampler);
+
+                int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
+
+                auto& pipeline =
+                    renderer.GetOrCreatePipeline("Final post process pass", PipelineStateType::Compute, settings, uniforms);
+                list.SetPipelineState(pipeline);
+                list.BeginRender();
+
+                m_pprc.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
+                m_pprc.srcTextureView = volumetricData->finalTexture->GetSrv()->BindlessView();
+
+                list.SetRootConstant<PostProcessRC>(0u, m_pprc);
+                list.SetUnorderedAccessView(1u, passData.finalTexture);
+                list.SetBindlessHeap(2u);
+
+                // Thread group size of 8 to reduce occupancy
+                list.GetList()->Dispatch(
+                    (passData.finalTexture->Width() + 7u) / 8u, (passData.finalTexture->Height() + 7u) / 8u, 1u);
+                list.EndRender();
+
                 passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 renderer.compositeTexture = passData.finalTexture;
             });
