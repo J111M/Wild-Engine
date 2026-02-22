@@ -2,16 +2,19 @@ cbuffer RootConsant : register(b0)
 {
     float2 textureSize;
     float2 nearFar;
+
     uint srcTextureView;
     uint depthView;
     uint irradianceView;
-};
+    uint numOfPointLights;
 
-struct PointLight {
-    float3 position;
-    float3 color;
-    float intensity;
-}
+    uint stepCount;
+    float stepSize;
+    float scatteringDensity;
+    float density;
+
+    float4 scatteringColor;
+};
 
 cbuffer SceneData : register(b1)
 {
@@ -20,9 +23,20 @@ cbuffer SceneData : register(b1)
     float3 cameraPosition;
     float pad;
     float3 sunDirection;
-    float fogDensity;
-    //PointLight pointLights[50];
+    float pad1;
 };
+
+struct PointLight {
+    float4 colorIntensity; // rgb = color, w = intensity
+    float4 lightPosition;
+};
+
+#define MAX_POINT_LIGHTS 50
+
+cbuffer PointLightData : register(b2)
+{
+    PointLight pointLights[MAX_POINT_LIGHTS];
+}
 
 RWTexture2D<float4> outputTexture : register(u0);
 
@@ -65,16 +79,9 @@ void main(uint3 id: SV_DispatchThreadID)
     if (id.x >= textureSize.x || id.y >= textureSize.y) return;
     uint2 coords = id.xy;
 
-    const int stepCount = 64;
-    const float maxDistance = 100.0f;
-    const float stepSize = 0.5f;
-
-    const float scatteringDensity = 0.01f;
-    const float desnity = 0.03f;
-
-    const float3 scatteringColor = float3(1.0, 1.0, 1.0);
-
     float2 uv = coords / textureSize.xy;
+
+    const float maxDistance = 100.0f;
 
     float4 srcTexture = textures[NonUniformResourceIndex(srcTextureView)].Load(int3(coords, 0));
 
@@ -105,22 +112,32 @@ void main(uint3 id: SV_DispatchThreadID)
     float transmittance = 1.0;
 
     [loop]
-    for (float i = 0; i < rayDistance; i += stepSize)
+    for (float i = 0; i < stepCount; i += stepSize)
     {
         // 1.0f - shadow sample
         float visibility = 1.0f;
-        float3 lightToMarchPos = marchPosition - float3(15.0f, 15.0f, 15.0f);
-        float lightDistance = length(lightToMarchPos);
 
-        // In Scattering
-        float phi = 50.0f; // Light intensity
-        float denom = 4.0 * PI * lightDistance * lightDistance;
-        float3 lightIn = CalculateAbsorption(desnity, lightDistance) * float3(15,15.0,15.0f) * visibility * phi / denom;
+        float3 viewDir = normalize(cameraPosition - marchPosition);
 
-        float3 inScatter = lightIn * scatteringDensity * scatteringColor * PhaseFunctionSchlick(normalize(lightToMarchPos), worldToCamera);
+        float3 inScattering = float3(0.0f);
+        for (uint plIndex = 0; plIndex < numOfPointLights; plIndex++) {
+            PointLight pointLight = pointLights[plIndex];
 
-        transmittance *= CalculateAbsorption(desnity, stepSize);
-        radiance += inScatter * transmittance * stepSize;
+            float3 lightToMarchPos = marchPosition - pointLight.lightPosition.xyz;
+            float lightDistance = length(lightToMarchPos);
+
+            float3 lightDirection = -normalize(lightToMarchPos);
+
+            // In Scattering
+            float phi = 50.0f; // Light intensity
+            float denom = 4.0 * PI * lightDistance * lightDistance;
+            float3 lightIn = CalculateAbsorption(density, lightDistance) * pointLight.colorIntensity.rgb * visibility * phi / denom;
+
+            inScattering += lightIn * scatteringDensity * scatteringColor.rgb * PhaseFunctionSchlick(lightDirection, viewDir);
+        }
+
+        transmittance *= CalculateAbsorption(density, stepSize);
+        radiance += inScattering * transmittance * stepSize;
 
         marchPosition += stepVector;
     }

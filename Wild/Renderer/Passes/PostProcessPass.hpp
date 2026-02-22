@@ -15,9 +15,18 @@ namespace Wild
     {
         glm::vec2 textureSize{};
         glm::vec2 nearFar{};
+
         uint32_t srcTextureView{};
         uint32_t depthView{};
         uint32_t irradianceView{};
+        uint32_t numOfPointLights{};
+
+        uint32_t stepCount = 64;
+        float stepSize = 0.5f;
+        float scatteringDensity = 0.01f;
+        float density = 0.03f;
+
+        glm::vec4 scatteringColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     };
 
     struct SceneBuffer
@@ -27,7 +36,6 @@ namespace Wild
         glm::vec3 cameraPosition;
         float pad;
         glm::vec3 lightDirection;
-        float fogDensity = 0.03f;
     };
 
     class PostProcessPass : public RenderFeature

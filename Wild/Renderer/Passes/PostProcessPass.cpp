@@ -1,5 +1,6 @@
 #include "Renderer/Passes/PostProcessPass.hpp"
 #include "Renderer/Passes/SkyboxPass.hpp"
+#include "Renderer/Passes/PbrPass.hpp"
 
 namespace Wild
 {
@@ -20,8 +21,6 @@ namespace Wild
         auto ecs = engine.GetECS();
         auto& cameras = ecs->View<Camera>();
 
-        
-
         // Loop over all camera's TODO make the code run for each camera entity
         for (auto& cameraEntity : cameras)
         {
@@ -39,9 +38,12 @@ namespace Wild
         m_sceneData.lightDirection = glm::vec3(-0.3, 14.0, -2.5);
        
 
-        engine.GetImGui()->AddPanel("Post process settings", [this]() {
-            ImGui::SliderFloat("Fog density: ", &m_sceneData.fogDensity, 0.001, 0.3f);
-
+        engine.GetImGui()->AddPanel("Volumetric Fog Settings", [this]() {
+            ImGui::SliderInt("Step Count", reinterpret_cast<int*>(&m_vrc.stepCount), 1, 256);
+            ImGui::SliderFloat("Step Size", &m_vrc.stepSize, 0.01f, 2.0f);
+            ImGui::SliderFloat("Scattering Density", &m_vrc.scatteringDensity, 0.001f, 0.2f);
+            ImGui::SliderFloat("Density", &m_vrc.density, 0.001f, 0.2f);
+            ImGui::ColorEdit3("Scattering Color", &m_vrc.scatteringColor[0]);
         });
 
         int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
@@ -52,6 +54,7 @@ namespace Wild
     {
         auto* passData = rg.AllocatePassData<VolumetricPassData>();
         auto* skyboxData = rg.GetPassData<VolumetricPassData, SkyPassData>();
+        auto* pbrData = rg.GetPassData<VolumetricPassData, PbrPassData>();
 
         {
             TextureDesc desc;
@@ -69,7 +72,7 @@ namespace Wild
         rg.AddPass<VolumetricPassData>(
             "Volumetrics pass",
             PassType::Compute,
-            [&renderer, skyboxData, this](VolumetricPassData& passData, CommandList& list) {
+            [&renderer, skyboxData, pbrData, this](VolumetricPassData& passData, CommandList& list) {
                 passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 renderer.irradianceMap->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
@@ -85,6 +88,9 @@ namespace Wild
 
                 Uniform cameraBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
                 uniforms.emplace_back(cameraBuffer);
+
+                Uniform lightsBuffer{2, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(lightsBuffer);
 
                 // Output render target
                 Uniform outputTexture{0, 0, RootParams::RootResourceType::DescriptorTable};
@@ -133,8 +139,9 @@ namespace Wild
 
                 list.SetRootConstant<VolumetricRC>(0u, m_vrc);
                 list.SetConstantBufferView(1u, m_sceneDataBuffer[frameIndex].get());
-                list.SetUnorderedAccessView(2u, passData.finalTexture);
-                list.SetBindlessHeap(3u);
+                list.SetConstantBufferView(2u, pbrData->pointlights.get());
+                list.SetUnorderedAccessView(3u, passData.finalTexture);
+                list.SetBindlessHeap(4u);
 
                 // Thread group size of 8 to reduce occupancy
                 list.GetList()->Dispatch(

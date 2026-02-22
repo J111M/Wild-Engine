@@ -110,6 +110,7 @@ namespace Wild
         auto* deferredData = rg.GetPassData<PbrPassData, DeferredPassData>();
 
         passData->pointlights = m_pointLightsBuffer;
+        passData->numOfPointLights = m_pbrData.numOfPointLights;
         passData->depthTexture = deferredData->depthTexture;
 
         // Final texture

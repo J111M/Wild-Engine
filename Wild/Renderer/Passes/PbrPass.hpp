@@ -12,6 +12,7 @@ namespace Wild
         Texture* finalTexture;
         Texture* depthTexture;
         std::shared_ptr<Buffer> pointlights;
+        uint32_t numOfPointLights{};
     };
 
     struct InverseCamera
