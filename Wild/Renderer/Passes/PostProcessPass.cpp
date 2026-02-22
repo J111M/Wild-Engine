@@ -1,6 +1,6 @@
 #include "Renderer/Passes/PostProcessPass.hpp"
-#include "Renderer/Passes/SkyboxPass.hpp"
 #include "Renderer/Passes/PbrPass.hpp"
+#include "Renderer/Passes/SkyboxPass.hpp"
 
 namespace Wild
 {
@@ -36,14 +36,16 @@ namespace Wild
         }
 
         m_sceneData.lightDirection = glm::vec3(-0.3, 14.0, -2.5);
-       
 
         engine.GetImGui()->AddPanel("Volumetric Fog Settings", [this]() {
             ImGui::SliderInt("Step Count", reinterpret_cast<int*>(&m_vrc.stepCount), 1, 256);
             ImGui::SliderFloat("Step Size", &m_vrc.stepSize, 0.01f, 2.0f);
-            ImGui::SliderFloat("Scattering Density", &m_vrc.scatteringDensity, 0.001f, 0.2f);
+            ImGui::SliderFloat("Scattering Density", &m_vrc.scatteringDensity, 0.001f, 2.0f);
             ImGui::SliderFloat("Density", &m_vrc.density, 0.001f, 0.2f);
             ImGui::ColorEdit3("Scattering Color", &m_vrc.scatteringColor[0]);
+            ImGui::ColorEdit3("Sun Color", &m_vrc.sunColorIntensity[0]);
+            ImGui::SliderFloat("Sun Intensity", &m_vrc.sunColorIntensity.w, 0.001f, 2.0f);
+            ImGui::SliderFloat("Anisotropy", &m_vrc.anisotropy, 0.001f, 0.99f);
         });
 
         int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
@@ -133,6 +135,7 @@ namespace Wild
                 passData.depthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 m_vrc.srcTextureView = skyboxData->finalTexture->GetSrv()->BindlessView();
                 m_vrc.depthView = passData.depthTexture->GetSrv()->BindlessView();
+                m_vrc.numOfPointLights = pbrData->numOfPointLights;
 
                 if (renderer.irradianceMap) { m_vrc.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView(); }
                 m_vrc.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());

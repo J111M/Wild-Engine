@@ -23,10 +23,15 @@ namespace Wild
 
         uint32_t stepCount = 64;
         float stepSize = 0.5f;
-        float scatteringDensity = 0.01f;
+        float scatteringDensity = 0.3f;
         float density = 0.03f;
 
         glm::vec4 scatteringColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+
+        glm::vec4 sunColorIntensity = glm::vec4(1.0, 0.95, 0.8, 1.0f);
+
+        float anisotropy = 0.3f;
+        float pad[3];
     };
 
     struct SceneBuffer

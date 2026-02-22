@@ -63,6 +63,8 @@ namespace Wild
         PbrRootConstant m_rc{};
         PBRData m_pbrData{};
 
+        InverseCamera m_inverseCamData{};
+
         std::unique_ptr<Buffer> m_inverseCamera[BACK_BUFFER_COUNT];
         std::unique_ptr<Buffer> m_pbrDataBuffer[BACK_BUFFER_COUNT];
 

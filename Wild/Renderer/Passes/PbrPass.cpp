@@ -7,8 +7,10 @@ namespace Wild
     PbrPass::PbrPass()
     {
         auto ecs = engine.GetECS();
-        for (size_t y = 1; y < 2; y++) {
-            for (size_t x = 1; x < 2; x++) {
+        for (size_t y = 1; y < 2; y++)
+        {
+            for (size_t x = 1; x < 2; x++)
+            {
                 auto entity = ecs->CreateEntity();
                 auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
                 auto& light = ecs->AddComponent<PointLight>(entity);
@@ -19,7 +21,7 @@ namespace Wild
                 light.position = transform.GetPosition();
 
                 float intensity = ((x + y) / 2.0f) + 1.0f;
-                light.colorIntensity = glm::vec4(glm::vec3(1.0,0.0,0.0), 20.0f);
+                light.colorIntensity = glm::vec4(glm::vec3(1.0, 0.0, 0.0), 20.0f);
             }
         }
 
@@ -59,11 +61,12 @@ namespace Wild
     {
         auto context = engine.GetGfxContext();
         auto ecs = engine.GetECS();
-        
+
         std::vector<PointLight> lightData;
         auto& lightsView = ecs->GetRegistry().view<PointLight, Transform>();
 
-        for (auto [entity, light, transform] : lightsView.each()) {
+        for (auto [entity, light, transform] : lightsView.each())
+        {
             auto& light = lightsView.get<PointLight>(entity);
             PointLight gpuLight{};
             gpuLight.position = transform.GetPosition();
@@ -74,7 +77,7 @@ namespace Wild
         m_pbrData.numOfPointLights = lightData.size();
         m_pointLightsBuffer->Allocate(lightData.data());
 
-        InverseCamera inverseCamData{};
+      
 
         auto& cameras = ecs->View<Camera>();
         // Loop over all camera's TODO make the code run for each camera entity
@@ -84,14 +87,21 @@ namespace Wild
             {
                 auto& cam = ecs->GetComponent<Camera>(cameraEntity);
 
-                inverseCamData.inverseView = glm::inverse(cam.GetView());
-                inverseCamData.inverseProj = glm::inverse(cam.GetProjection());
+                m_inverseCamData.inverseView = glm::inverse(cam.GetView());
+                m_inverseCamData.inverseProj = glm::inverse(cam.GetProjection());
                 m_pbrData.cameraPosition = cam.GetPosition();
             }
         }
 
+        if (cameras.size() <= 0)
+        {
+            m_inverseCamData.inverseView = glm::mat4{};
+            m_inverseCamData.inverseProj = glm::mat4{};
+            m_pbrData.cameraPosition = glm::vec3{};
+        }
+
         int frameIndex = context->GetBackBufferIndex();
-        m_inverseCamera[frameIndex]->Allocate(&inverseCamData);
+        m_inverseCamera[frameIndex]->Allocate(&m_inverseCamData);
 
         engine.GetImGui()->AddPanel("Pbr settings", [this]() {
             ImGui::SliderFloat3("Light direction: ", &m_pbrData.lightDirection[0], -20.0f, 20.0f);
@@ -163,9 +173,9 @@ namespace Wild
                     uniforms.emplace_back(envData);
                 }
 
-                 {
+                {
                     Uniform pointLightData{4, 0, RootParams::RootResourceType::ConstantBufferView};
-                     pointLightData.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                    pointLightData.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
                     uniforms.emplace_back(pointLightData);
                 }
 
