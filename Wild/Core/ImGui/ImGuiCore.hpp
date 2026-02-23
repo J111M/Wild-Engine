@@ -26,10 +26,11 @@ namespace Wild
         void DrawViewport(Renderer* renderer);
 
         bool SeperateDragFloat3(const char* name, glm::vec3& value);
+        void DisplayTexture(std::shared_ptr<Texture> texture);
+        void DisplayTexture(Texture* texture);
+
       private:
         bool Setup(std::shared_ptr<Window> window);
-
-        void DisplayTexture(std::shared_ptr<Texture> texture);
 
         void DrawInspectorWindow();
         void AddStatsBar();

@@ -1,5 +1,5 @@
-#include "Common.slang"
-#include "PbrFormulas.slang"
+#include "Helper/Common.slang"
+#include "Helper/PbrFormulas.slang"
 
 cbuffer Constants : register(b0)
 {

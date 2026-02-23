@@ -3,6 +3,7 @@
 
 #include "Renderer/RenderGraph/TransientResourceCache.hpp"
 
+#include "Renderer/Passes/CascadedShadowPass.hpp"
 #include "Renderer/Passes/DeferredPass.hpp"
 #include "Renderer/Passes/GrassPass.hpp"
 #include "Renderer/Passes/OceanPass.hpp"
@@ -24,6 +25,7 @@ namespace Wild
 
         m_resourceCache = std::make_shared<TransientResourceCache>();
 
+        m_renderFeatures.emplace_back(std::make_unique<CascadedShadowMaps>());
         m_renderFeatures.emplace_back(std::make_unique<ProceduralTerrainPass>());
         m_renderFeatures.emplace_back(std::make_unique<GrassPass>());
         m_renderFeatures.emplace_back(std::make_unique<DeferredPass>());

@@ -5,7 +5,7 @@
 
 namespace Wild
 {
-    #define MAX_POINT_LIGHTS 50;
+#define MAX_POINT_LIGHTS 50;
 
     struct PbrPassData
     {
@@ -23,7 +23,7 @@ namespace Wild
 
     struct PBRData
     {
-        glm::vec3 cameraPosition{};        
+        glm::vec3 cameraPosition{};
         glm::vec3 lightDirection = glm::vec4(-0.3, 14.0, -2.5, 1.0f);
         uint32_t viewMode = 0;
         uint32_t numOfPointLights{};

@@ -1,6 +1,6 @@
 #include "Core/ImGui/ImGuiCore.hpp"
-#include "Renderer/Resources/Mesh.hpp"
 #include "Renderer/Passes/PbrPass.hpp"
+#include "Renderer/Resources/Mesh.hpp"
 
 #include <imgui_internal.h>
 
@@ -109,8 +109,12 @@ namespace Wild
 
     void ImguiCore::DisplayTexture(std::shared_ptr<Texture> texture)
     {
-        if (texture)
-            ImGui::Image((ImTextureID)texture->GetSrv()->GetGpuHandle().ptr, ImVec2(150, 150));
+        if (texture) ImGui::Image((ImTextureID)texture->GetSrv()->GetGpuHandle().ptr, ImVec2(150, 150));
+    }
+
+    void ImguiCore::DisplayTexture(Texture* texture)
+    {
+        if (texture) ImGui::Image((ImTextureID)texture->GetSrv()->GetGpuHandle().ptr, ImVec2(150, 150));
     }
 
     void ImguiCore::DrawInspectorWindow()
@@ -308,7 +312,6 @@ namespace Wild
         ImGui::EndMenuBar();
         ImGui::End();
     }
-
 
     void ImguiCore::DrawEntityNode(entt::registry& registry, entt::entity entity)
     {
