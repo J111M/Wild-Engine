@@ -1,3 +1,5 @@
+#include "Helper/Common.slang"
+
 struct PSInput
 {
     float4 position : SV_POSITION;
@@ -27,13 +29,6 @@ cbuffer Constants : register(b0)
 Texture2D textures[4096] : register(t0, space0);
 SamplerState anisotropySampler : register(s0);
 
-// Octahedral encoding
-float3 OctEncode(float3 n)
-{
-    n /= (abs(n.x) + abs(n.y) + abs(n.z));
-    if (n.z < 0.0) { n.xy = (1.0 - abs(n.yx)) * select(n.xy >= 0.0, 1.0, -1.0); }
-    return float3(n.xy * 0.5 + 0.5, 0.0);
-}
 
 [shader("fragment")]
 PSOut main(PSInput input)
@@ -64,8 +59,6 @@ PSOut main(PSInput input)
         normal.xyz = mul((float3x3)invTransposeModel, input.normal.xyz);
         normal.xyz = normalize(normal.xyz * 2.0 - 1.0);
     }
-
-    
 
     float4 emissive = float4(0, 0, 0, 0);
     if (emissiveView != 0)

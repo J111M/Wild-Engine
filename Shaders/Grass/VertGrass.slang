@@ -1,3 +1,6 @@
+#include "GrassCommon.slang"
+#include "../Helper/Rng.slang"
+
 struct VSInput
 {
     float3 position : POSITION;
@@ -45,12 +48,6 @@ struct GrassData
     float height;
 };
 
-struct CulledInstance
-{
-    uint instanceIndex;
-    float lodBlend;
-};
-
 StructuredBuffer<GrassData> grassBuffer : register(t0);
 StructuredBuffer<CulledInstance> culledInstances : register(t1);
 
@@ -62,21 +59,6 @@ float3x3 rotY(float a)
     float c = cos(a);
     float s = sin(a);
     return float3x3(c, 0, s, 0, 1, 0, -s, 0, c);
-}
-
-float3 toBezier(float yValue)
-{
-    float3 pZero = float3(0.0, 0.0, 0.0);
-    float3 pOne = float3(0.0, 0.5, 0.0);
-    float3 pTwo = float3(0.1, 0.8, 0.1);
-    return (1 - yValue) * ((1 - yValue) * pZero + yValue * pOne) + yValue * ((1 - yValue) * pOne + yValue * pTwo);
-}
-float3 toBezierDerivative(float yValue)
-{
-    float3 pZero = float3(0.0, 0.0, 0.0);
-    float3 pOne = float3(0.0, 0.5, 0.0);
-    float3 pTwo = float3(0.0, 0.8, 0.1);
-    return 2 * (1 - yValue) * (pOne - pZero) + 2 * yValue * (pTwo - pOne);
 }
 
 float3 bezier(float3 p0, float3 p1, float3 p2, float t)
@@ -115,29 +97,6 @@ void MakePersistentLength(in float3 v0, inout float3 v1, inout float3 v2, in flo
     v12 = v12 * ldiff;
     v1 = v0 + v01;
     v2 = v1 + v12;
-}
-
-uint murmurHash12(uint2 src)
-{
-    const uint M = 0x5bd1e995u;
-    uint h = 1190494759u;
-    src *= M;
-    src ^= src >> 24u;
-    src *= M;
-    h *= M;
-    h ^= src.x;
-    h *= M;
-    h ^= src.y;
-    h ^= h >> 13u;
-    h *= M;
-    h ^= h >> 15u;
-    return h;
-}
-
-float hash12(float2 p)
-{
-    uint h = murmurHash12(asuint(p));
-    return asfloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
 }
 
 float noise(float2 p)

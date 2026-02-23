@@ -1,3 +1,5 @@
+#include "GrassCommon.slang"
+
 cbuffer FrustumData : register(b0)
 {
     float4x4 viewProj;
@@ -18,21 +20,6 @@ struct GrassData
     float3 worldPosition;
     float rotation;
     float height;
-};
-
-struct CulledInstance
-{
-    uint instanceIndex;
-    float lodBlend;
-};
-
-struct DrawIndexedCommand
-{
-    uint IndexCountPerInstance;
-    uint InstanceCount;
-    uint StartIndexLocation;
-    int BaseVertexLocation;
-    uint StartInstanceLocation;
 };
 
 StructuredBuffer<GrassData> grassInstance : register(t0);

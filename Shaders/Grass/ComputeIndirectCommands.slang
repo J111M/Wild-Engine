@@ -1,11 +1,4 @@
-struct DrawIndexedCommand
-{
-    uint IndexCountPerInstance;
-    uint InstanceCount;
-    uint StartIndexLocation;
-    int BaseVertexLocation;
-    uint StartInstanceLocation;
-};
+#include "GrassCommon.slang"
 
 RWByteAddressBuffer instanceCount : register(u0);
 RWStructuredBuffer<DrawIndexedCommand> DrawCommands : register(u1);

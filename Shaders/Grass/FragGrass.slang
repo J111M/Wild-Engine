@@ -1,3 +1,5 @@
+#include "GrassCommon.slang"
+
 cbuffer Constants : register(b0)
 {
     column_major float4x4 model;
@@ -19,12 +21,6 @@ struct GrassData
     float3 position;
     float rotation;
     float height;
-};
-
-struct CulledInstance
-{
-    uint instanceIndex;
-    float lodBlend;
 };
 
 StructuredBuffer<GrassData> grassBuffer : register(t0);

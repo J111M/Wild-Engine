@@ -1,3 +1,5 @@
+#include "../Helper/Rng.slang"
+
 struct GrassBlade
 {
     float3 worldPosition;
@@ -19,64 +21,6 @@ cbuffer RootConsant : register(b0)
 
 Texture2D textures[4096] : register(t0, space0);
 SamplerState anisotropySampler : register(s0);
-
-// https://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11
-float HashFloat(uint x)
-{
-    x ^= x >> 16;
-    x *= 0x21F0AAADu;
-    x ^= x >> 15;
-    x *= 0xD35A2D97u;
-    x ^= x >> 15;
-    return frac((float) x / 4294967296.0);
-}
-
-float HashFloatInRange(uint x, float minVal, float maxVal)
-{
-    float h = HashFloat(x);
-    return minVal + h * (maxVal - minVal);
-}
-
-float2 HashFloat2InRange(uint seed, float minVal, float maxVal)
-{
-    float x = HashFloatInRange(seed, minVal, maxVal);
-    float y = HashFloatInRange(seed ^ 0x6C8E9CF5u, minVal, maxVal);
-    return float2(x, y);
-}
-
-// Hash source shadertoy: https://www.shadertoy.com/view/ttc3zr
-uint murmurHash11(uint src)
-{
-    const uint M = 0x5bd1e995u;
-    uint h = 1190494759u;
-    src *= M;
-    src ^= src >> 24u;
-    src *= M;
-    h *= M;
-    h ^= src;
-    h ^= h >> 13u;
-    h *= M;
-    h ^= h >> 15u;
-    return h;
-}
-
-// 1 input 1 output
-float hash11(float src)
-{
-    uint h = murmurHash11(asuint(src));
-    return asfloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
-}
-
-float uhash11(uint src)
-{
-    uint h = murmurHash11(src);
-    return asfloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
-}
-
-float rescale(float value, float min, float max)
-{
-    return min + value * (max - min);
-}
 
 float GetTerrainHeight(float2 position, float maxBladePos) {
     float terrainHeight = 0.0f;

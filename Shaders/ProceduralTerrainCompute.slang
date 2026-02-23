@@ -1,3 +1,5 @@
+#include "Helper/Rng.slang"
+
 cbuffer Constants : register(b0)
 {
     float2 textureSize;
@@ -21,46 +23,7 @@ cbuffer Constants : register(b0)
 // Terrain heigth map
 RWTexture2D<float> OutputTexture : register(u0);
 
-// RNG hash from https://gist.github.com/mpottinger/54d99732d4831d8137d178b4a6007d1a
-uint murmurHash11(uint src)
-{
-    const uint M = 0x5bd1e995u;
-    uint h = 1190494759u;
-    src *= M;
-    src ^= src >> 24u;
-    src *= M;
-    h *= M;
-    h ^= src;
-    h ^= h >> 13u;
-    h *= M;
-    h ^= h >> 15u;
-    return h;
-}
 
-// Modified version of https://www.shadertoy.com/view/ttc3zr modified to work with hlsl
-uint2 murmurHash22(uint2 src)
-{
-    const uint M = 0x5bd1e995u;
-    uint2 h = uint2(1190494759u, 2147483647u);
-    src *= M;
-    src ^= src >> 24u;
-    src *= M;
-    h *= M;
-    h ^= src.x;
-    h *= M;
-    h ^= src.y;
-    h ^= h >> 13u;
-    h *= M;
-    h ^= h >> 15u;
-    return h;
-}
-
-// 2 outputs, 2 inputs
-float2 hash22(float2 src)
-{
-    uint2 h = murmurHash22(asuint(src));
-    return asfloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
-}
 
 // The MIT License
 // Copyright © 2013 Inigo Quilez
@@ -74,25 +37,6 @@ float2 hash22(float2 src)
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE. https://www.youtube.com/c/InigoQuilez https://iquilezles.org Code from shadertoy:
 // www.shadertoy.com/view/Msf3WH
-
-float evaluateNoise(float2 p)
-{
-    const float K1 = 0.366025404; // (sqrt(3)-1)/2;
-    const float K2 = 0.211324865; // (3-sqrt(3))/6;
-
-    float2 seedOffset = hash22(float2(seed, seed * 1.61803398));
-
-    float2 i = floor(p + (p.x + p.y) * K1);
-    float2 a = p - i + (i.x + i.y) * K2;
-    float m = step(a.y, a.x);
-    float2 o = float2(m, 1.0 - m);
-    float2 b = a - o + K2;
-    float2 c = a - 1.0 + 2.0 * K2;
-    float3 h = max(0.5 - float3(dot(a, a), dot(b, b), dot(c, c)), 0.0);
-    float3 n = h * h * h * h *
-        float3(dot(a, hash22(i + seedOffset + 0.0)), dot(b, hash22(i + seedOffset + o)), dot(c, hash22(i + seedOffset + 1.0)));
-    return dot(n, float3(70.0));
-}
 
 float fbm(float2 p, float2 offset)
 {
