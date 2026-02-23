@@ -110,7 +110,11 @@ namespace Wild
                 {
                     list.SetPipelineState(pipeline);
 
-                    list.BeginRender({}, {ClearOperation::Store}, {passData.shadowMap[i]}, DSClearOperation::DepthClear);
+                    list.BeginRender({},
+                                     {ClearOperation::Store},
+                                     {passData.shadowMap[i]},
+                                     DSClearOperation::DepthClear,
+                                     "Cascaded shadow pass");
 
                     auto meshes = engine.GetECS()->GetRegistry().view<Transform, Mesh>();
                     for (auto&& [entity, trans, mesh] : meshes.each())

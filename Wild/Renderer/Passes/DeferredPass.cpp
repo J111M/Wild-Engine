@@ -87,7 +87,8 @@ namespace Wild
                 list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
                                  {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
                                  {passData.depthTexture},
-                                 DSClearOperation::Store);
+                                 DSClearOperation::Store,
+                                 "Deferred pass");
 
                 auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
                 for (auto&& [entity, trans, mesh] : meshes.each())

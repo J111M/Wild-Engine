@@ -133,7 +133,7 @@ namespace Wild
 
                 auto& pipeline = renderer.GetOrCreatePipeline("Volumetrics pass", PipelineStateType::Compute, settings, uniforms);
                 list.SetPipelineState(pipeline);
-                list.BeginRender();
+                list.BeginRender("Volumetric pass");
 
                 skyboxData->finalTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 passData.depthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -220,7 +220,7 @@ namespace Wild
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Final post process pass", PipelineStateType::Compute, settings, uniforms);
                 list.SetPipelineState(pipeline);
-                list.BeginRender();
+                list.BeginRender("Post process and tonemap pass");
 
                 m_pprc.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
                 m_pprc.srcTextureView = volumetricData->finalTexture->GetSrv()->BindlessView();

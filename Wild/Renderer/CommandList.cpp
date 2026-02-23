@@ -147,6 +147,9 @@ namespace Wild
         m_frameInFlight = true;
         m_pipelineIsSet = false;
 
+        std::wstring wstringPassName(passName.begin(), passName.end());
+        m_commandList->BeginEvent(1, wstringPassName.c_str(), (wstringPassName.size() + 1) * sizeof(wchar_t));
+
         auto gfxContext = engine.GetGfxContext();
 
         m_commandList->SetGraphicsRootSignature(m_pipelineState->GetRootSignature().Get());
@@ -206,6 +209,9 @@ namespace Wild
             return;
         }
 
+        std::wstring wstringPassName(passName.begin(), passName.end());
+        m_commandList->BeginEvent(1, wstringPassName.c_str(), (wstringPassName.size() + 1) * sizeof(wchar_t));
+
         m_frameInFlight = true;
         m_pipelineIsSet = false;
 
@@ -217,7 +223,7 @@ namespace Wild
 
     void CommandList::EndRender()
     {
-        // m_commandList->EndEvent();
+        m_commandList->EndEvent();
         m_frameInFlight = false;
     }
 
