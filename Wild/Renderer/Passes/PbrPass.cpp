@@ -1,5 +1,5 @@
-#include "Renderer/Passes/DeferredPass.hpp"
 #include "Renderer/Passes/PbrPass.hpp"
+#include "Renderer/Passes/DeferredPass.hpp"
 
 namespace Wild
 {
@@ -36,7 +36,7 @@ namespace Wild
             desc.bufferSize = sizeof(CameraBuffer);
             for (int i = 0; i < BACK_BUFFER_COUNT; i++)
             {
-                m_inverseCamera[i] = std::make_unique<Buffer>(desc, BufferType::constant);
+                m_cameraBuffer[i] = std::make_unique<Buffer>(desc, BufferType::constant);
             }
         }
 
@@ -84,22 +84,24 @@ namespace Wild
             {
                 auto& cam = ecs->GetComponent<Camera>(cameraEntity);
 
-                m_inverseCamData.inverseView = glm::inverse(cam.GetView());
-                m_inverseCamData.inverseProj = glm::inverse(cam.GetProjection());
-                m_inverseCamData.viewSpace = cam.GetView();
+                m_camData.inverseView = glm::inverse(cam.GetView());
+                m_camData.inverseProj = glm::inverse(cam.GetProjection());
+                m_camData.viewSpace = cam.GetProjection() * cam.GetView();
+                m_camData.cameraFar = cam.GetNearFar().y;
                 m_pbrData.cameraPosition = cam.GetPosition();
             }
         }
 
         if (cameras.size() <= 0)
         {
-            m_inverseCamData.inverseView = glm::mat4{};
-            m_inverseCamData.inverseProj = glm::mat4{};
+            m_camData.inverseView = glm::mat4{};
+            m_camData.inverseProj = glm::mat4{};
+            m_camData.cameraFar = 100.0f;
             m_pbrData.cameraPosition = glm::vec3{};
         }
 
         int frameIndex = context->GetBackBufferIndex();
-        m_inverseCamera[frameIndex]->Allocate(&m_inverseCamData);
+        m_cameraBuffer[frameIndex]->Allocate(&m_camData);
 
         engine.GetImGui()->AddPanel("Pbr settings", [this]() {
             ImGui::SliderFloat3("Light direction: ", &m_pbrData.lightDirection[0], -20.0f, 20.0f);
@@ -117,7 +119,7 @@ namespace Wild
         auto* passData = rg.AllocatePassData<PbrPassData>();
         auto* deferredData = rg.GetPassData<PbrPassData, DeferredPassData>();
         auto* shadowMapData = rg.GetPassData<PbrPassData, CsmPassData>();
-        
+
         passData->pointlights = m_pointLightsBuffer;
         passData->numOfPointLights = m_pbrData.numOfPointLights;
         passData->depthTexture = deferredData->depthTexture;
@@ -180,7 +182,7 @@ namespace Wild
 
                 {
                     Uniform shadowMapData{5, 0, RootParams::RootResourceType::ConstantBufferView};
-                     shadowMapData.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                    shadowMapData.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
                     uniforms.emplace_back(shadowMapData);
                 }
 
@@ -253,7 +255,7 @@ namespace Wild
                 auto context = engine.GetGfxContext();
                 int frameIndex = context->GetBackBufferIndex();
 
-                list.SetConstantBufferView(1, m_inverseCamera[frameIndex].get());
+                list.SetConstantBufferView(1, m_cameraBuffer[frameIndex].get());
                 list.SetConstantBufferView(2, m_pbrDataBuffer[frameIndex].get());
                 list.SetConstantBufferView(3, m_environmentData.get());
                 list.SetConstantBufferView(4, m_pointLightsBuffer.get());

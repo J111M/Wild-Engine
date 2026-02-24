@@ -22,6 +22,7 @@ namespace Wild
         glm::mat4 inverseView{};
         glm::mat4 inverseProj{};
         glm::mat4 viewSpace{};
+        float cameraFar{};
     };
 
     struct PBRData
@@ -67,9 +68,9 @@ namespace Wild
         PbrRootConstant m_rc{};
         PBRData m_pbrData{};
 
-        CameraBuffer m_inverseCamData{};
+        CameraBuffer m_camData{};
 
-        std::unique_ptr<Buffer> m_inverseCamera[BACK_BUFFER_COUNT];
+        std::unique_ptr<Buffer> m_cameraBuffer[BACK_BUFFER_COUNT];
         std::unique_ptr<Buffer> m_pbrDataBuffer[BACK_BUFFER_COUNT];
 
         std::shared_ptr<Buffer> m_pointLightsBuffer;

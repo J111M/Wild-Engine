@@ -16,6 +16,7 @@ cbuffer matrices : register(b1)
     column_major matrix inverseView;
     column_major matrix inverseProjection;
     column_major matrix viewSpace;
+    float cameraFar;
 }
 
 cbuffer PbrData : register(b2)
@@ -71,23 +72,25 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal) {
 
     int layer = -1;
     for (int i = 0; i < SHADOWMAP_CASCADES; ++i) {
-        if (depthValue < cascadeDistance[i]) {
+        if (depthValue < cascadeDistance[0]) {
             layer = i;
             break;
         }
     }
+
     if (layer == -1) {
-        layer = SHADOWMAP_CASCADES;
+        layer = SHADOWMAP_CASCADES - 1;
     }
 
     // Convert worldSpace to light space
-    float4 lightSpacePosition = mul(lightSpaceViewProj[layer], float4(worldSpaceFragPosition, 1.0));
+    float4 lightSpacePosition = mul(lightSpaceViewProj[0], float4(worldSpaceFragPosition, 1.0));
 
     // Perspective divide
     float3 projCoords = lightSpacePosition.xyz / lightSpacePosition.w;
 
     // Remap to 0, 1 range
-    projCoords = projCoords * 0.5 + 0.5;
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+    projCoords.y = 1.0 - projCoords.y;
 
     // Fragment depth
     float currentDepth = projCoords.z;
@@ -104,20 +107,20 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal) {
     const float biasModifier = 0.5f;
     if (layer == SHADOWMAP_CASCADES)
     {
-        bias *= 1 / (10000.0f * biasModifier);
+        bias *= 1 / (cameraFar * biasModifier);
     }
     else
     {
-        bias *= 1 / (cascadeDistance[layer] * biasModifier);
+        bias *= 1 / (cascadeDistance[0] * biasModifier);
     }
 
     float shadow = 0.0f;
-    texture2D shadowMap = textures[shadowMapView[layer]];
+    texture2D shadowMap = textures[shadowMapView[0]];
 
     uint2 textureSize = uint2(0, 0);
     shadowMap.GetDimensions(textureSize.x, textureSize.y);
 
-    float2 texelSize = 1.0 / float2(asfloat(textureSize));
+    float2 texelSize = 1.0 / float2(textureSize);
     for (int x = -1; x <= 1; ++x)
     {
         for (int y = -1; y <= 1; ++y)
@@ -255,7 +258,7 @@ float4 main(VSOutput input) : SV_TARGET0
     case 0:
         return float4(color, 1.0f);
     case 1:
-        return float4(albedo.rgb, 1.0f);
+        return float4(float3(1.0 - shadow), 1.0f);
     case 2:
         return float4(N.xyz, 1.0f);
     case 3:

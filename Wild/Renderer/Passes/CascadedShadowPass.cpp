@@ -10,7 +10,7 @@ namespace Wild
     {
         BufferDesc desc{};
         desc.bufferSize = sizeof(DirectLightBuffer);
-        m_directionalLightBuffer = std::make_unique<Buffer>(desc, BufferType::constant);
+        m_directionalLightBuffer = std::make_shared<Buffer>(desc, BufferType::constant);
     }
 
     void CascadedShadowMaps::Add(Renderer& renderer, RenderGraph& rg)
@@ -39,7 +39,9 @@ namespace Wild
                 settings.ShaderState.FragShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/CascadedShadowsFrag.slang");
                 settings.DepthStencilState.DepthEnable = true;
-                // Hard coded for now
+                settings.RasterizerState.CullMode = CullMode::Front;
+
+                // Hard coded size for now TODO use texture size
                 settings.RasterizerState.Viewport.size = glm::vec2(2048, 2048);
 
                 // Setting up the input layout
@@ -104,7 +106,7 @@ namespace Wild
 
                 // Debug the shadow map
                 engine.GetImGui()->AddPanel("Shadowmap Textures", [this, passData]() {
-                    for (size_t i = 0; i < 4; i++)
+                    for (size_t i = 0; i < SHADOWMAP_CASCADES; i++)
                     {
                         engine.GetImGui()->DisplayTexture(passData.shadowMap[i]);
                     }
@@ -121,16 +123,14 @@ namespace Wild
             }
         });
 
-        std::vector<glm::mat4> cascadeProjections;
-        std::vector<float> cascadeFarDistances;
-        cascadeProjections.reserve(SHADOWMAP_CASCADES);
-        cascadeFarDistances.reserve(SHADOWMAP_CASCADES);
-
         const auto& camView = engine.GetECS()->GetRegistry().view<Camera, Transform>();
         const Camera& camera = engine.GetECS()->GetRegistry().get<Camera>(camView.front());
 
         for (uint32_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
         {
+            glm::mat4 cascadeProjections{};
+            float cascadeFarDistances{};
+
             std::array<float, 2> nearFar;
 
             for (uint32_t j = 0; j < 2u; j++)
@@ -145,20 +145,26 @@ namespace Wild
                 nearFar[j] = nearField;
             }
 
-            cascadeProjections.push_back(
-                glm::perspective(glm::radians(camera.GetFOV()), camera.GetAspect(), nearFar[0], nearFar[1]));
-            cascadeFarDistances.push_back(nearFar[1]);
+            cascadeProjections = glm::perspective(camera.GetFOV(), camera.GetAspect(), nearFar[0], nearFar[1]);
+            cascadeFarDistances = nearFar[1];
 
-            const glm::mat4 cascadeViewProj = GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,
-                                                                         m_directLight.lightDirectionIntensity.y,
-                                                                         m_directLight.lightDirectionIntensity.z),
-                                                               camera.GetView(),
-                                                               cascadeProjections[cascade]);
+            glm::vec3 light = glm::normalize(glm::vec3(m_directLight.lightDirectionIntensity.x,
+                                                       m_directLight.lightDirectionIntensity.y,
+                                                       m_directLight.lightDirectionIntensity.z));
+
+            glm::vec3 lightDir = light;
+            // glm::vec3 up = (glm::abs(lightDir.y) > 0.99f) ? glm::vec3(0, 0, 1) : ;
+            glm::vec3 lightPos = light;
+
+            const glm::mat4 cascadeViewProj = glm::orthoRH_ZO(-20.0f, 20.0f, -20.0f, 20.0f, 1.0f, 20.0f) *
+                glm::lookAtRH(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
+            //= GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,
+            // m_directLight.lightDirectionIntensity.y,m_directLight.lightDirectionIntensity.z),camera.GetView(),cascadeProjections);
 
             m_directLight.viewProj[cascade] = cascadeViewProj;
-            m_directLight.cascadeDistance[cascade] = cascadeFarDistances[cascade];
-            m_directionalLightBuffer->Allocate(&m_directLight);
+            m_directLight.cascadeDistance[cascade] = cascadeFarDistances;
         }
+        m_directionalLightBuffer->Allocate(&m_directLight);
     }
 
     // Function taken from https://learnopengl.com/Guest-Articles/2021/CSM and modified to work in my case
@@ -171,7 +177,7 @@ namespace Wild
             for (int y = 0; y < 2; ++y)
                 for (int z = 0; z < 2; ++z)
                 {
-                    glm::vec4 pt = inv * glm::vec4(2.0f * x - 1.0f, 2.0f * y - 1.0f, 2.0f * z - 1.0f, 1.0f);
+                    glm::vec4 pt = inv * glm::vec4(2.0f * x - 1.0f, 2.0f * y - 1.0f, static_cast<float>(z), 1.0f);
                     frustumCorners.push_back(glm::vec3(pt) / pt.w);
                 }
 
@@ -186,31 +192,36 @@ namespace Wild
         // Calculate view frostum center.
         glm::vec3 frustumCenter(0.0f);
 
-        for (const auto& v : cornersWS)
+        for (const glm::vec3& v : cornersWS)
         {
             frustumCenter += v;
         }
 
         frustumCenter /= static_cast<float>(cornersWS.size());
 
-        const glm::vec3 lightPos = frustumCenter + glm::normalize(lightDir);
-        const glm::mat4 lightView = glm::lookAt(lightPos, frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
-
-        // Calculate the min and max bounds of the frustum corners in light space.
-        glm::vec3 min = glm::vec3(FLT_MAX);
-        glm::vec3 max = glm::vec3(-FLT_MAX);
-
-        for (const auto& corner : cornersWS)
+        float radius = 0.0f;
+        for (const glm::vec3& v : cornersWS)
         {
-            const glm::vec3 cornerLS = glm::vec3(lightView * glm::vec4(corner, 1.0f));
-            min = glm::min(min, cornerLS);
-            max = glm::max(max, cornerLS);
+            float distance = glm::distance(v, frustumCenter);
+            radius = std::max(radius, distance);
         }
+        radius = std::ceil(radius * 8.0f) / 8.0f;
 
-        min.z -= 100.0f;
-        max.z += 50.0f;
+        const glm::vec3 maxExtents(radius, radius, radius);
+        const glm::vec3 minExtents = -maxExtents;
+        const glm::vec3 cascadeExtents = maxExtents - minExtents;
 
-        const glm::mat4 lightProj = glm::ortho(min.x, max.x, min.y, max.y, min.z, max.z);
+        const glm::vec3 lightPos = frustumCenter + glm::normalize(lightDir) * radius;
+        const glm::mat4 lightView = glm::lookAtRH(lightPos, frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
+
+        float l = minExtents.x;
+        float b = minExtents.y;
+        float n = minExtents.z;
+        float r = maxExtents.x;
+        float t = maxExtents.y;
+        float f = maxExtents.z * 1.5f;
+
+        const glm::mat4 lightProj = glm::orthoRH_ZO(l, r, b, t, n, f);
 
         return lightProj * lightView;
     }

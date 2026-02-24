@@ -20,7 +20,7 @@ namespace Wild
 
     struct DirectLightBuffer
     {
-        glm::vec4 lightDirectionIntensity = glm::vec4(-0.3, 14.0, -2.5, 2.0f);
+        glm::vec4 lightDirectionIntensity = glm::vec4(-0.3, -20.0, -20.0, 2.0f);
         glm::mat4 viewProj[SHADOWMAP_CASCADES];
         float cascadeDistance[SHADOWMAP_CASCADES];
     };
