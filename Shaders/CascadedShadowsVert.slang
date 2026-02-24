@@ -1,12 +1,12 @@
+#include "ShadowInc.slang"
+
 cbuffer rootConstant : register(b0)
 {
     column_major float4x4 localModel;
     uint cascadeIndex;
 }
 
-#define SHADOWMAP_CASCADES 4
-
-cbuffer modelCBuffer : register(b1)
+cbuffer shadowMapBuffer : register(b1)
 {
     float4 lightDirectionIntensity;
     column_major float4x4 viewProj[SHADOWMAP_CASCADES];

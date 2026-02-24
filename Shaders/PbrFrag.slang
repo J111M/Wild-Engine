@@ -1,5 +1,6 @@
 #include "Helper/Common.slang"
 #include "Helper/PbrFormulas.slang"
+#include "ShadowInc.slang"
 
 cbuffer Constants : register(b0)
 {
@@ -7,12 +8,14 @@ cbuffer Constants : register(b0)
     uint albedoView;
     uint normalView;
     uint depthView;
+    uint shadowMapView[SHADOWMAP_CASCADES];
 };
 
 cbuffer matrices : register(b1)
 {
     column_major matrix inverseView;
     column_major matrix inverseProjection;
+    column_major matrix viewSpace;
 }
 
 cbuffer PbrData : register(b2)
@@ -42,6 +45,13 @@ cbuffer PointLightData : register(b4)
     PointLight pointLights[MAX_POINT_LIGHTS];
 }
 
+cbuffer shadowMapBuffer : register(b5)
+{
+    float4 lightDirectionIntensity;
+    column_major float4x4 lightSpaceViewProj[SHADOWMAP_CASCADES];
+    float cascadeDistance[SHADOWMAP_CASCADES];
+};
+
 Texture2D textures[4096] : register(t0, space0);
 TextureCube cubeTextures[4096] : register(t0, space1);
 
@@ -52,6 +62,74 @@ struct VSOutput
     float4 position : SV_POSITION;
     float2 uv : TEXCOORD0;
 };
+
+// Shadow map implementation inspired by https://learnopengl.com/Guest-Articles/2021/CSM and modified to work with my system
+float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal) {
+    float4 viewSpacePosition = mul(viewSpace, float4(worldSpaceFragPosition, 1.0f));
+
+    float depthValue = abs(viewSpacePosition.z);
+
+    int layer = -1;
+    for (int i = 0; i < SHADOWMAP_CASCADES; ++i) {
+        if (depthValue < cascadeDistance[i]) {
+            layer = i;
+            break;
+        }
+    }
+    if (layer == -1) {
+        layer = SHADOWMAP_CASCADES;
+    }
+
+    // Convert worldSpace to light space
+    float4 lightSpacePosition = mul(lightSpaceViewProj[layer], float4(worldSpaceFragPosition, 1.0));
+
+    // Perspective divide
+    float3 projCoords = lightSpacePosition.xyz / lightSpacePosition.w;
+
+    // Remap to 0, 1 range
+    projCoords = projCoords * 0.5 + 0.5;
+
+    // Fragment depth
+    float currentDepth = projCoords.z;
+
+    if (currentDepth > 1.0)
+    {
+        return 0.0;
+    }
+
+    // Shadow bias
+    float3 biasNormal = normalize(normal);
+    // Offset by shadow position
+    float bias = max(0.05 * (1.0 - dot(normal, normalize(lightDirectionIntensity.xyz))), 0.005);
+    const float biasModifier = 0.5f;
+    if (layer == SHADOWMAP_CASCADES)
+    {
+        bias *= 1 / (10000.0f * biasModifier);
+    }
+    else
+    {
+        bias *= 1 / (cascadeDistance[layer] * biasModifier);
+    }
+
+    float shadow = 0.0f;
+    texture2D shadowMap = textures[shadowMapView[layer]];
+
+    uint2 textureSize = uint2(0, 0);
+    shadowMap.GetDimensions(textureSize.x, textureSize.y);
+
+    float2 texelSize = 1.0 / float2(asfloat(textureSize));
+    for (int x = -1; x <= 1; ++x)
+    {
+        for (int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = shadowMap.Sample(pointSampler, projCoords.xy + float2(x, y) * texelSize).r; //texture(shadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, layer)).r;
+            shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;
+        }
+    }
+    shadow /= 9.0;
+
+    return shadow;
+}
 
 [shader("fragment")]
 float4 main(VSOutput input) : SV_TARGET0
@@ -169,7 +247,8 @@ float4 main(VSOutput input) : SV_TARGET0
 
     float3 ambient = (iblkD * diffuse + specularIBL + scatterColor) * ao;
 
-    color = Lo + ambient + emissive.rgb;
+    float shadow = ShadowCalculation(positionWS, N);
+    color = (1.0 - shadow) * Lo + ambient + emissive.rgb;
 
     switch (debugViewMode)
     {

@@ -1,4 +1,5 @@
 #include "Renderer/Passes/CascadedShadowPass.hpp"
+#include "Renderer/Passes/ProceduralTerrainPass.hpp"
 #include "Renderer/Resources/Mesh.hpp"
 
 #include "Core/Camera.hpp"
@@ -16,35 +17,6 @@ namespace Wild
     {
         auto* passData = rg.AllocatePassData<CsmPassData>();
 
-        std::vector<glm::mat4> cascadeProjections;
-        std::vector<float> cascadeFarDistances;
-        cascadeProjections.reserve(SHADOWMAP_CASCADES);
-        cascadeFarDistances.reserve(SHADOWMAP_CASCADES);
-
-        const auto& camView = engine.GetECS()->GetRegistry().view<Camera, Transform>();
-        const Camera& camera = engine.GetECS()->GetRegistry().get<Camera>(camView.front());
-
-        for (uint32_t i = 0; i < SHADOWMAP_CASCADES; i++)
-        {
-            std::array<float, 2> nearFar;
-
-            for (uint32_t j = 0; j < 2u; j++)
-            {
-                const glm::vec2 camNearFar = camera.GetNearFar();
-                const float shadowDistance = 100.0f;
-
-                const float ratio = static_cast<float>(i + j) / static_cast<float>(SHADOWMAP_CASCADES);
-                float logS = camNearFar.x * std::powf(shadowDistance / camNearFar.x, ratio);
-                float linS = camNearFar.x + (shadowDistance - camNearFar.x) * ratio;
-                float nearField = glm::mix(logS, linS, 0.175f);
-                nearFar[j] = nearField;
-            }
-
-            cascadeProjections.push_back(
-                glm::perspective(glm::radians(camera.GetFOV()), camera.GetAspect(), nearFar[0], nearFar[1]));
-            cascadeFarDistances.push_back(nearFar[1]);
-        }
-
         for (size_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
         {
             TextureDesc desc;
@@ -56,20 +28,11 @@ namespace Wild
             desc.flag = static_cast<TextureDesc::ViewFlag>(
                 TextureDesc::depthStencil | TextureDesc::shaderResource); // Automatically uses depth stencil format
 
-            const glm::mat4 cascadeViewProj = GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,
-                                                                         m_directLight.lightDirectionIntensity.y,
-                                                                         m_directLight.lightDirectionIntensity.z),
-                                                               camera.GetView(),
-                                                               cascadeProjections[cascade]);
-
-            m_directLight.viewProj[cascade] = cascadeViewProj;
-            m_directLight.cascadeDistance[cascade] = cascadeFarDistances[cascade];
-
             passData->shadowMap[cascade] = rg.CreateTransientTexture(name, desc);
         }
 
         rg.AddPass<CsmPassData>(
-            "Cascaded shadow maps", PassType::Graphics, [&renderer, this](const CsmPassData& passData, CommandList& list) {
+            "Cascaded shadow maps", PassType::Graphics, [&renderer, this](CsmPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
                 settings.ShaderState.VertexShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/CascadedShadowsVert.slang");
@@ -96,12 +59,6 @@ namespace Wild
 
                 Uniform lightBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
                 uniforms.emplace_back(lightBuffer);
-
-                if (m_lightChanged)
-                {
-                    m_directionalLightBuffer->Allocate(&m_directLight);
-                    m_lightChanged = false;
-                }
 
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Cascaded shadow maps pass", PipelineStateType::Graphics, settings, uniforms);
@@ -139,7 +96,11 @@ namespace Wild
                     }
 
                     list.EndRender();
+
+                    passData.shadowMap[i]->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 }
+
+                passData.directLightBuffer = m_directionalLightBuffer;
 
                 // Debug the shadow map
                 engine.GetImGui()->AddPanel("Shadowmap Textures", [this, passData]() {
@@ -159,6 +120,45 @@ namespace Wild
                 m_lightChanged = true;
             }
         });
+
+        std::vector<glm::mat4> cascadeProjections;
+        std::vector<float> cascadeFarDistances;
+        cascadeProjections.reserve(SHADOWMAP_CASCADES);
+        cascadeFarDistances.reserve(SHADOWMAP_CASCADES);
+
+        const auto& camView = engine.GetECS()->GetRegistry().view<Camera, Transform>();
+        const Camera& camera = engine.GetECS()->GetRegistry().get<Camera>(camView.front());
+
+        for (uint32_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
+        {
+            std::array<float, 2> nearFar;
+
+            for (uint32_t j = 0; j < 2u; j++)
+            {
+                const glm::vec2 camNearFar = camera.GetNearFar();
+                const float shadowDistance = 100.0f;
+
+                const float ratio = static_cast<float>(cascade + j) / static_cast<float>(SHADOWMAP_CASCADES);
+                float logS = camNearFar.x * std::powf(shadowDistance / camNearFar.x, ratio);
+                float linS = camNearFar.x + (shadowDistance - camNearFar.x) * ratio;
+                float nearField = glm::mix(logS, linS, 0.175f);
+                nearFar[j] = nearField;
+            }
+
+            cascadeProjections.push_back(
+                glm::perspective(glm::radians(camera.GetFOV()), camera.GetAspect(), nearFar[0], nearFar[1]));
+            cascadeFarDistances.push_back(nearFar[1]);
+
+            const glm::mat4 cascadeViewProj = GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,
+                                                                         m_directLight.lightDirectionIntensity.y,
+                                                                         m_directLight.lightDirectionIntensity.z),
+                                                               camera.GetView(),
+                                                               cascadeProjections[cascade]);
+
+            m_directLight.viewProj[cascade] = cascadeViewProj;
+            m_directLight.cascadeDistance[cascade] = cascadeFarDistances[cascade];
+            m_directionalLightBuffer->Allocate(&m_directLight);
+        }
     }
 
     // Function taken from https://learnopengl.com/Guest-Articles/2021/CSM and modified to work in my case

@@ -1,4 +1,3 @@
-#include "PbrPass.hpp"
 #include "Renderer/Passes/DeferredPass.hpp"
 #include "Renderer/Passes/PbrPass.hpp"
 
@@ -34,7 +33,7 @@ namespace Wild
 
         {
             BufferDesc desc{};
-            desc.bufferSize = sizeof(InverseCamera);
+            desc.bufferSize = sizeof(CameraBuffer);
             for (int i = 0; i < BACK_BUFFER_COUNT; i++)
             {
                 m_inverseCamera[i] = std::make_unique<Buffer>(desc, BufferType::constant);
@@ -87,6 +86,7 @@ namespace Wild
 
                 m_inverseCamData.inverseView = glm::inverse(cam.GetView());
                 m_inverseCamData.inverseProj = glm::inverse(cam.GetProjection());
+                m_inverseCamData.viewSpace = cam.GetView();
                 m_pbrData.cameraPosition = cam.GetPosition();
             }
         }
@@ -116,7 +116,8 @@ namespace Wild
     {
         auto* passData = rg.AllocatePassData<PbrPassData>();
         auto* deferredData = rg.GetPassData<PbrPassData, DeferredPassData>();
-
+        auto* shadowMapData = rg.GetPassData<PbrPassData, CsmPassData>();
+        
         passData->pointlights = m_pointLightsBuffer;
         passData->numOfPointLights = m_pbrData.numOfPointLights;
         passData->depthTexture = deferredData->depthTexture;
@@ -136,7 +137,7 @@ namespace Wild
         rg.AddPass<PbrPassData>(
             "Pbr assembly pass",
             PassType::Graphics,
-            [&renderer, deferredData, this](const PbrPassData& passData, CommandList& list) {
+            [&renderer, deferredData, shadowMapData, this](const PbrPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
                 settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/PbrVert.slang");
                 settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/PbrFrag.slang");
@@ -175,6 +176,12 @@ namespace Wild
                     Uniform pointLightData{4, 0, RootParams::RootResourceType::ConstantBufferView};
                     pointLightData.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
                     uniforms.emplace_back(pointLightData);
+                }
+
+                {
+                    Uniform shadowMapData{5, 0, RootParams::RootResourceType::ConstantBufferView};
+                     shadowMapData.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                    uniforms.emplace_back(shadowMapData);
                 }
 
                 // Bindless resources
@@ -235,6 +242,12 @@ namespace Wild
                 m_rc.emissiveView = deferredData->emissiveTexture->GetSrv()->BindlessView();
                 m_rc.depthView = deferredData->depthTexture->GetSrv()->BindlessView();
 
+                // Get shader resource view's from the shadowmap depth textures
+                for (size_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
+                {
+                    m_rc.shadowMapView[cascade] = shadowMapData->shadowMap[cascade]->GetSrv()->BindlessView();
+                }
+
                 list.SetRootConstant<PbrRootConstant>(0, m_rc);
 
                 auto context = engine.GetGfxContext();
@@ -244,7 +257,8 @@ namespace Wild
                 list.SetConstantBufferView(2, m_pbrDataBuffer[frameIndex].get());
                 list.SetConstantBufferView(3, m_environmentData.get());
                 list.SetConstantBufferView(4, m_pointLightsBuffer.get());
-                list.SetBindlessHeap(5);
+                list.SetConstantBufferView(5, shadowMapData->directLightBuffer.get());
+                list.SetBindlessHeap(6);
 
                 list.GetList()->DrawInstanced(3, 1, 0, 0);
                 list.EndRender();

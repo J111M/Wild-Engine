@@ -3,6 +3,8 @@
 #include "Renderer/RenderGraph/RenderGraph.hpp"
 #include "Renderer/Renderer.hpp"
 
+#include "Renderer/Passes/CascadedShadowPass.hpp"
+
 namespace Wild
 {
 #define MAX_POINT_LIGHTS 50;
@@ -15,10 +17,11 @@ namespace Wild
         uint32_t numOfPointLights{};
     };
 
-    struct InverseCamera
+    struct CameraBuffer
     {
         glm::mat4 inverseView{};
         glm::mat4 inverseProj{};
+        glm::mat4 viewSpace{};
     };
 
     struct PBRData
@@ -42,6 +45,7 @@ namespace Wild
         uint32_t albedoView{};
         uint32_t normalView{};
         uint32_t depthView{};
+        uint32_t shadowMapView[SHADOWMAP_CASCADES];
     };
 
     struct PointLight
@@ -63,7 +67,7 @@ namespace Wild
         PbrRootConstant m_rc{};
         PBRData m_pbrData{};
 
-        InverseCamera m_inverseCamData{};
+        CameraBuffer m_inverseCamData{};
 
         std::unique_ptr<Buffer> m_inverseCamera[BACK_BUFFER_COUNT];
         std::unique_ptr<Buffer> m_pbrDataBuffer[BACK_BUFFER_COUNT];

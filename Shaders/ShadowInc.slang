@@ -1,0 +1,1 @@
+#define SHADOWMAP_CASCADES 4
