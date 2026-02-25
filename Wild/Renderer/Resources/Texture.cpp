@@ -51,8 +51,10 @@ namespace Wild
             textureDesc.SampleDesc.Count = 1;
             textureDesc.SampleDesc.Quality = 0;
             textureDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-            textureDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+            textureDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
+            if (m_desc.flag & TextureDesc::readWrite) { textureDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS; }
+            
             D3D12_CLEAR_VALUE clearValue = {};
             clearValue.Format = m_desc.format;
             clearValue.Color[0] = 0.0f;
@@ -86,10 +88,7 @@ namespace Wild
                 }
                 m_rtvArrayAvailiable = true;
             }
-            else
-            {
-                m_rtv = std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc);
-            }
+            else { m_rtv = std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc); }
         }
 
         if (desc.flag & TextureDesc::depthStencil)
@@ -104,7 +103,7 @@ namespace Wild
             depthDesc.Format = DXGI_FORMAT_R32_TYPELESS;
             depthDesc.SampleDesc.Count = 1;
             depthDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-            depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+            depthDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
             D3D12_CLEAR_VALUE clearValue = {};
             clearValue.Format = DXGI_FORMAT_D32_FLOAT;
@@ -129,7 +128,7 @@ namespace Wild
             m_desc.format = DXGI_FORMAT_R32_FLOAT;
         }
 
-        if (m_desc.flag & TextureDesc::readWrite)
+        if (m_desc.flag & TextureDesc::ViewFlag::readWrite)
         {
             D3D12_RESOURCE_DESC readWriteDesc = {};
             readWriteDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -139,7 +138,7 @@ namespace Wild
             readWriteDesc.MipLevels = m_desc.mips;
             readWriteDesc.Format = m_desc.format;
             readWriteDesc.SampleDesc.Count = 1;
-            readWriteDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            readWriteDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
             readWriteDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 
             if (!m_resource)
@@ -176,10 +175,7 @@ namespace Wild
 
                 m_uavArrayAvailiable = true;
             }
-            else
-            {
-                m_uav = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc);
-            }
+            else { m_uav = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc); }
         }
 
         if (m_desc.flag & TextureDesc::ViewFlag::shaderResource)

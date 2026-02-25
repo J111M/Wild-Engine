@@ -4,6 +4,7 @@
 #include "Renderer/RenderGraph/TransientResourceCache.hpp"
 
 #include "Renderer/Passes/CascadedShadowPass.hpp"
+#include "Renderer/Passes/DebugLinePass.hpp"
 #include "Renderer/Passes/DeferredPass.hpp"
 #include "Renderer/Passes/GrassPass.hpp"
 #include "Renderer/Passes/OceanPass.hpp"
@@ -35,6 +36,7 @@ namespace Wild
             std::make_unique<SkyPass>("Assets/Textures/Skybox/kloofendal_48d_partly_cloudy_puresky_4k.hdr"));
 
         m_renderFeatures.emplace_back(std::make_unique<PostProcessPass>());
+        m_renderFeatures.emplace_back(std::make_unique<DebugLinePass>());
     }
 
     Renderer::~Renderer() {}
@@ -51,15 +53,31 @@ namespace Wild
     {
         auto gfxContext = engine.GetGfxContext();
 
-        RenderGraph rg = RenderGraph(*m_resourceCache);
+        auto ecs = engine.GetECS();
+        auto& cameras = ecs->View<Camera>();
 
-        for (auto& feature : m_renderFeatures)
+        Camera* camera = nullptr;
+
+        bool mainCamera = true;
+        uint32_t cameraIndex{};
+        for (auto entity : cameras)
         {
-            feature->Add(*this, rg);
-        }
+            m_activeCamera = entity;
 
-        rg.Compile();
-        rg.Execute();
+            RenderGraph rg = RenderGraph(*m_resourceCache);
+
+            for (auto& feature : m_renderFeatures)
+            {
+                feature->Add(*this, rg);
+            }
+
+            rg.Compile();
+            rg.Execute();
+
+            m_viewportTextures[cameraIndex] = compositeTexture;
+
+            cameraIndex++;
+        }
 
         // Copy final image over
         PipelineStateSettings settings{};
@@ -67,7 +85,7 @@ namespace Wild
         settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/FragCopyRT.slang");
         settings.DepthStencilState.DepthEnable = false;
         settings.RasterizerState.WindingMode = WindingOrder::Clockwise;
-        settings.renderTargetsFormat.push_back(compositeTexture->GetDesc().format);
+        settings.renderTargetsFormat.push_back(m_viewportTextures[0]->GetDesc().format);
 
         std::vector<Uniform> uniforms;
 
@@ -88,13 +106,35 @@ namespace Wild
 
         auto& pipeline = GetOrCreatePipeline("Copy pass", PipelineStateType::Graphics, settings, uniforms);
 
-        compositeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        for (size_t i = 0; i < MAX_CAMERAS; i++)
+        {
+            m_viewportTextures[0]->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        }
 
         list.SetPipelineState(pipeline);
         list.BeginRender({gfxContext->GetRenderTarget().get()}, {ClearOperation::Store}, nullptr, DSClearOperation::Store);
-        list.GetList()->SetGraphicsRootDescriptorTable(0, compositeTexture->GetSrv()->GetGpuHandle());
+        list.GetList()->SetGraphicsRootDescriptorTable(0, m_viewportTextures[0]->GetSrv()->GetGpuHandle());
         list.GetList()->DrawInstanced(3, 1, 0, 0);
         list.EndRender();
+    }
+
+    void Renderer::AddLine(const glm::vec3& a, const glm::vec3& b, const glm::vec3& color)
+    {
+        DebugLinePass* lineRenderer = GetRenderFeature<DebugLinePass>();
+        if (lineRenderer) lineRenderer->AddLine(a, b, color);
+    }
+
+    void Renderer::AddAABB(const glm::vec3& min, const glm::vec3& max, const glm::vec3& color)
+    {
+        DebugLinePass* lineRenderer = GetRenderFeature<DebugLinePass>();
+        if (lineRenderer) lineRenderer->AddAABB(min, max, color);
+    }
+
+    Camera* Renderer::GetActiveCamera()
+    {
+        Camera* camera = nullptr;
+        if (m_activeCamera != entt::null) camera = &engine.GetECS()->GetComponent<Camera>(m_activeCamera);
+        return camera;
     }
 
     bool Renderer::HasPipelineInCache(const std::string& key)

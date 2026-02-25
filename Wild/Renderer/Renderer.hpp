@@ -7,14 +7,16 @@
 
 #include "Renderer/RenderGraph/RenderGraph.hpp"
 
+#include "Core/Camera.hpp"
 #include "Core/Transform.hpp"
 
 #include "Tools/Common3d12.hpp"
 #include "Tools/States.hpp"
 
+#define MAX_CAMERAS 2
+
 namespace Wild
 {
-
     class Renderer;
 
     class RenderFeature : public NonCopyable
@@ -44,12 +46,21 @@ namespace Wild
 
         void FlushResources();
 
+        void AddLine(const glm::vec3& a, const glm::vec3& b, const glm::vec3& color = {1, 1, 1});
+        void AddAABB(const glm::vec3& min, const glm::vec3& max, const glm::vec3& color = {1, 1, 1});
+
+        Camera* GetActiveCamera();
+
         Texture* irradianceMap{};
         Texture* specularMap{};
         Texture* brdfLut{};
         Texture* compositeTexture = nullptr;
 
       private:
+        Entity m_activeCamera{};
+
+        Texture* m_viewportTextures[MAX_CAMERAS];
+
         std::vector<std::unique_ptr<RenderFeature>> m_renderFeatures;
         std::shared_ptr<TransientResourceCache> m_resourceCache;
 

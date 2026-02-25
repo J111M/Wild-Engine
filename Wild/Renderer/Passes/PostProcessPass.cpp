@@ -173,7 +173,8 @@ namespace Wild
             desc.format = DXGI_FORMAT_R10G10B10A2_UNORM;
             desc.name = "Final Post Process Assemble texture";
             desc.usage = TextureDesc::gpuOnly;
-            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::shaderResource | TextureDesc::readWrite);
+            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::shaderResource | TextureDesc::readWrite |
+                                                           TextureDesc::renderTarget);
             passData->finalTexture = rg.CreateTransientTexture("Final Post Process Assemble texture", desc);
         }
 

@@ -104,6 +104,8 @@ namespace Wild
 
                 passData.directLightBuffer = m_directionalLightBuffer;
 
+                renderer.AddAABB(glm::vec3(0.0f, 0.0f, 0), glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0, 1, 0));
+
                 // Debug the shadow map
                 engine.GetImGui()->AddPanel("Shadowmap Textures", [this, passData]() {
                     for (size_t i = 0; i < SHADOWMAP_CASCADES; i++)
