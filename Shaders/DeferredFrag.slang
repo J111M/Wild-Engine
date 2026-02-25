@@ -35,6 +35,9 @@ PSOut main(PSInput input)
 {
     float4 albedo = float4(0, 0, 0, 0);
     if (albedoView != 0) { albedo = textures[NonUniformResourceIndex(albedoView)].Sample(anisotropySampler, input.uv); }
+    else {
+        albedo = float4(1, 1, 1, 1);
+    }
 
     float4 normal = float4(0, 0, 0, 0);
     if (normalView != 0)
@@ -66,7 +69,7 @@ PSOut main(PSInput input)
         emissive = textures[NonUniformResourceIndex(emissiveView)].Sample(anisotropySampler, input.uv);
     }
 
-    float roughness = 0.0f;
+    float roughness = 0.8f;
     float metallic = 0.0f;
     
     if (roughnessMetallicView != 0)

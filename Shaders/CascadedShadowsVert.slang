@@ -10,7 +10,7 @@ cbuffer shadowMapBuffer : register(b1)
 {
     float4 lightDirectionIntensity;
     column_major float4x4 viewProj[SHADOWMAP_CASCADES];
-    float cascadeDistance[SHADOWMAP_CASCADES];
+    float4 cascadeDistance;
 };
 
 struct VSInput

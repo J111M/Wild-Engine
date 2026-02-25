@@ -8,7 +8,7 @@ cbuffer Constants : register(b0)
     uint albedoView;
     uint normalView;
     uint depthView;
-    uint shadowMapView[SHADOWMAP_CASCADES];
+    uint4 shadowMapView;
 };
 
 cbuffer matrices : register(b1)
@@ -34,23 +34,21 @@ cbuffer envData : register(b3)
     uint brdfView;
 }
 
-struct PointLight {
+struct PointLight
+{
     float4 colorIntensity; // rgb = color, w = intensity
     float4 lightPosition;
 };
 
 #define MAX_POINT_LIGHTS 50
 
-cbuffer PointLightData : register(b4)
-{
-    PointLight pointLights[MAX_POINT_LIGHTS];
-}
+cbuffer PointLightData : register(b4) { PointLight pointLights[MAX_POINT_LIGHTS]; }
 
 cbuffer shadowMapBuffer : register(b5)
 {
     float4 lightDirectionIntensity;
     column_major float4x4 lightSpaceViewProj[SHADOWMAP_CASCADES];
-    float cascadeDistance[SHADOWMAP_CASCADES];
+    float4 cascadeDistance;
 };
 
 Texture2D textures[4096] : register(t0, space0);

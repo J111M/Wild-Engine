@@ -181,7 +181,7 @@ namespace Wild
                     auto& pipeline = renderer.GetOrCreatePipeline(
                         "Compute per blade data pass", PipelineStateType::Compute, settings, uniforms);
                     list.SetPipelineState(pipeline);
-                    list.BeginRender();
+                    list.BeginRender("Compute per blade data pass");
 
                     for (auto [entity, chunk, transform] : engine.GetECS()->GetRegistry().view<TerrainChunk, Transform>().each())
                     {
@@ -241,7 +241,7 @@ namespace Wild
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Clear counter pass", PipelineStateType::Compute, settings, uniforms);
                 list.SetPipelineState(pipeline);
-                list.BeginRender();
+                list.BeginRender("Clear counter pass");
 
                 list.SetUnorderedAccessView(0, m_instanceCountBuffer[frameIndex].get());
 
