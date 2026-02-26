@@ -125,48 +125,50 @@ namespace Wild
             }
         });
 
-        const auto& camView = engine.GetECS()->GetRegistry().view<Camera, Transform>();
-        const Camera& camera = engine.GetECS()->GetRegistry().get<Camera>(camView.front());
+        Camera* camera = GetActiveCamera();
 
-        for (uint32_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
+        if (camera)
         {
-            glm::mat4 cascadeProjections{};
-            float cascadeFarDistances{};
-
-            std::array<float, 2> nearFar;
-
-            for (uint32_t j = 0; j < 2u; j++)
+            for (uint32_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
             {
-                const glm::vec2 camNearFar = camera.GetNearFar();
-                const float shadowDistance = 100.0f;
+                glm::mat4 cascadeProjections{};
+                float cascadeFarDistances{};
 
-                const float ratio = static_cast<float>(cascade + j) / static_cast<float>(SHADOWMAP_CASCADES);
-                float logS = camNearFar.x * std::powf(shadowDistance / camNearFar.x, ratio);
-                float linS = camNearFar.x + (shadowDistance - camNearFar.x) * ratio;
-                float nearField = glm::mix(logS, linS, 0.175f);
-                nearFar[j] = nearField;
+                std::array<float, 2> nearFar;
+
+                for (uint32_t j = 0; j < 2u; j++)
+                {
+                    const glm::vec2 camNearFar = camera->GetNearFar();
+                    const float shadowDistance = 100.0f;
+
+                    const float ratio = static_cast<float>(cascade + j) / static_cast<float>(SHADOWMAP_CASCADES);
+                    float logS = camNearFar.x * std::powf(shadowDistance / camNearFar.x, ratio);
+                    float linS = camNearFar.x + (shadowDistance - camNearFar.x) * ratio;
+                    float nearField = glm::mix(logS, linS, 0.175f);
+                    nearFar[j] = nearField;
+                }
+
+                cascadeProjections = glm::perspective(camera->GetFOV(), camera->GetAspect(), nearFar[0], nearFar[1]);
+                cascadeFarDistances = nearFar[1];
+
+                glm::vec3 light = glm::normalize(glm::vec3(m_directLight.lightDirectionIntensity.x,
+                                                           m_directLight.lightDirectionIntensity.y,
+                                                           m_directLight.lightDirectionIntensity.z));
+
+                glm::vec3 lightDir = light;
+                // glm::vec3 up = (glm::abs(lightDir.y) > 0.99f) ? glm::vec3(0, 0, 1) : ;
+                glm::vec3 lightPos = light;
+
+                const glm::mat4 cascadeViewProj = glm::orthoRH_ZO(-20.0f, 20.0f, -20.0f, 20.0f, 1.0f, 20.0f) *
+                    glm::lookAtRH(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
+                //= GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,
+                // m_directLight.lightDirectionIntensity.y,m_directLight.lightDirectionIntensity.z),camera.GetView(),cascadeProjections);
+
+                m_directLight.viewProj[cascade] = cascadeViewProj;
+                m_directLight.cascadeDistance[cascade] = cascadeFarDistances;
             }
-
-            cascadeProjections = glm::perspective(camera.GetFOV(), camera.GetAspect(), nearFar[0], nearFar[1]);
-            cascadeFarDistances = nearFar[1];
-
-            glm::vec3 light = glm::normalize(glm::vec3(m_directLight.lightDirectionIntensity.x,
-                                                       m_directLight.lightDirectionIntensity.y,
-                                                       m_directLight.lightDirectionIntensity.z));
-
-            glm::vec3 lightDir = light;
-            // glm::vec3 up = (glm::abs(lightDir.y) > 0.99f) ? glm::vec3(0, 0, 1) : ;
-            glm::vec3 lightPos = light;
-
-            const glm::mat4 cascadeViewProj = glm::orthoRH_ZO(-20.0f, 20.0f, -20.0f, 20.0f, 1.0f, 20.0f) *
-                glm::lookAtRH(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
-            //= GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,
-            // m_directLight.lightDirectionIntensity.y,m_directLight.lightDirectionIntensity.z),camera.GetView(),cascadeProjections);
-
-            m_directLight.viewProj[cascade] = cascadeViewProj;
-            m_directLight.cascadeDistance[cascade] = cascadeFarDistances;
+            m_directionalLightBuffer->Allocate(&m_directLight);
         }
-        m_directionalLightBuffer->Allocate(&m_directLight);
     }
 
     // Function taken from https://learnopengl.com/Guest-Articles/2021/CSM and modified to work in my case

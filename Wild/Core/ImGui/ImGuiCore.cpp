@@ -47,20 +47,26 @@ namespace Wild
 
     void ImguiCore::DrawViewport(Renderer* renderer)
     {
-        ImGui::SetNextWindowContentSize(ImVec2(0.0f, 0.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-        std::string window_label = "Viewport ";
-        ImGui::Begin(window_label.c_str(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        for (size_t i = 0; i < 1; i++)
+        {
+            if (renderer->compositeTexture)
+            {
+                ImGui::SetNextWindowContentSize(ImVec2(0.0f, 0.0f));
+                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+                std::string window_label = "Viewport " + std::to_string(i);
+                ImGui::Begin(window_label.c_str(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-        // Get the available size of the content region
-        ImVec2 scenePos = ImGui::GetWindowPos();
-        ImVec2 sceneSize = ImGui::GetWindowSize();
+                // Get the available size of the content region
+                ImVec2 scenePos = ImGui::GetWindowPos();
+                ImVec2 sceneSize = ImGui::GetWindowSize();
 
-        ImGui::SetCursorPos(ImVec2(0, 0));
-        ImGui::Image((ImTextureID)renderer->compositeTexture->GetSrv()->GetGpuHandle().ptr, sceneSize);
+                ImGui::SetCursorPos(ImVec2(0, 0));
+                ImGui::Image((ImTextureID)renderer->compositeTexture->GetSrv()->GetGpuHandle().ptr, sceneSize);
 
-        ImGui::End();
-        ImGui::PopStyleVar();
+                ImGui::End();
+                ImGui::PopStyleVar();
+            }
+        }
     }
 
     bool ImguiCore::Setup(std::shared_ptr<Window> window)

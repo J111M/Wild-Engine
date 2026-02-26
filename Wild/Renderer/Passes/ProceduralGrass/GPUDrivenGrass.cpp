@@ -109,24 +109,19 @@ namespace Wild
         });
 
         SceneData SceneCbv{};
-        auto& cameras = ecs->View<Camera>();
 
-        // TODO change to support multiple cameras I only have 1 for now
-        for (auto& cameraEntity : cameras)
+        Camera* cam = GetActiveCamera();
+
+        if (cam)
         {
-            if (ecs->HasComponent<Camera>(cameraEntity))
-            {
-                auto& cam = ecs->GetComponent<Camera>(cameraEntity);
+            SceneCbv.ProjView = cam->GetProjection() * cam->GetView();
+            SceneCbv.CameraPosition = cam->GetPosition();
 
-                SceneCbv.ProjView = cam.GetProjection() * cam.GetView();
-                SceneCbv.CameraPosition = cam.GetPosition();
-
-                SceneCbv.windStrength = m_grassSceneData.windStrength;
-                SceneCbv.octaves = m_grassSceneData.octaves;
-                SceneCbv.frequency = m_grassSceneData.frequency;
-                SceneCbv.amplitude = m_grassSceneData.amplitude;
-                SceneCbv.windDirection = m_grassSceneData.windDirection;
-            }
+            SceneCbv.windStrength = m_grassSceneData.windStrength;
+            SceneCbv.octaves = m_grassSceneData.octaves;
+            SceneCbv.frequency = m_grassSceneData.frequency;
+            SceneCbv.amplitude = m_grassSceneData.amplitude;
+            SceneCbv.windDirection = m_grassSceneData.windDirection;
         }
 
         m_sceneData[device->GetBackBufferIndex()]->Allocate(&SceneCbv);
@@ -433,15 +428,9 @@ namespace Wild
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Grass render pass", PipelineStateType::Graphics, settings, uniforms);
 
-                // Get camera | TODO get only the active camera or render for each possible camera
                 auto ecs = engine.GetECS();
-                auto& cameras = ecs->View<Camera>();
-                Camera* camera = nullptr;
-                for (auto entity : cameras)
-                {
-                    camera = &ecs->GetComponent<Camera>(entity);
-                    break;
-                }
+
+                Camera* camera = GetActiveCamera();
 
                 list.SetPipelineState(pipeline);
                 list.BeginRender({grassData.albedoRoughnessTexture, grassData.normalMetallicTexture, grassData.emissiveTexture},

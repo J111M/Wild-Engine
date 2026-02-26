@@ -71,15 +71,7 @@ namespace Wild
                 auto& pipeline = renderer.GetOrCreatePipeline("Debug line pass", PipelineStateType::Graphics, settings, uniforms);
 
                 // Rendering
-                auto ecs = engine.GetECS();
-                auto& cameras = ecs->View<Camera>();
-
-                Camera* camera = nullptr;
-                for (auto entity : cameras)
-                {
-                    camera = &ecs->GetComponent<Camera>(entity);
-                    break;
-                }
+                Camera* camera = GetActiveCamera();
 
                 if (camera) { m_rc.projView = camera->GetProjection() * camera->GetView(); }
 

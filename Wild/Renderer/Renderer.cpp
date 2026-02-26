@@ -41,13 +41,8 @@ namespace Wild
 
     Renderer::~Renderer() {}
 
-    void Renderer::Update(const float dt)
-    {
-        for (auto& feature : m_renderFeatures)
-        {
-            feature->Update(dt);
-        }
-    }
+    // Not used for now since it cause buggs with the multi camera system
+    void Renderer::Update(const float dt) {}
 
     void Renderer::Render(CommandList& list, float deltaTime)
     {
@@ -64,6 +59,14 @@ namespace Wild
         {
             m_activeCamera = entity;
 
+            auto& currentCamera = ecs->GetComponent<Camera>(m_activeCamera);
+            currentCamera.SetRenderActivity(true);
+
+            for (auto& feature : m_renderFeatures)
+            {
+                feature->Update(deltaTime);
+            }
+
             RenderGraph rg = RenderGraph(*m_resourceCache);
 
             for (auto& feature : m_renderFeatures)
@@ -74,7 +77,9 @@ namespace Wild
             rg.Compile();
             rg.Execute();
 
-            m_viewportTextures[cameraIndex] = compositeTexture;
+            currentCamera.SetRenderActivity(false);
+
+            // viewportTextures[cameraIndex] = ;
 
             cameraIndex++;
         }
@@ -85,7 +90,7 @@ namespace Wild
         settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/FragCopyRT.slang");
         settings.DepthStencilState.DepthEnable = false;
         settings.RasterizerState.WindingMode = WindingOrder::Clockwise;
-        settings.renderTargetsFormat.push_back(m_viewportTextures[0]->GetDesc().format);
+        settings.renderTargetsFormat.push_back(compositeTexture->GetDesc().format);
 
         std::vector<Uniform> uniforms;
 
@@ -108,12 +113,12 @@ namespace Wild
 
         for (size_t i = 0; i < MAX_CAMERAS; i++)
         {
-            m_viewportTextures[0]->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            compositeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         }
 
         list.SetPipelineState(pipeline);
         list.BeginRender({gfxContext->GetRenderTarget().get()}, {ClearOperation::Store}, nullptr, DSClearOperation::Store);
-        list.GetList()->SetGraphicsRootDescriptorTable(0, m_viewportTextures[0]->GetSrv()->GetGpuHandle());
+        list.GetList()->SetGraphicsRootDescriptorTable(0, compositeTexture->GetSrv()->GetGpuHandle());
         list.GetList()->DrawInstanced(3, 1, 0, 0);
         list.EndRender();
     }
@@ -170,5 +175,27 @@ namespace Wild
     void Renderer::FlushResources()
     {
         if (m_resourceCache) m_resourceCache->Flush();
+    }
+
+    /// Render Feature
+    // Loops over all cameras in the scene checks the current camera active for rendering and returns it. If none availiable
+    // return nullptr.
+    Camera* RenderFeature::GetActiveCamera()
+    {
+        auto& ecs = engine.GetECS();
+
+        auto& cameras = ecs->View<Camera>();
+
+        Camera* camera = nullptr;
+        for (auto cameraEntity : cameras)
+        {
+            camera = &ecs->GetComponent<Camera>(cameraEntity);
+            if (camera)
+            {
+                if (camera->IsRenderModeActive()) { return camera; }
+            }
+        }
+
+        return nullptr;
     }
 } // namespace Wild

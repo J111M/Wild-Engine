@@ -221,6 +221,8 @@ namespace Wild
 
     void Texture::Transition(CommandList& list, D3D12_RESOURCE_STATES newState) { m_resource->Transition(list, newState); }
 
+    void Texture::LoadToDisk(const std::string& filePath) {}
+
     /*void Texture::Barrier(CommandList& list, BarrierType type)
     {
         CD3DX12_RESOURCE_BARRIER resourceBarrier{};

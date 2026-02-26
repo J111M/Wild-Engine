@@ -61,6 +61,8 @@ namespace Wild
         void Transition(CommandList& list, D3D12_RESOURCE_STATES newState);
         // void Barrier(CommandList& list, BarrierType type);
 
+        void LoadToDisk(const std::string& filePath);
+
         ID3D12Resource* GetResource() { return m_resource->Handle().Get(); }
         TextureDesc GetDesc() { return m_desc; }
 

@@ -25,6 +25,8 @@ namespace Wild
         virtual void Add(Renderer& renderer, RenderGraph& rg) = 0;
         virtual void Update(float dt) = 0;
         virtual ~RenderFeature() = default;
+
+        Camera* GetActiveCamera();
     };
 
     class Renderer
@@ -55,11 +57,10 @@ namespace Wild
         Texture* specularMap{};
         Texture* brdfLut{};
         Texture* compositeTexture = nullptr;
+        Texture* viewportTextures[MAX_CAMERAS]{};
 
       private:
         Entity m_activeCamera{};
-
-        Texture* m_viewportTextures[MAX_CAMERAS];
 
         std::vector<std::unique_ptr<RenderFeature>> m_renderFeatures;
         std::shared_ptr<TransientResourceCache> m_resourceCache;

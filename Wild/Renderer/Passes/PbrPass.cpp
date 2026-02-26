@@ -76,23 +76,16 @@ namespace Wild
         m_pbrData.numOfPointLights = lightData.size();
         m_pointLightsBuffer->Allocate(lightData.data());
 
-        auto& cameras = ecs->View<Camera>();
-        // Loop over all camera's TODO make the code run for each camera entity
-        for (auto& cameraEntity : cameras)
+        Camera* camera = GetActiveCamera();
+        if (camera)
         {
-            if (ecs->HasComponent<Camera>(cameraEntity))
-            {
-                auto& cam = ecs->GetComponent<Camera>(cameraEntity);
-
-                m_camData.inverseView = glm::inverse(cam.GetView());
-                m_camData.inverseProj = glm::inverse(cam.GetProjection());
-                m_camData.viewSpace = cam.GetProjection() * cam.GetView();
-                m_camData.cameraFar = cam.GetNearFar().y;
-                m_pbrData.cameraPosition = cam.GetPosition();
-            }
+            m_camData.inverseView = glm::inverse(camera->GetView());
+            m_camData.inverseProj = glm::inverse(camera->GetProjection());
+            m_camData.viewSpace = camera->GetProjection() * camera->GetView();
+            m_camData.cameraFar = camera->GetNearFar().y;
+            m_pbrData.cameraPosition = camera->GetPosition();
         }
-
-        if (cameras.size() <= 0)
+        else
         {
             m_camData.inverseView = glm::mat4{};
             m_camData.inverseProj = glm::mat4{};

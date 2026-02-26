@@ -23,20 +23,14 @@ namespace Wild
     void PostProcessPass::Update(const float dt)
     {
         auto ecs = engine.GetECS();
-        auto& cameras = ecs->View<Camera>();
+        Camera* camera = GetActiveCamera();
 
-        // Loop over all camera's TODO make the code run for each camera entity
-        for (auto& cameraEntity : cameras)
+        if (camera)
         {
-            if (ecs->HasComponent<Camera>(cameraEntity))
-            {
-                auto& cam = ecs->GetComponent<Camera>(cameraEntity);
-
-                m_sceneData.inverseView = glm::inverse(cam.GetView());
-                m_sceneData.inverseProj = glm::inverse(cam.GetProjection());
-                m_sceneData.cameraPosition = cam.GetPosition();
-                m_vrc.nearFar = cam.GetNearFar();
-            }
+            m_sceneData.inverseView = glm::inverse(camera->GetView());
+            m_sceneData.inverseProj = glm::inverse(camera->GetProjection());
+            m_sceneData.cameraPosition = camera->GetPosition();
+            m_vrc.nearFar = camera->GetNearFar();
         }
 
         m_sceneData.lightDirection = glm::vec3(-0.3, 14.0, -2.5);

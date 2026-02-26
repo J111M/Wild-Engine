@@ -53,20 +53,14 @@ namespace Wild
     {
         auto context = engine.GetGfxContext();
         auto ecs = engine.GetECS();
-        auto& cameras = ecs->View<Camera>();
+        Camera* camera = GetActiveCamera();
 
         CameraProjection camData{};
 
-        // Loop over all camera's TODO make the code run for each camera entity
-        for (auto& cameraEntity : cameras)
+        if (camera)
         {
-            if (ecs->HasComponent<Camera>(cameraEntity))
-            {
-                auto& cam = ecs->GetComponent<Camera>(cameraEntity);
-
-                camData.view = glm::mat4(glm::mat3(cam.GetView()));
-                camData.proj = cam.GetProjection();
-            }
+            camData.view = glm::mat4(glm::mat3(camera->GetView()));
+            camData.proj = camera->GetProjection();
         }
 
         int frameIndex = context->GetBackBufferIndex();
@@ -502,6 +496,7 @@ namespace Wild
 
                         // Transition resources so they are ready for use
                         m_brdfLut->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                        passData.irradianceTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                         m_specularMap->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                         passData.environmentCubeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                     }

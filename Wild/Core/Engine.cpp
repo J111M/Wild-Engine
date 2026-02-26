@@ -25,9 +25,25 @@ namespace Wild
         auto previousTime = std::chrono::high_resolution_clock::now();
         auto endTime = previousTime;
 
-        auto CameraEntity = engine.GetECS()->CreateEntity();
-        auto& transform = engine.GetECS()->AddComponent<Transform>(CameraEntity, glm::vec3(0, 0, 0), CameraEntity);
-        auto& camera = engine.GetECS()->AddComponent<Camera>(CameraEntity, glm::vec3(0, 0, 5));
+        {
+            auto cameraEntity = engine.GetECS()->CreateEntity();
+            auto& transform = engine.GetECS()->AddComponent<Transform>(cameraEntity, glm::vec3(0, 0, 0), cameraEntity);
+            transform.Name = "Main camera";
+
+            auto& camera = engine.GetECS()->AddComponent<Camera>(cameraEntity, glm::vec3(0, 0, 5), 0u);
+            camera.SetMovementActivity(true);
+        }
+
+#ifdef DEBUG
+        // Second camera for debugging
+        /* {
+             auto cameraEntity = engine.GetECS()->CreateEntity();
+             auto& transform = engine.GetECS()->AddComponent<Transform>(cameraEntity, glm::vec3(0, 0, 0), cameraEntity);
+             transform.Name = "Debug camera";
+             auto& camera = engine.GetECS()->AddComponent<Camera>(cameraEntity, glm::vec3(0, 0, 5), 1u);
+             camera.SetMovementActivity(false);
+         }*/
+#endif // DEBUG
 
         float frameTime{};
         int frameCount = 0;
@@ -40,9 +56,21 @@ namespace Wild
             float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
             previousTime = currentTime;
 
-            camera.Input(*m_window.get(), m_window->GetWidth(), m_window->GetHeight(), deltaTime);
-            camera.UpdateMatrix(glm::radians(70.0f), m_window->AspectRatio(), 0.1f, 1000.0f);
+            auto& cameras = m_ecs->View<Camera>();
 
+            Camera* mainCamera{};
+
+            for (auto& cameraEntity : cameras)
+            {
+                if (m_ecs->HasComponent<Camera>(cameraEntity))
+                {
+                    auto& camera = m_ecs->GetComponent<Camera>(cameraEntity);
+                    camera.Input(*m_window.get(), m_window->GetWidth(), m_window->GetHeight(), deltaTime);
+                    camera.UpdateMatrix(glm::radians(70.0f), m_window->AspectRatio(), 0.1f, 1000.0f);
+
+                    if (camera.GetCameraIndex() == 0u) { mainCamera = &camera; }
+                }
+            }
             if (m_gfxContext->ResizeWindow()) { m_renderer->FlushResources(); }
 
             m_gfxContext->BeginFrame();
@@ -63,7 +91,7 @@ namespace Wild
             // Displays profiled data
             m_profiler->Display();
 
-            m_imguiCore->DrawGizmo(camera.GetView(), camera.GetProjection());
+            if (mainCamera) { m_imguiCore->DrawGizmo(mainCamera->GetView(), mainCamera->GetProjection()); }
 
             m_imguiCore->DrawViewport(m_renderer.get());
             m_imguiCore->Draw();
