@@ -329,6 +329,11 @@ namespace Wild
                     }
 
                     /// Generate Irradiance map
+                    if (passData.irradianceTexture->LoadFromDisk("Assets/Textures/IBL/Irradiance/"))
+                    {
+                        WD_INFO("Cached Irradiance texture successfully loaded.");
+                    }
+                    else
                     {
                         settings.ShaderState.VertexShader =
                             engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/CaptureIBLVert.slang");
@@ -392,9 +397,9 @@ namespace Wild
                             list.GetList()->DrawInstanced(36, 1, 0, 0);
                             list.EndRender();
                         }
-
-                        passData.irradianceTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                     }
+
+                    passData.irradianceTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
                     /// BRDF look up table pass generated with compute
                     {
@@ -426,6 +431,11 @@ namespace Wild
                     }
 
                     /// Specular reflection pass generated with compute
+                    if (m_specularMap->LoadFromDisk("Assets/Textures/IBL/Specular/"))
+                    {
+                        WD_INFO("Cached specular texture successfully loaded.");
+                    }
+                    else
                     {
                         PipelineStateSettings computeSettings{};
                         computeSettings.ShaderState.ComputeShader =
@@ -493,13 +503,13 @@ namespace Wild
                         }
 
                         list.EndRender();
-
-                        // Transition resources so they are ready for use
-                        m_brdfLut->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                        passData.irradianceTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                        m_specularMap->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                        passData.environmentCubeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                     }
+
+                    // Transition resources so they are ready for use
+                    m_brdfLut->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                    passData.irradianceTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                    m_specularMap->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                    passData.environmentCubeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
                     // Set all their resources into the renderer TODO modify so that they are set in the pass
                     renderer.irradianceMap = passData.irradianceTexture;

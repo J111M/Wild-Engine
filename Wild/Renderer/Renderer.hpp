@@ -51,6 +51,8 @@ namespace Wild
         void AddLine(const glm::vec3& a, const glm::vec3& b, const glm::vec3& color = {1, 1, 1});
         void AddAABB(const glm::vec3& min, const glm::vec3& max, const glm::vec3& color = {1, 1, 1});
 
+        void CacheIBLTextures();
+
         Camera* GetActiveCamera();
 
         Texture* irradianceMap{};
@@ -66,6 +68,8 @@ namespace Wild
         std::shared_ptr<TransientResourceCache> m_resourceCache;
 
         std::unordered_map<std::string, std::shared_ptr<PipelineState>> m_pipelineCache;
+
+        bool m_texturesCached = false;
     };
 
     template <typename T> inline T* Renderer::GetRenderFeature()

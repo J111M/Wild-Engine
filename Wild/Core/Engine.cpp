@@ -71,6 +71,8 @@ namespace Wild
                     if (camera.GetCameraIndex() == 0u) { mainCamera = &camera; }
                 }
             }
+
+            // Check if the window is resized before calling a new frame
             if (m_gfxContext->ResizeWindow()) { m_renderer->FlushResources(); }
 
             m_gfxContext->BeginFrame();
@@ -78,6 +80,7 @@ namespace Wild
 #ifdef DEBUG
             m_imguiCore->Prepare();
 
+            // Debug variables
             m_imguiCore->Watch("Frame time: ", &frameTime);
             m_imguiCore->Watch("delta time: ", &deltaTime);
             m_imguiCore->Watch("FPS: ", &m_fps);
@@ -99,6 +102,8 @@ namespace Wild
             m_gfxContext->EndFrame();
 
             glfwPollEvents();
+
+            m_renderer->CacheIBLTextures();
 
             endTime = std::chrono::high_resolution_clock::now();
             frameTime = std::chrono::duration<float, std::milli>(endTime - currentTime).count();

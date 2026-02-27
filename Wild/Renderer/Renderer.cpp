@@ -135,6 +135,20 @@ namespace Wild
         if (lineRenderer) lineRenderer->AddAABB(min, max, color);
     }
 
+    void Renderer::CacheIBLTextures()
+    {
+        if (!m_texturesCached)
+        {
+            // Check if texture is loaded to not copy it over unnecessarily
+            // Load IBL texture to disk
+            if (!irradianceMap->IsLoaded()) irradianceMap->CopyToDisk("Assets/Textures/IBL/Irradiance/");
+
+            if (!specularMap->IsLoaded()) specularMap->CopyToDisk("Assets/Textures/IBL/Specular/");
+
+            m_texturesCached = true;
+        }
+    }
+
     Camera* Renderer::GetActiveCamera()
     {
         Camera* camera = nullptr;

@@ -3,6 +3,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 namespace Wild
 {
     Texture::Texture(const std::string& filePath, TextureType type, uint32_t mips, DXGI_FORMAT format)
@@ -54,7 +57,7 @@ namespace Wild
             textureDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
             if (m_desc.flag & TextureDesc::readWrite) { textureDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS; }
-            
+
             D3D12_CLEAR_VALUE clearValue = {};
             clearValue.Format = m_desc.format;
             clearValue.Color[0] = 0.0f;
@@ -88,7 +91,10 @@ namespace Wild
                 }
                 m_rtvArrayAvailiable = true;
             }
-            else { m_rtv = std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc); }
+            else
+            {
+                m_rtv = std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc);
+            }
         }
 
         if (desc.flag & TextureDesc::depthStencil)
@@ -175,7 +181,10 @@ namespace Wild
 
                 m_uavArrayAvailiable = true;
             }
-            else { m_uav = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc); }
+            else
+            {
+                m_uav = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc);
+            }
         }
 
         if (m_desc.flag & TextureDesc::ViewFlag::shaderResource)
@@ -221,7 +230,177 @@ namespace Wild
 
     void Texture::Transition(CommandList& list, D3D12_RESOURCE_STATES newState) { m_resource->Transition(list, newState); }
 
-    void Texture::LoadToDisk(const std::string& filePath) {}
+    void Texture::CopyToDisk(const std::string& savePath)
+    {
+        auto& device = engine.GetGfxContext()->GetDevice();
+
+        UINT numSubresources = m_desc.Layers * m_desc.mips;
+        std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(numSubresources);
+        std::vector<UINT> numRows(numSubresources);
+        std::vector<UINT64> rowSizes(numSubresources);
+        UINT64 totalSize = 0;
+
+        D3D12_RESOURCE_DESC texDesc = m_resource->GetDesc();
+        device->GetCopyableFootprints(
+            &texDesc, 0, numSubresources, 0, footprints.data(), numRows.data(), rowSizes.data(), &totalSize);
+
+        // Readback buffer for fetching my texture data
+        CD3DX12_HEAP_PROPERTIES readbackHeap(D3D12_HEAP_TYPE_READBACK);
+        CD3DX12_RESOURCE_DESC bufDesc = CD3DX12_RESOURCE_DESC::Buffer(totalSize);
+
+        ComPtr<ID3D12Resource> readbackBuffer;
+        device->CreateCommittedResource(&readbackHeap,
+                                        D3D12_HEAP_FLAG_NONE,
+                                        &bufDesc,
+                                        D3D12_RESOURCE_STATE_COPY_DEST,
+                                        nullptr,
+                                        IID_PPV_ARGS(&readbackBuffer));
+
+        CommandList tempList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+        Transition(tempList, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+        for (UINT sub = 0; sub < numSubresources; ++sub)
+        {
+            CD3DX12_TEXTURE_COPY_LOCATION dst(readbackBuffer.Get(), footprints[sub]);
+            CD3DX12_TEXTURE_COPY_LOCATION src(m_resource->Handle().Get(), sub);
+            tempList.GetList()->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+        }
+
+        Transition(tempList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+        tempList.Close();
+        engine.GetGfxContext()->GetCommandQueue(QueueType::Direct)->ExecuteList(tempList);
+        engine.GetGfxContext()->GetCommandQueue(QueueType::Direct)->WaitForFence();
+
+        void* mappedData = nullptr;
+        readbackBuffer->Map(0, nullptr, &mappedData);
+        uint8_t* base = reinterpret_cast<uint8_t*>(mappedData);
+
+        for (UINT mip = 0; mip < m_desc.mips; ++mip)
+        {
+            for (UINT face = 0; face < m_desc.Layers; ++face)
+            {
+                UINT sub = mip + face * m_desc.mips;
+                auto& fp = footprints[sub];
+                UINT w = fp.Footprint.Width;
+                UINT h = fp.Footprint.Height;
+                UINT rowPitch = fp.Footprint.RowPitch;
+
+                // 4 channel storage
+                std::vector<float> pixels(w * h * 4);
+
+                uint8_t* subBase = base + fp.Offset;
+                for (UINT row = 0; row < h; ++row)
+                {
+                    uint16_t* src = reinterpret_cast<uint16_t*>(subBase + row * rowPitch);
+                    float* dst = pixels.data() + row * w * 4;
+                    for (UINT p = 0; p < w * 4; ++p)
+                        dst[p] = f16Tof32(src[p]);
+                }
+
+                std::stringstream stringFormat{};
+                stringFormat << savePath << "Mip" << mip << "/" << arr[face];
+                std::filesystem::create_directories(savePath + "Mip" + std::to_string(mip));
+                stbi_write_hdr(stringFormat.str().c_str(), w, h, 4, pixels.data());
+
+                WD_INFO("Texuture successfuly loaded to disk: " + stringFormat.str());
+            }
+        }
+
+        D3D12_RANGE emptyRange{0, 0};
+        readbackBuffer->Unmap(0, &emptyRange);
+    }
+
+    bool Texture::LoadFromDisk(const std::string& loadPath)
+    {
+        auto& device = engine.GetGfxContext()->GetDevice();
+
+        std::stringstream fileExistCheck{};
+        fileExistCheck << loadPath << "Mip" << 0 << "/" << arr[0];
+
+        if (!std::filesystem::exists(fileExistCheck.str()))
+        {
+            WD_INFO("File: " + loadPath + " is not cached yet.");
+            return false;
+        }
+
+        CommandList tempList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+        Transition(tempList, D3D12_RESOURCE_STATE_COPY_DEST);
+
+        UINT numSubresources = m_desc.Layers * m_desc.mips;
+        std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(numSubresources);
+        std::vector<UINT> numRows(numSubresources);
+        std::vector<UINT64> rowSizes(numSubresources);
+        UINT64 totalSize = 0;
+        D3D12_RESOURCE_DESC texDesc = m_resource->GetDesc();
+        device->GetCopyableFootprints(
+            &texDesc, 0, numSubresources, 0, footprints.data(), numRows.data(), rowSizes.data(), &totalSize);
+
+        // One upload buffer for all subresources
+        CD3DX12_HEAP_PROPERTIES uploadHeap(D3D12_HEAP_TYPE_UPLOAD);
+        CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(totalSize);
+        ComPtr<ID3D12Resource> uploadBuffer;
+        device->CreateCommittedResource(&uploadHeap,
+                                        D3D12_HEAP_FLAG_NONE,
+                                        &bufferDesc,
+                                        D3D12_RESOURCE_STATE_GENERIC_READ,
+                                        nullptr,
+                                        IID_PPV_ARGS(&uploadBuffer));
+
+        void* mappedData = nullptr;
+        uploadBuffer->Map(0, nullptr, &mappedData);
+        uint8_t* base = reinterpret_cast<uint8_t*>(mappedData);
+
+        for (UINT mip = 0; mip < m_desc.mips; ++mip)
+        {
+            for (UINT face = 0; face < m_desc.Layers; ++face)
+            {
+                UINT sub = mip + face * m_desc.mips;
+                auto& fp = footprints[sub];
+                UINT w = fp.Footprint.Width;
+                UINT h = fp.Footprint.Height;
+                UINT rowPitch = fp.Footprint.RowPitch;
+
+                std::stringstream path{};
+                path << loadPath << "Mip" << mip << "/" << arr[face];
+
+                int fileWidth{}, fileHeight{}, channels{};
+                float* pixels = stbi_loadf(path.str().c_str(), &fileWidth, &fileHeight, &channels, 4);
+                if (!pixels || fileWidth != (int)w || fileHeight != (int)h)
+                {
+                    WD_WARN(("Failed to load: " + loadPath + " texture was mot cached." + "\n").c_str());
+                    return false;
+                }
+
+                // Copy into upload buffer respecting GPU row pitch alignment
+                uint8_t* subBase = base + fp.Offset;
+                for (UINT row = 0; row < h; ++row)
+                {
+                    float* src = pixels + row * w * 4;
+                    uint16_t* dst = reinterpret_cast<uint16_t*>(subBase + row * rowPitch);
+                    for (UINT p = 0; p < w * 4; ++p)
+                        dst[p] = f32Tof16(src[p]);
+                }
+
+                stbi_image_free(pixels);
+
+                CD3DX12_TEXTURE_COPY_LOCATION srcLoc(uploadBuffer.Get(), fp);
+                CD3DX12_TEXTURE_COPY_LOCATION dstLoc(m_resource->Handle().Get(), sub);
+                tempList.GetList()->CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, nullptr);
+            }
+        }
+
+        D3D12_RANGE emptyRange{0, 0};
+        uploadBuffer->Unmap(0, &emptyRange);
+
+        Transition(tempList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        tempList.Close();
+        engine.GetGfxContext()->GetCommandQueue(QueueType::Direct)->ExecuteList(tempList);
+        engine.GetGfxContext()->GetCommandQueue(QueueType::Direct)->WaitForFence();
+
+        m_loadedFromDisk = true;
+        return true;
+    }
 
     /*void Texture::Barrier(CommandList& list, BarrierType type)
     {
@@ -452,5 +631,37 @@ namespace Wild
         srvDesc.Texture2D.MipLevels = 1;
 
         m_srv = std::make_shared<ShaderResourceView>(m_resource->Handle(), srvDesc);
+    }
+
+    float Texture::f16Tof32(uint16_t h)
+    {
+
+        uint32_t sign = (h >> 15) & 0x1;
+        uint32_t exponent = (h >> 10) & 0x1f;
+        uint32_t mantissa = h & 0x3ff;
+
+        uint32_t f;
+        if (exponent == 0)
+            f = (sign << 31) | (mantissa << 13); // denorm
+        else if (exponent == 31)
+            f = (sign << 31) | (0xFF << 23) | (mantissa << 13); // inf/nan
+        else
+            f = (sign << 31) | ((exponent + 112) << 23) | (mantissa << 13);
+
+        float result;
+        memcpy(&result, &f, sizeof(float));
+        return result;
+    }
+
+    uint16_t Texture::f32Tof16(float f)
+    {
+        uint32_t x;
+        memcpy(&x, &f, sizeof(float));
+        uint16_t sign = (x >> 16) & 0x8000;
+        int32_t exponent = ((x >> 23) & 0xFF) - 127 + 15;
+        uint32_t mantissa = x & 0x7FFFFF;
+        if (exponent <= 0) return sign;
+        if (exponent >= 31) return sign | 0x7C00;
+        return sign | (exponent << 10) | (mantissa >> 13);
     }
 } // namespace Wild

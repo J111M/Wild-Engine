@@ -61,7 +61,9 @@ namespace Wild
         void Transition(CommandList& list, D3D12_RESOURCE_STATES newState);
         // void Barrier(CommandList& list, BarrierType type);
 
-        void LoadToDisk(const std::string& filePath);
+        // TODO move to HDRI class
+        void CopyToDisk(const std::string& filePath);
+        bool LoadFromDisk(const std::string& loadPath);
 
         ID3D12Resource* GetResource() { return m_resource->Handle().Get(); }
         TextureDesc GetDesc() { return m_desc; }
@@ -80,10 +82,16 @@ namespace Wild
         std::shared_ptr<DepthStencilView> GetDsv() const;
         std::shared_ptr<ShaderResourceView> GetSrv() const;
 
+        const bool IsLoaded() const { return m_loadedFromDisk; }
+
       private:
         void CreateTexture(const std::string& filePath);
         void CreateCubeMapTexture(const std::string& filePath);
         void CreateSkyboxTexture(const std::string& filePath);
+
+        // TODO move to hdri class
+        float f16Tof32(uint16_t h);
+        uint16_t f32Tof16(float f);
 
         std::unique_ptr<Resource> m_resource;
 
@@ -103,5 +111,11 @@ namespace Wild
         std::shared_ptr<ShaderResourceView> m_srv;
 
         TextureDesc m_desc;
+
+        // TODO move to hdri class
+        bool m_loadedFromDisk = false;
+
+        // Name for all cube faces
+        std::string arr[6] = {"px.hdr", "nx.hdr", "py.hdr", "ny.hdr", "pz.hdr", "nz.hdr"};
     };
 } // namespace Wild
