@@ -31,104 +31,143 @@ namespace Wild
             passData->shadowMap[cascade] = rg.CreateTransientTexture(name, desc);
         }
 
-        rg.AddPass<CsmPassData>(
-            "Cascaded shadow maps", PassType::Graphics, [&renderer, this](CsmPassData& passData, CommandList& list) {
-                PipelineStateSettings settings{};
-                settings.ShaderState.VertexShader =
-                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/CascadedShadowsVert.slang");
-                settings.ShaderState.FragShader =
-                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/CascadedShadowsFrag.slang");
-                settings.DepthStencilState.DepthEnable = true;
-                settings.RasterizerState.CullMode = CullMode::Front;
+        rg.AddPass<
+            CsmPassData>("Cascaded shadow maps", PassType::Graphics, [&renderer, this](CsmPassData& passData, CommandList& list) {
+            PipelineStateSettings settings{};
+            settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/CascadedShadowsVert.slang");
+            settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/CascadedShadowsFrag.slang");
+            settings.DepthStencilState.DepthEnable = true;
+            settings.RasterizerState.CullMode = CullMode::Front;
 
-                // Hard coded size for now TODO use texture size
-                settings.RasterizerState.Viewport.size = glm::vec2(2048, 2048);
+            // Hard coded size for now TODO use texture size
+            settings.RasterizerState.Viewport.size = glm::vec2(2048, 2048);
 
-                // Setting up the input layout
-                settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
-                settings.ShaderState.InputLayout.emplace_back(
-                    InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
-                settings.ShaderState.InputLayout.emplace_back(
-                    InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
-                settings.ShaderState.InputLayout.emplace_back(
-                    InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
-                settings.ShaderState.InputLayout.emplace_back(
-                    InputElement("TANGENT", DXGI_FORMAT_R32G32B32A32_FLOAT, sizeof(glm::vec3) * 3 + sizeof(glm::vec2)));
+            // Setting up the input layout
+            settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+            settings.ShaderState.InputLayout.emplace_back(InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
+            settings.ShaderState.InputLayout.emplace_back(
+                InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
+            settings.ShaderState.InputLayout.emplace_back(
+                InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
+            settings.ShaderState.InputLayout.emplace_back(
+                InputElement("TANGENT", DXGI_FORMAT_R32G32B32A32_FLOAT, sizeof(glm::vec3) * 3 + sizeof(glm::vec2)));
 
-                std::vector<Uniform> uniforms;
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(CsmRC)};
-                uniforms.emplace_back(rootConstant);
+            std::vector<Uniform> uniforms;
+            Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(CsmRC)};
+            uniforms.emplace_back(rootConstant);
 
-                Uniform lightBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
-                uniforms.emplace_back(lightBuffer);
+            Uniform lightBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
+            uniforms.emplace_back(lightBuffer);
 
-                auto& pipeline =
-                    renderer.GetOrCreatePipeline("Cascaded shadow maps pass", PipelineStateType::Graphics, settings, uniforms);
+            auto& pipeline =
+                renderer.GetOrCreatePipeline("Cascaded shadow maps pass", PipelineStateType::Graphics, settings, uniforms);
 
-                for (size_t i = 0; i < SHADOWMAP_CASCADES; i++)
+            for (size_t i = 0; i < SHADOWMAP_CASCADES; i++)
+            {
+                list.SetPipelineState(pipeline);
+
+                list.BeginRender(
+                    {}, {ClearOperation::Store}, {passData.shadowMap[i]}, DSClearOperation::DepthClear, "Cascaded shadow pass");
+
+                auto meshes = engine.GetECS()->GetRegistry().view<Transform, Mesh>();
+                for (auto&& [entity, trans, mesh] : meshes.each())
                 {
-                    list.SetPipelineState(pipeline);
+                    m_rc.localModel = trans.GetWorldMatrix();
+                    m_rc.cascadeIndex = i;
 
-                    list.BeginRender({},
-                                     {ClearOperation::Store},
-                                     {passData.shadowMap[i]},
-                                     DSClearOperation::DepthClear,
-                                     "Cascaded shadow pass");
+                    list.SetRootConstant<CsmRC>(0, m_rc);
+                    list.SetConstantBufferView(1, m_directionalLightBuffer.get());
 
-                    auto meshes = engine.GetECS()->GetRegistry().view<Transform, Mesh>();
-                    for (auto&& [entity, trans, mesh] : meshes.each())
+                    list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
+
+                    if (mesh.HasIndexBuffer())
                     {
-                        m_rc.localModel = trans.GetWorldMatrix();
-                        m_rc.cascadeIndex = i;
-
-                        list.SetRootConstant<CsmRC>(0, m_rc);
-                        list.SetConstantBufferView(1, m_directionalLightBuffer.get());
-
-                        list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
-
-                        if (mesh.HasIndexBuffer())
-                        {
-                            list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
-                            list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
-                        }
-                        else
-                        {
-                            list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
-                        }
+                        list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
+                        list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
                     }
-
-                    list.EndRender();
-
-                    passData.shadowMap[i]->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                    else
+                    {
+                        list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
+                    }
                 }
 
-                passData.directLightBuffer = m_directionalLightBuffer;
+                list.EndRender();
 
-                renderer.AddAABB(glm::vec3(0.0f, 0.0f, 0), glm::vec3(20.0f, 20.0f, 20.0f), glm::vec3(0, 1, 0));
+                passData.shadowMap[i]->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            }
 
-                // Debug the shadow map
-                engine.GetImGui()->AddPanel("Shadowmap Textures", [this, passData]() {
-                    for (size_t i = 0; i < SHADOWMAP_CASCADES; i++)
-                    {
-                        engine.GetImGui()->DisplayTexture(passData.shadowMap[i]);
-                    }
-                });
+            passData.directLightBuffer = m_directionalLightBuffer;
+
+            // Debug the shadow map
+            for (size_t i = 0; i < SHADOWMAP_CASCADES; i++)
+            {
+                const glm::vec3 color[]{glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1), glm::vec3(1, 1, 0)};
+
+                float l = m_minExtents[i].x, b = m_minExtents[i].y, n = m_minExtents[i].z;
+                float r = m_maxExtents[i].x, t = m_maxExtents[i].y, f = m_maxExtents[i].z;
+
+                glm::mat4 invLightView = glm::inverse(m_lightView[i]);
+
+                glm::vec3 wsCorners[8] = {{l, b, n}, {r, b, n}, {r, t, n}, {l, t, n}, {l, b, f}, {r, b, f}, {r, t, f}, {l, t, f}};
+
+                for (auto& c : wsCorners)
+                {
+                    glm::vec4 ws = invLightView * glm::vec4(c, 1.0f);
+                    c = glm::vec3(ws) / ws.w;
+                }
+
+                renderer.AddLine(wsCorners[0], wsCorners[1], color[i]);
+                renderer.AddLine(wsCorners[1], wsCorners[2], color[i]);
+                renderer.AddLine(wsCorners[2], wsCorners[3], color[i]);
+                renderer.AddLine(wsCorners[3], wsCorners[0], color[i]);
+
+                renderer.AddLine(wsCorners[4], wsCorners[5], color[i]);
+                renderer.AddLine(wsCorners[5], wsCorners[6], color[i]);
+                renderer.AddLine(wsCorners[6], wsCorners[7], color[i]);
+                renderer.AddLine(wsCorners[7], wsCorners[4], color[i]);
+
+                renderer.AddLine(wsCorners[0], wsCorners[4], color[i]);
+                renderer.AddLine(wsCorners[1], wsCorners[5], color[i]);
+                renderer.AddLine(wsCorners[2], wsCorners[6], color[i]);
+                renderer.AddLine(wsCorners[3], wsCorners[7], color[i]);
+
+                renderer.AddLine(m_lightDirDebug[i], m_lightDirDebug2[i], glm::vec3(1, 1, 1));
+            }
+
+            engine.GetImGui()->AddPanel("Shadowmap Textures", [this, passData]() {
+                for (size_t i = 0; i < SHADOWMAP_CASCADES; i++)
+                {
+                    engine.GetImGui()->DisplayTexture(passData.shadowMap[i]);
+                }
             });
+        });
     }
 
     void CascadedShadowMaps::Update(const float dt)
     {
         engine.GetImGui()->AddPanel("Shadowmap settings", [this]() {
-            if (ImGui::SliderFloat3("Light direction: ", &m_directLight.lightDirectionIntensity[0], -20.0f, 20.0f))
+            if (ImGui::SliderFloat3("Light direction: ", &m_directLight.lightDirectionIntensity[0], -100.0f, 100.0f))
             {
                 m_lightChanged = true;
             }
+
+            if (ImGui::Button("Lock debug frustum")) { m_lockFrustum = !m_lockFrustum; }
         });
 
         Camera* camera = GetActiveCamera();
 
         if (camera)
         {
+            if (!m_lockFrustum)
+            {
+                m_minExtents.clear();
+                m_maxExtents.clear();
+                m_lightView.clear();
+                m_frustumCorners.clear();
+                m_lightDirDebug.clear();
+                m_lightDirDebug2.clear();
+            }
+
             for (uint32_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
             {
                 glm::mat4 cascadeProjections{};
@@ -151,18 +190,11 @@ namespace Wild
                 cascadeProjections = glm::perspective(camera->GetFOV(), camera->GetAspect(), nearFar[0], nearFar[1]);
                 cascadeFarDistances = nearFar[1];
 
-                glm::vec3 light = glm::normalize(glm::vec3(m_directLight.lightDirectionIntensity.x,
-                                                           m_directLight.lightDirectionIntensity.y,
-                                                           m_directLight.lightDirectionIntensity.z));
-
-                glm::vec3 lightDir = light;
-                // glm::vec3 up = (glm::abs(lightDir.y) > 0.99f) ? glm::vec3(0, 0, 1) : ;
-                glm::vec3 lightPos = light;
-
-                const glm::mat4 cascadeViewProj = glm::orthoRH_ZO(-20.0f, 20.0f, -20.0f, 20.0f, 1.0f, 20.0f) *
-                    glm::lookAtRH(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
-                //= GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,
-                // m_directLight.lightDirectionIntensity.y,m_directLight.lightDirectionIntensity.z),camera.GetView(),cascadeProjections);
+                const glm::mat4 cascadeViewProj = GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,
+                                                                             m_directLight.lightDirectionIntensity.y,
+                                                                             m_directLight.lightDirectionIntensity.z),
+                                                                   camera->GetView(),
+                                                                   cascadeProjections);
 
                 m_directLight.viewProj[cascade] = cascadeViewProj;
                 m_directLight.cascadeDistance[cascade] = cascadeFarDistances;
@@ -213,17 +245,45 @@ namespace Wild
 
         const glm::vec3 maxExtents(radius, radius, radius);
         const glm::vec3 minExtents = -maxExtents;
-        const glm::vec3 cascadeExtents = maxExtents - minExtents;
+        // const glm::vec3 cascadeExtents = maxExtents - minExtents;
 
-        const glm::vec3 lightPos = frustumCenter + glm::normalize(lightDir) * radius;
-        const glm::mat4 lightView = glm::lookAtRH(lightPos, frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
+        if (glm::abs(glm::dot(glm::normalize(lightDir), upVector)) > 0.99f) upVector = glm::vec3(0.0f, 0.0f, 1.0f);
+
+        const glm::vec3 lightPos = frustumCenter - glm::normalize(lightDir) * radius;
+        const glm::mat4 lightView = glm::lookAtRH(lightPos, frustumCenter, upVector);
 
         float l = minExtents.x;
         float b = minExtents.y;
-        float n = minExtents.z;
+        float n = 0.0f;
         float r = maxExtents.x;
         float t = maxExtents.y;
-        float f = maxExtents.z * 1.5f;
+        float f = radius * 2.0f * 1.5f;
+
+        if (!m_lockFrustum)
+        {
+            glm::vec3 lsCenter = glm::vec3((l + r) * 0.5f, (b + t) * 0.5f, (n + f) * 0.5f);
+            glm::vec4 wsCenterH = glm::inverse(lightView) * glm::vec4(lsCenter, 1.0f);
+            glm::vec3 wsCenter = glm::vec3(wsCenterH) / wsCenterH.w;
+
+            glm::vec3 lightDir = glm::normalize(glm::vec3(m_directLight.lightDirectionIntensity.x,
+                                                          m_directLight.lightDirectionIntensity.y,
+                                                          m_directLight.lightDirectionIntensity.z));
+
+            float arrowLen = glm::length(glm::vec3(r - l, t - b, f - n)) * 0.3f; // scale relative to cascade size
+
+            m_lightDirDebug.push_back(wsCenter);
+            m_lightDirDebug2.push_back(wsCenter + lightDir * arrowLen);
+
+            m_minExtents.push_back(glm::vec3(l, b, n));
+            m_maxExtents.push_back(glm::vec3(r, t, f));
+            m_lightView.push_back(lightView);
+
+            for (size_t i = 0; i < cornersWS.size(); i++)
+            {
+                m_frustumCorners.push_back(cornersWS);
+            }
+        }
 
         const glm::mat4 lightProj = glm::orthoRH_ZO(l, r, b, t, n, f);
 

@@ -27,14 +27,14 @@ cbuffer Constants : register(b0)
 };
 
 Texture2D textures[4096] : register(t0, space0);
-SamplerState anisotropySampler : register(s0);
+SamplerState anisotropicWrapSampler : register(s0);
 
 
 [shader("fragment")]
 PSOut main(PSInput input)
 {
     float4 albedo = float4(0, 0, 0, 0);
-    if (albedoView != 0) { albedo = textures[NonUniformResourceIndex(albedoView)].Sample(anisotropySampler, input.uv); }
+    if (albedoView != 0) { albedo = textures[NonUniformResourceIndex(albedoView)].Sample(anisotropicWrapSampler, input.uv); }
     else {
         albedo = float4(1, 1, 1, 1);
     }
@@ -42,7 +42,7 @@ PSOut main(PSInput input)
     float4 normal = float4(0, 0, 0, 0);
     if (normalView != 0)
     {
-        normal.xyz = textures[NonUniformResourceIndex(normalView)].Sample(anisotropySampler, input.uv).xyz;
+        normal.xyz = textures[NonUniformResourceIndex(normalView)].Sample(anisotropicWrapSampler, input.uv).xyz;
         normal.xyz = normal.xyz * 2.0 - 1.0;
         //normal.xyz = mul((float3x3)invTransposeModel, normal.xyz);
 
@@ -66,7 +66,7 @@ PSOut main(PSInput input)
     float4 emissive = float4(0, 0, 0, 0);
     if (emissiveView != 0)
     {
-        emissive = textures[NonUniformResourceIndex(emissiveView)].Sample(anisotropySampler, input.uv);
+        emissive = textures[NonUniformResourceIndex(emissiveView)].Sample(anisotropicWrapSampler, input.uv);
     }
 
     float roughness = 0.8f;
@@ -74,7 +74,7 @@ PSOut main(PSInput input)
     
     if (roughnessMetallicView != 0)
     {
-        float2 rm = textures[NonUniformResourceIndex(roughnessMetallicView)].Sample(anisotropySampler, input.uv).gb;
+        float2 rm = textures[NonUniformResourceIndex(roughnessMetallicView)].Sample(anisotropicWrapSampler, input.uv).gb;
         roughness = rm.x;
         metallic = rm.y;
     }

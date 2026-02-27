@@ -70,7 +70,7 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal) {
 
     int layer = -1;
     for (int i = 0; i < SHADOWMAP_CASCADES; ++i) {
-        if (depthValue < cascadeDistance[0]) {
+        if (depthValue < cascadeDistance[i]) {
             layer = i;
             break;
         }
@@ -81,7 +81,7 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal) {
     }
 
     // Convert worldSpace to light space
-    float4 lightSpacePosition = mul(lightSpaceViewProj[0], float4(worldSpaceFragPosition, 1.0));
+    float4 lightSpacePosition = mul(lightSpaceViewProj[layer], float4(worldSpaceFragPosition, 1.0));
 
     // Perspective divide
     float3 projCoords = lightSpacePosition.xyz / lightSpacePosition.w;
@@ -103,17 +103,17 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal) {
     // Offset by shadow position
     float bias = max(0.05 * (1.0 - dot(normal, normalize(lightDirectionIntensity.xyz))), 0.005);
     const float biasModifier = 0.5f;
-    if (layer == SHADOWMAP_CASCADES)
-    {
-        bias *= 1 / (cameraFar * biasModifier);
-    }
-    else
-    {
-        bias *= 1 / (cascadeDistance[0] * biasModifier);
-    }
+    //if (layer == SHADOWMAP_CASCADES)
+    //{
+    //    bias *= 1 / (cameraFar * biasModifier);
+    //}
+    //else
+    //{
+    //    bias *= 1 / (cascadeDistance[0] * biasModifier);
+    //}
 
     float shadow = 0.0f;
-    texture2D shadowMap = textures[shadowMapView[0]];
+    texture2D shadowMap = textures[shadowMapView[layer]];
 
     uint2 textureSize = uint2(0, 0);
     shadowMap.GetDimensions(textureSize.x, textureSize.y);

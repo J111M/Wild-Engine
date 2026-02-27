@@ -361,7 +361,7 @@ namespace Wild
 
                         // Static sampler uniform
                         Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
-                        staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                        staticSampler.filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
                         staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                         staticSampler.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
                         uniforms.emplace_back(staticSampler);

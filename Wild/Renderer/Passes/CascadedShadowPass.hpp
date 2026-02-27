@@ -20,7 +20,7 @@ namespace Wild
 
     struct DirectLightBuffer
     {
-        glm::vec4 lightDirectionIntensity = glm::vec4(-0.3, -20.0, -20.0, 2.0f);
+        glm::vec4 lightDirectionIntensity = glm::vec4(20.0f, 50, 20.0f, 2.0f);
         glm::mat4 viewProj[SHADOWMAP_CASCADES];
         float cascadeDistance[SHADOWMAP_CASCADES];
     };
@@ -43,5 +43,14 @@ namespace Wild
         std::shared_ptr<Buffer> m_directionalLightBuffer{};
 
         bool m_lightChanged = true;
+
+        // Debug values for frustum drawing
+        bool m_lockFrustum = false;
+        std::vector<glm::vec3> m_maxExtents;
+        std::vector<glm::vec3> m_minExtents;
+        std::vector<glm::vec3> m_lightDirDebug;
+        std::vector<glm::vec3> m_lightDirDebug2;
+        std::vector<glm::mat4> m_lightView;
+        std::vector<std::vector<glm::vec3>> m_frustumCorners;
     };
 } // namespace Wild

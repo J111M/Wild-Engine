@@ -50,8 +50,8 @@ cbuffer Camera : register(b2)
 }
 
 Texture2D textures[4096] : register(t0, space0);
-SamplerState linearSampler : register(s0);
-SamplerState anisotropySampler : register(s1);
+SamplerState linearClampSampler : register(s0);
+SamplerState anisotropicWrapSampler : register(s1);
 
 float fbm(float2 p, float2 offset)
 {
@@ -123,9 +123,9 @@ float2 MaskedBlending(float h0, float h1, float mask, float contrast)
 // Source of information https://www.martinpalko.com/triplanar-mapping/
 float4 TriplanarSample(uint textureView, float3 worldPosition, float3 blendWeights, float textureScale)
 {
-    float4 xSample = textures[NonUniformResourceIndex(textureView)].Sample(anisotropySampler, worldPosition.zy * textureScale);
-    float4 ySample = textures[NonUniformResourceIndex(textureView)].Sample(anisotropySampler, worldPosition.xz * textureScale);
-    float4 zSample = textures[NonUniformResourceIndex(textureView)].Sample(anisotropySampler, worldPosition.xy * textureScale);
+    float4 xSample = textures[NonUniformResourceIndex(textureView)].Sample(anisotropicWrapSampler, worldPosition.zy * textureScale);
+    float4 ySample = textures[NonUniformResourceIndex(textureView)].Sample(anisotropicWrapSampler, worldPosition.xz * textureScale);
+    float4 zSample = textures[NonUniformResourceIndex(textureView)].Sample(anisotropicWrapSampler, worldPosition.xy * textureScale);
 
     return xSample * blendWeights.x + ySample * blendWeights.y + zSample * blendWeights.z;
 }
@@ -133,13 +133,13 @@ float4 TriplanarSample(uint textureView, float3 worldPosition, float3 blendWeigh
 float3 TriplanarNormalSample(uint textureView, float3 worldPosition, float3 worldNormal, float3 blendWeights, float textureScale)
 {
     float3 xSample =
-        textures[NonUniformResourceIndex(textureView)].Sample(anisotropySampler, worldPosition.zy * textureScale).xyz * 2.0 -
+        textures[NonUniformResourceIndex(textureView)].Sample(anisotropicWrapSampler, worldPosition.zy * textureScale).xyz * 2.0 -
         1.0;
     float3 ySample =
-        textures[NonUniformResourceIndex(textureView)].Sample(anisotropySampler, worldPosition.xz * textureScale).xyz * 2.0 -
+        textures[NonUniformResourceIndex(textureView)].Sample(anisotropicWrapSampler, worldPosition.xz * textureScale).xyz * 2.0 -
         1.0;
     float3 zSample =
-        textures[NonUniformResourceIndex(textureView)].Sample(anisotropySampler, worldPosition.xy * textureScale).xyz * 2.0 -
+        textures[NonUniformResourceIndex(textureView)].Sample(anisotropicWrapSampler, worldPosition.xy * textureScale).xyz * 2.0 -
         1.0;
 
     xSample = float3(xSample.xy + worldNormal.zy, abs(xSample.z) * worldNormal.x);
@@ -170,7 +170,7 @@ PSOut main(PSInput input)
 
     //  Blend values
     float t = 0.8f;
-    float4 noiseBlend = textures[NonUniformResourceIndex(noiseBlendView)].Sample(anisotropySampler, input.uv);
+    float4 noiseBlend = textures[NonUniformResourceIndex(noiseBlendView)].Sample(anisotropicWrapSampler, input.uv);
     noiseBlend = noiseBlend * 2.0f - 1.0f; // Remap -1, 1
 
     // Load terrain texture data
