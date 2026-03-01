@@ -63,7 +63,7 @@ struct VSOutput
 };
 
 // Shadow map implementation inspired by https://learnopengl.com/Guest-Articles/2021/CSM and modified to work with my system
-float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal) {
+float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal, out int shadowLayer) {
     float4 viewSpacePosition = mul(viewSpace, float4(worldSpaceFragPosition, 1.0f));
 
     float depthValue = abs(viewSpacePosition.z);
@@ -79,6 +79,7 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal) {
     if (layer == -1) {
         layer = SHADOWMAP_CASCADES - 1;
     }
+    shadowLayer = layer;
 
     // Convert worldSpace to light space
     float4 lightSpacePosition = mul(lightSpaceViewProj[layer], float4(worldSpaceFragPosition, 1.0));
@@ -98,10 +99,14 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal) {
         return 0.0;
     }
 
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
+        return 0.0;
+
+
     // Shadow bias
     float3 biasNormal = normalize(normal);
     // Offset by shadow position
-    float bias = max(0.05 * (1.0 - dot(normal, normalize(lightDirectionIntensity.xyz))), 0.005);
+    float bias = max(0.05 * (1.0 - dot(normal, normalize(-lightDirectionIntensity.xyz))), 0.005);
     const float biasModifier = 0.5f;
     //if (layer == SHADOWMAP_CASCADES)
     //{
@@ -248,8 +253,21 @@ float4 main(VSOutput input) : SV_TARGET0
 
     float3 ambient = (iblkD * diffuse + specularIBL + scatterColor) * ao;
 
-    float shadow = ShadowCalculation(positionWS, N);
+    int debugShadow = 0;
+    float shadow = ShadowCalculation(positionWS, N, debugShadow);
     color = (1.0 - shadow) * Lo + ambient + emissive.rgb;
+
+    //switch (debugShadow)
+    //{
+    //case 0:
+    //    return float4(1, 0, 0, 1);
+    //case 1:
+    //    return float4(0, 1, 0, 1);
+    //case 2:
+    //    return float4(0, 0, 1, 1);
+    //case 3:
+    //    return float4(1, 1, 0, 1);
+    //}
 
     switch (debugViewMode)
     {

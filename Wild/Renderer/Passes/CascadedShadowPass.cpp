@@ -151,6 +151,8 @@ namespace Wild
                 m_lightChanged = true;
             }
 
+            ImGui::SliderFloat("Z Mult", &m_zMult, 0.01, 20.0f);
+
             if (ImGui::Button("Lock debug frustum")) { m_lockFrustum = !m_lockFrustum; }
         });
 
@@ -213,6 +215,7 @@ namespace Wild
             for (int y = 0; y < 2; ++y)
                 for (int z = 0; z < 2; ++z)
                 {
+                    //glm::vec4 pt = inv * glm::vec4(2.0f * x - 1.0f, 2.0f * y - 1.0f, 2.0f * z - 1.0f, 1.0f);
                     glm::vec4 pt = inv * glm::vec4(2.0f * x - 1.0f, 2.0f * y - 1.0f, static_cast<float>(z), 1.0f);
                     frustumCorners.push_back(glm::vec3(pt) / pt.w);
                 }
@@ -235,34 +238,31 @@ namespace Wild
 
         frustumCenter /= static_cast<float>(cornersWS.size());
 
-        float radius = 0.0f;
-        for (const glm::vec3& v : cornersWS)
-        {
-            float distance = glm::distance(v, frustumCenter);
-            radius = std::max(radius, distance);
-        }
-        radius = std::ceil(radius * 8.0f) / 8.0f;
-
-        const glm::vec3 maxExtents(radius, radius, radius);
-        const glm::vec3 minExtents = -maxExtents;
+        glm::vec3 min = glm::vec3(FLT_MAX);
+        glm::vec3 max = glm::vec3(-FLT_MAX);
         // const glm::vec3 cascadeExtents = maxExtents - minExtents;
 
         glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
         if (glm::abs(glm::dot(glm::normalize(lightDir), upVector)) > 0.99f) upVector = glm::vec3(0.0f, 0.0f, 1.0f);
 
-        const glm::vec3 lightPos = frustumCenter - glm::normalize(lightDir) * radius;
+        const glm::vec3 lightPos = frustumCenter + glm::normalize(lightDir);
         const glm::mat4 lightView = glm::lookAtRH(lightPos, frustumCenter, upVector);
 
-        float l = minExtents.x;
-        float b = minExtents.y;
-        float n = 0.0f;
-        float r = maxExtents.x;
-        float t = maxExtents.y;
-        float f = radius * 2.0f * 1.5f;
+        for (const auto& corner : cornersWS)
+        {
+            const glm::vec3 cornerLS = glm::vec3(lightView * glm::vec4(corner, 1.0f));
+            min = glm::min(min, cornerLS);
+            max = glm::max(max, cornerLS);
+        }
+ 
+        if (min.z < 0) { min.z *= m_zMult; }
+        else { min.z /= m_zMult; }
+        if (max.z < 0) { max.z /= m_zMult; }
+        else { max.z *= m_zMult; }
 
         if (!m_lockFrustum)
         {
-            glm::vec3 lsCenter = glm::vec3((l + r) * 0.5f, (b + t) * 0.5f, (n + f) * 0.5f);
+            glm::vec3 lsCenter = glm::vec3((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f, (min.z + max.z) * 0.5f);
             glm::vec4 wsCenterH = glm::inverse(lightView) * glm::vec4(lsCenter, 1.0f);
             glm::vec3 wsCenter = glm::vec3(wsCenterH) / wsCenterH.w;
 
@@ -270,13 +270,14 @@ namespace Wild
                                                           m_directLight.lightDirectionIntensity.y,
                                                           m_directLight.lightDirectionIntensity.z));
 
-            float arrowLen = glm::length(glm::vec3(r - l, t - b, f - n)) * 0.3f; // scale relative to cascade size
+            float arrowLen =
+                glm::length(glm::vec3(max.x - min.x, max.y - min.y, max.z - min.z)) * 0.3f; // scale relative to cascade size
 
             m_lightDirDebug.push_back(wsCenter);
             m_lightDirDebug2.push_back(wsCenter + lightDir * arrowLen);
 
-            m_minExtents.push_back(glm::vec3(l, b, n));
-            m_maxExtents.push_back(glm::vec3(r, t, f));
+            m_minExtents.push_back(min);
+            m_maxExtents.push_back(max);
             m_lightView.push_back(lightView);
 
             for (size_t i = 0; i < cornersWS.size(); i++)
@@ -285,7 +286,7 @@ namespace Wild
             }
         }
 
-        const glm::mat4 lightProj = glm::orthoRH_ZO(l, r, b, t, n, f);
+         const glm::mat4 lightProj = glm::ortho(min.x, max.x, min.y, max.y, min.z, max.z);
 
         return lightProj * lightView;
     }

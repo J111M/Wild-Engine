@@ -4,7 +4,7 @@
 
 namespace Wild
 {
-#define SHADOWMAP_CASCADES 4
+#define SHADOWMAP_CASCADES 1
 
     struct CsmPassData
     {
@@ -52,5 +52,7 @@ namespace Wild
         std::vector<glm::vec3> m_lightDirDebug2;
         std::vector<glm::mat4> m_lightView;
         std::vector<std::vector<glm::vec3>> m_frustumCorners;
+
+        float m_zMult = 3.4;
     };
 } // namespace Wild
