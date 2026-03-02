@@ -63,22 +63,23 @@ struct VSOutput
 };
 
 // Shadow map implementation inspired by https://learnopengl.com/Guest-Articles/2021/CSM and modified to work with my system
-float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal, out int shadowLayer) {
+float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal, out int shadowLayer)
+{
     float4 viewSpacePosition = mul(viewSpace, float4(worldSpaceFragPosition, 1.0f));
 
     float depthValue = abs(viewSpacePosition.z);
 
     int layer = -1;
-    for (int i = 0; i < SHADOWMAP_CASCADES; ++i) {
-        if (depthValue < cascadeDistance[i]) {
+    for (int i = 0; i < SHADOWMAP_CASCADES; ++i)
+    {
+        if (depthValue < cascadeDistance[i])
+        {
             layer = i;
             break;
         }
     }
 
-    if (layer == -1) {
-        layer = SHADOWMAP_CASCADES - 1;
-    }
+    if (layer == -1) { layer = SHADOWMAP_CASCADES - 1; }
     shadowLayer = layer;
 
     // Convert worldSpace to light space
@@ -94,28 +95,14 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal, out int sh
     // Fragment depth
     float currentDepth = projCoords.z;
 
-    if (currentDepth > 1.0)
-    {
-        return 0.0;
-    }
+    if (currentDepth > 1.0) { return 0.0; }
 
-    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
-        return 0.0;
-
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
 
     // Shadow bias
     float3 biasNormal = normalize(normal);
     // Offset by shadow position
     float bias = max(0.05 * (1.0 - dot(normal, normalize(-lightDirectionIntensity.xyz))), 0.005);
-    const float biasModifier = 0.5f;
-    //if (layer == SHADOWMAP_CASCADES)
-    //{
-    //    bias *= 1 / (cameraFar * biasModifier);
-    //}
-    //else
-    //{
-    //    bias *= 1 / (cascadeDistance[0] * biasModifier);
-    //}
 
     float shadow = 0.0f;
     texture2D shadowMap = textures[shadowMapView[layer]];
@@ -128,7 +115,8 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal, out int sh
     {
         for (int y = -1; y <= 1; ++y)
         {
-            float pcfDepth = shadowMap.Sample(pointSampler, projCoords.xy + float2(x, y) * texelSize).r; //texture(shadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, layer)).r;
+            float pcfDepth = shadowMap.Sample(pointSampler, projCoords.xy + float2(x, y) * texelSize)
+                                 .r; // texture(shadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, layer)).r;
             shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;
         }
     }
@@ -222,7 +210,7 @@ float4 main(VSOutput input) : SV_TARGET0
     // envBrdf = max(envBrdf, 0.0f);
 
     float3 specularIBL =
-        prefilteredReflection * iblF;//(iblF * envBrdf.x + envBrdf.y); // Temporary disabled because the brdf is not correct
+        prefilteredReflection * iblF; //(iblF * envBrdf.x + envBrdf.y); // Temporary disabled because the brdf is not correct
 
     float3 diffuse = albedo.rgb * irradiance;
 
@@ -257,17 +245,17 @@ float4 main(VSOutput input) : SV_TARGET0
     float shadow = ShadowCalculation(positionWS, N, debugShadow);
     color = (1.0 - shadow) * Lo + ambient + emissive.rgb;
 
-    //switch (debugShadow)
+    // switch (debugShadow)
     //{
-    //case 0:
-    //    return float4(1, 0, 0, 1);
-    //case 1:
-    //    return float4(0, 1, 0, 1);
-    //case 2:
-    //    return float4(0, 0, 1, 1);
-    //case 3:
-    //    return float4(1, 1, 0, 1);
-    //}
+    // case 0:
+    //     return float4(1, 0, 0, 1);
+    // case 1:
+    //     return float4(0, 1, 0, 1);
+    // case 2:
+    //     return float4(0, 0, 1, 1);
+    // case 3:
+    //     return float4(1, 1, 0, 1);
+    // }
 
     switch (debugViewMode)
     {

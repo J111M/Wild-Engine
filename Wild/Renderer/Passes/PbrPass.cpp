@@ -89,7 +89,7 @@ namespace Wild
         {
             m_camData.inverseView = glm::mat4{};
             m_camData.inverseProj = glm::mat4{};
-            m_camData.cameraFar = 100.0f;
+            m_camData.cameraFar = 50.0f;
             m_pbrData.cameraPosition = glm::vec3{};
         }
 
