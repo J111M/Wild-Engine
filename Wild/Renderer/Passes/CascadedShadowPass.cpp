@@ -103,8 +103,8 @@ namespace Wild
             {
                 const glm::vec3 color[]{glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1), glm::vec3(1, 1, 0)};
 
-                float l = m_minExtents[i].x, b = m_minExtents[i].y, n = m_minExtents[i].z;
-                float r = m_maxExtents[i].x, t = m_maxExtents[i].y, f = m_maxExtents[i].z;
+                float l = m_minExtents[i].x, b = m_minExtents[i].y, n = m_maxExtents[i].z;
+                float r = m_maxExtents[i].x, t = m_maxExtents[i].y, f = m_minExtents[i].z;
 
                 glm::mat4 invLightView = glm::inverse(m_lightView[i]);
 
@@ -132,6 +132,29 @@ namespace Wild
                 renderer.AddLine(wsCorners[3], wsCorners[7], color[i]);
 
                 renderer.AddLine(m_lightDirDebug[i], m_lightDirDebug2[i], glm::vec3(1, 1, 1));
+            }
+
+            for (size_t i = 0; i < m_frustumCorners.size(); i++)
+            {
+                const glm::vec3 col[]{glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1), glm::vec3(1, 1, 0)};
+                const auto& c = m_frustumCorners[i];
+                const glm::vec3& clr = col[i];
+
+                // Near plane (z=0): 0,2,6,4
+                renderer.AddLine(c[0], c[2], clr);
+                renderer.AddLine(c[2], c[6], clr);
+                renderer.AddLine(c[6], c[4], clr);
+                renderer.AddLine(c[4], c[0], clr);
+                // Far plane (z=1): 1,3,7,5
+                renderer.AddLine(c[1], c[3], clr);
+                renderer.AddLine(c[3], c[7], clr);
+                renderer.AddLine(c[7], c[5], clr);
+                renderer.AddLine(c[5], c[1], clr);
+                // Connecting edges
+                renderer.AddLine(c[0], c[1], clr);
+                renderer.AddLine(c[2], c[3], clr);
+                renderer.AddLine(c[4], c[5], clr);
+                renderer.AddLine(c[6], c[7], clr);
             }
 
             engine.GetImGui()->AddPanel("Shadowmap Textures", [this, passData]() {
@@ -189,7 +212,7 @@ namespace Wild
                     nearFar[j] = nearField;
                 }
 
-                cascadeProjections = glm::perspective(camera->GetFOV(), camera->GetAspect(), nearFar[0], nearFar[1]);
+                cascadeProjections = glm::perspective(glm::radians(70.0f), camera->GetAspect(), nearFar[0], nearFar[1]);
                 cascadeFarDistances = nearFar[1];
 
                 const glm::mat4 cascadeViewProj = GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,
@@ -286,7 +309,7 @@ namespace Wild
             }
         }
 
-         const glm::mat4 lightProj = glm::ortho(min.x, max.x, min.y, max.y, min.z, max.z);
+         const glm::mat4 lightProj = glm::orthoRH_ZO(min.x, max.x, min.y, max.y, min.z, max.z);
 
         return lightProj * lightView;
     }

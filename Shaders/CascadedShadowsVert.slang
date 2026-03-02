@@ -9,7 +9,7 @@ cbuffer rootConstant : register(b0)
 cbuffer shadowMapBuffer : register(b1)
 {
     float4 lightDirectionIntensity;
-    column_major float4x4 viewProj[SHADOWMAP_CASCADES];
+    column_major float4x4 projView[SHADOWMAP_CASCADES];
     float4 cascadeDistance;
 };
 
@@ -19,6 +19,7 @@ struct VSInput
     float3 color : COLOR;
     float3 normal : NORMAL;
     float2 uv : TEXCOORD;
+    float4 tangent : TANGENT;
 };
 
 struct VSOutput
@@ -33,7 +34,7 @@ struct VSOutput
 VSOutput main(VSInput input)
 {
     VSOutput output;
-    output.position = mul(viewProj[cascadeIndex], mul(localModel, float4(input.position, 1.0f)));
+    output.position = mul(projView[cascadeIndex], mul(localModel, float4(input.position, 1.0f)));
     output.color = input.color;
     output.normal = input.normal;
     output.uv = input.uv;

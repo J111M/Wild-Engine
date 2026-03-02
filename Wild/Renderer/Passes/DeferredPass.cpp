@@ -13,8 +13,8 @@ namespace Wild
         {
             auto entity = ecs->CreateEntity();
             auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
-            ecs->AddComponent<Model>(entity, "Assets/Models/Cube/scene.gltf", entity);
-            transform.SetScale(glm::vec3(0.1, 0.1, 0.1));
+            ecs->AddComponent<Model>(entity, "Assets/Models/DamagedHelmet/glTF/DamagedHelmet.gltf", entity);
+            transform.SetScale(glm::vec3(1, 1, 1));
             transform.SetPosition(glm::vec3(i * 3, 5, i * 3));
         }
 

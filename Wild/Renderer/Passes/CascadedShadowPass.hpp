@@ -4,7 +4,7 @@
 
 namespace Wild
 {
-#define SHADOWMAP_CASCADES 1
+#define SHADOWMAP_CASCADES 4
 
     struct CsmPassData
     {

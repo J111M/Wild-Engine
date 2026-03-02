@@ -222,7 +222,7 @@ float4 main(VSOutput input) : SV_TARGET0
     // envBrdf = max(envBrdf, 0.0f);
 
     float3 specularIBL =
-        prefilteredReflection * iblkS; //(iblF * envBrdf.x + envBrdf.y); // Temporary disabled because the brdf is not correct
+        prefilteredReflection * iblF;//(iblF * envBrdf.x + envBrdf.y); // Temporary disabled because the brdf is not correct
 
     float3 diffuse = albedo.rgb * irradiance;
 

@@ -66,7 +66,7 @@ float2 IntegrateBRDF(float NdotV, float roughness)
     float A = 0.0;
     float B = 0.0;
 
-    float3 N = float3(0.0, 1.0, 0.0);
+    float3 N = float3(0.0, 0.0, 1.0);
 
     for (uint i = 0; i < SAMPLE_COUNT; ++i)
     {
@@ -101,11 +101,11 @@ void main(uint3 id : SV_DispatchThreadID)
 {
     const float2 size = float2(512, 512);
 
-    if(id.x > size.x || id.y > size.y)
+    if (id.x >= size.x || id.y >= size.y)
         return;
 
-    float NdotV = (id.x) / float(size.x);
-    float roughness = 1.0 - (id.y) / float(size.y);
+    float NdotV = (id.x + 0.5f) / float(size.x);
+    float roughness = (id.y + 0.5f) / float(size.y);
 
     float2 result = IntegrateBRDF(NdotV, roughness);
     OutputTexture[id.xy] = result;

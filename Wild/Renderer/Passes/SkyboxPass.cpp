@@ -69,6 +69,7 @@ namespace Wild
         engine.GetImGui()->AddPanel("Debug skybox", [this]() {
             int skyMode = m_debugSkyboxMode;
             if (ImGui::SliderInt("Debug mode", &skyMode, 0, 6)) { m_debugSkyboxMode = skyMode; }
+            ImGui::Image((ImTextureID)m_brdfLut->GetSrv()->GetGpuHandle().ptr, ImVec2(150, 150));         
         });
     }
 
