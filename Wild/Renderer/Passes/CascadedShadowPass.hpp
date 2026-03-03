@@ -15,6 +15,7 @@ namespace Wild
     struct CsmRC
     {
         glm::mat4 localModel{};
+        glm::mat4 projView{};
         uint32_t cascadeIndex{};
     };
 

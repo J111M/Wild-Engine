@@ -13,9 +13,9 @@ cbuffer Constants : register(b0)
 
 cbuffer matrices : register(b1)
 {
-    column_major matrix inverseView;
-    column_major matrix inverseProjection;
-    column_major matrix viewSpace;
+    column_major float4x4 inverseView;
+    column_major float4x4 inverseProjection;
+    column_major float4x4 viewSpace;
     float cameraFar;
 }
 

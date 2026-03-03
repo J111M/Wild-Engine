@@ -73,6 +73,7 @@ namespace Wild
                 for (auto&& [entity, trans, mesh] : meshes.each())
                 {
                     m_rc.localModel = trans.GetWorldMatrix();
+                    m_rc.projView = m_directLight.viewProj[i];
                     m_rc.cascadeIndex = i;
 
                     list.SetRootConstant<CsmRC>(0, m_rc);
@@ -136,9 +137,8 @@ namespace Wild
 
             for (size_t i = 0; i < m_frustumCorners.size(); i++)
             {
-                const glm::vec3 col[]{glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1), glm::vec3(1, 1, 0)};
                 const auto& c = m_frustumCorners[i];
-                const glm::vec3& clr = col[i];
+                const glm::vec3& clr = glm::vec3(1, 0, 0);
 
                 // Near plane (z=0): 0,2,6,4
                 renderer.AddLine(c[0], c[2], clr);
@@ -261,15 +261,23 @@ namespace Wild
 
         frustumCenter /= static_cast<float>(cornersWS.size());
 
+        float radius = 0.0f;
+        for (glm::vec3 const& v : cornersWS)
+        {
+            float distance = glm::distance(v, frustumCenter);
+            radius = std::max(radius, distance);
+        }
+        radius = std::ceil(radius * 8.0f) / 8.0f;
+
         glm::vec3 min = glm::vec3(FLT_MAX);
         glm::vec3 max = glm::vec3(-FLT_MAX);
         // const glm::vec3 cascadeExtents = maxExtents - minExtents;
 
-        glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
-        if (glm::abs(glm::dot(glm::normalize(lightDir), upVector)) > 0.99f) upVector = glm::vec3(0.0f, 0.0f, 1.0f);
+        glm::vec3 normalizeLightDir = glm::normalize(lightDir);
 
-        const glm::vec3 lightPos = frustumCenter + glm::normalize(lightDir);
-        const glm::mat4 lightView = glm::lookAtRH(lightPos, frustumCenter, upVector);
+        const glm::vec3 lightPos = frustumCenter + normalizeLightDir;
+       
+        const glm::mat4 lightView = glm::lookAtRH(lightPos, frustumCenter, glm::vec3(0,1,0));
 
         for (const auto& corner : cornersWS)
         {
@@ -308,6 +316,8 @@ namespace Wild
                 m_frustumCorners.push_back(cornersWS);
             }
         }
+
+        
 
          const glm::mat4 lightProj = glm::orthoRH_ZO(min.x, max.x, min.y, max.y, min.z, max.z);
 
