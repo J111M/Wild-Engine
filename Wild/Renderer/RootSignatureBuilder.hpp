@@ -22,12 +22,10 @@ namespace Wild
         RootSignatureBuilder& AddDescriptorTable(const std::vector<D3D12_DESCRIPTOR_RANGE>& ranges,
                                                  D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_ALL);
 
-        RootSignatureBuilder& AddStaticSampler(uint32_t shaderRegister, D3D12_FILTER filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR,
-                                               D3D12_TEXTURE_ADDRESS_MODE addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-                                               uint32_t space = 0,
+        RootSignatureBuilder& AddStaticSampler(uint32_t shaderRegister, const SamplerState& samplerState, uint32_t space = 0,
                                                D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_PIXEL);
 
-        ComPtr<ID3D12RootSignature> Build(ID3D12Device *device);
+        ComPtr<ID3D12RootSignature> Build(ID3D12Device* device);
 
       private:
         std::vector<D3D12_ROOT_PARAMETER> m_params;

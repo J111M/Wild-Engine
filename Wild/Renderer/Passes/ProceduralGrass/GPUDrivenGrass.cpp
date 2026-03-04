@@ -167,8 +167,8 @@ namespace Wild
                     uniforms.emplace_back(bindlessUni);
 
                     Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
-                    staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                    staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                    staticSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                    staticSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                     uniforms.emplace_back(staticSampler);
 
                     m_perBladeDataBuffer->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -421,8 +421,8 @@ namespace Wild
                 uniforms.emplace_back(bindlessUni);
 
                 Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
-                staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                staticSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                staticSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                 uniforms.emplace_back(staticSampler);
 
                 auto& pipeline =

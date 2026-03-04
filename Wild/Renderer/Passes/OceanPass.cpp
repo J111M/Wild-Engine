@@ -78,8 +78,8 @@ namespace Wild
                 {
                     Uniform uni{0, 0, RootParams::RootResourceType::StaticSampler};
                     uni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-                    uni.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-                    uni.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                    uni.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+                    uni.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                     uniforms.emplace_back(uni);
                 }
 

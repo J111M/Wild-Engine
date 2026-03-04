@@ -147,73 +147,65 @@ namespace Wild
 
                 std::vector<Uniform> uniforms;
 
-                {
-                    Uniform uni{0, 0, RootParams::RootResourceType::Constants, sizeof(PbrRootConstant)};
-                    uni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-                    uniforms.emplace_back(uni);
-                }
+                Uniform rootConstantUni{0, 0, RootParams::RootResourceType::Constants, sizeof(PbrRootConstant)};
+                rootConstantUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                uniforms.emplace_back(rootConstantUni);
 
                 // Inverse camera buffer
-                {
-                    Uniform uni{1, 0, RootParams::RootResourceType::ConstantBufferView};
-                    uni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-                    uniforms.emplace_back(uni);
-                }
+                Uniform invCameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                invCameraUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                uniforms.emplace_back(invCameraUni);
 
-                {
-                    Uniform uni{2, 0, RootParams::RootResourceType::ConstantBufferView};
-                    uni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-                    uniforms.emplace_back(uni);
-                }
+                Uniform pbrUni{2, 0, RootParams::RootResourceType::ConstantBufferView};
+                pbrUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                uniforms.emplace_back(pbrUni);
 
-                {
-                    Uniform envData{3, 0, RootParams::RootResourceType::ConstantBufferView};
-                    envData.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-                    uniforms.emplace_back(envData);
-                }
+                Uniform envUni{3, 0, RootParams::RootResourceType::ConstantBufferView};
+                envUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                uniforms.emplace_back(envUni);
 
-                {
-                    Uniform pointLightData{4, 0, RootParams::RootResourceType::ConstantBufferView};
-                    pointLightData.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-                    uniforms.emplace_back(pointLightData);
-                }
+                Uniform pointLightUni{4, 0, RootParams::RootResourceType::ConstantBufferView};
+                pointLightUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                uniforms.emplace_back(pointLightUni);
 
-                {
-                    Uniform shadowMapData{5, 0, RootParams::RootResourceType::ConstantBufferView};
-                    shadowMapData.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-                    uniforms.emplace_back(shadowMapData);
-                }
+                Uniform shadowMapUni{5, 0, RootParams::RootResourceType::ConstantBufferView};
+                shadowMapUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                uniforms.emplace_back(shadowMapUni);
 
                 // Bindless resources
-                {
-                    Uniform uni{0, 0, RootParams::RootResourceType::DescriptorTable};
-                    CD3DX12_DESCRIPTOR_RANGE srvRange{};
-                    srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-                                  UINT_MAX,
-                                  0,
-                                  0,
-                                  D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
-                    CD3DX12_DESCRIPTOR_RANGE srvRange1{};
-                    srvRange1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-                                   UINT_MAX,
-                                   0,
-                                   1,
-                                   D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for cube maps
-                    uni.ranges.emplace_back(srvRange);
-                    uni.ranges.emplace_back(srvRange1);
-                    uni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                Uniform BindlessHeap{0, 0, RootParams::RootResourceType::DescriptorTable};
+                CD3DX12_DESCRIPTOR_RANGE srvRange{};
+                srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                              UINT_MAX,
+                              0,
+                              0,
+                              D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+                CD3DX12_DESCRIPTOR_RANGE srvRange1{};
+                srvRange1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                               UINT_MAX,
+                               0,
+                               1,
+                               D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for cube maps
+                BindlessHeap.ranges.emplace_back(srvRange);
+                BindlessHeap.ranges.emplace_back(srvRange1);
+                BindlessHeap.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-                    uniforms.emplace_back(uni);
-                }
+                uniforms.emplace_back(BindlessHeap);
 
-                {
-                    Uniform uni{0, 0, RootParams::RootResourceType::StaticSampler};
-                    uni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-                    uni.filter =
-                        D3D12_FILTER_MIN_MAG_MIP_LINEAR; // D3D12_FILTER_MIN_MAG_MIP_LINEAR; //D3D12_FILTER_MIN_MAG_MIP_LINEAR
-                    uni.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                    uniforms.emplace_back(uni);
-                }
+                Uniform sampler{0, 0, RootParams::RootResourceType::StaticSampler};
+                sampler.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                sampler.samplerState.filter =
+                    D3D12_FILTER_MIN_MAG_MIP_LINEAR; // D3D12_FILTER_MIN_MAG_MIP_LINEAR; //D3D12_FILTER_MIN_MAG_MIP_LINEAR
+                sampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                uniforms.emplace_back(sampler);
+
+                Uniform shadowSampler{1, 0, RootParams::RootResourceType::StaticSampler};
+                shadowSampler.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                shadowSampler.samplerState.filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+                shadowSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+                shadowSampler.samplerState.comparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+                // shadowSampler.samplerState.borderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+                uniforms.emplace_back(shadowSampler);
 
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Pbr assembly pass", PipelineStateType::Graphics, settings, uniforms);

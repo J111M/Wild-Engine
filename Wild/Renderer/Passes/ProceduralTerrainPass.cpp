@@ -273,13 +273,13 @@ namespace Wild
                 uniforms.emplace_back(bindlessUni);
 
                 Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
-                staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                staticSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                staticSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                 uniforms.emplace_back(staticSampler);
 
                 Uniform staticAnisotrophicSampler{1, 0, RootParams::RootResourceType::StaticSampler};
-                staticAnisotrophicSampler.filter = D3D12_FILTER_ANISOTROPIC;
-                staticAnisotrophicSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+                staticAnisotrophicSampler.samplerState.filter = D3D12_FILTER_ANISOTROPIC;
+                staticAnisotrophicSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
                 uniforms.emplace_back(staticAnisotrophicSampler);
 
                 auto& pipeline =

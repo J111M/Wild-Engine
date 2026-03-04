@@ -7,6 +7,14 @@
 
 namespace Wild
 {
+    struct SamplerState
+    {
+        D3D12_FILTER filter = D3D12_FILTER_ANISOTROPIC;
+        D3D12_TEXTURE_ADDRESS_MODE addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        D3D12_COMPARISON_FUNC comparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+        D3D12_STATIC_BORDER_COLOR borderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+    };
+
     struct Uniform
     {
         uint32_t shaderRegister{};
@@ -18,8 +26,7 @@ namespace Wild
         std::vector<D3D12_DESCRIPTOR_RANGE> ranges;
 
         // Sampler types if used
-        D3D12_FILTER filter = D3D12_FILTER_ANISOTROPIC;
-        D3D12_TEXTURE_ADDRESS_MODE addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        SamplerState samplerState{};
     };
 
     enum class PipelineStateType : uint8_t

@@ -61,8 +61,7 @@ namespace Wild
                 builder.AddDescriptorTable(uniform.ranges, uniform.visibility);
                 break;
             case RootParams::StaticSampler:
-                builder.AddStaticSampler(
-                    uniform.shaderRegister, uniform.filter, uniform.addressMode, uniform.registerSpace, uniform.visibility);
+                builder.AddStaticSampler(uniform.shaderRegister, uniform.samplerState, uniform.registerSpace, uniform.visibility);
                 break;
             }
         }

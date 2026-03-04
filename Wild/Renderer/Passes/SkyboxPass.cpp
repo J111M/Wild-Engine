@@ -362,8 +362,8 @@ namespace Wild
 
                         // Static sampler uniform
                         Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
-                        staticSampler.filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-                        staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                        staticSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+                        staticSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                         staticSampler.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
                         uniforms.emplace_back(staticSampler);
 
@@ -466,8 +466,8 @@ namespace Wild
                         uniforms.emplace_back(cubeMapTextures);
 
                         Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
-                        staticSampler.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                        staticSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                        staticSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                        staticSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                         uniforms.emplace_back(staticSampler);
 
                         auto& pipeline = renderer.GetOrCreatePipeline(

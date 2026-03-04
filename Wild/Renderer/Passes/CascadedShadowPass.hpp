@@ -58,6 +58,6 @@ namespace Wild
         std::vector<glm::mat4> m_lightView;
         std::vector<std::vector<glm::vec3>> m_frustumCorners;
 
-        float m_zMult = 3.4;
+        float m_zMult = 6.445;
     };
 } // namespace Wild

@@ -54,19 +54,18 @@ namespace Wild
         return *this;
     }
 
-    RootSignatureBuilder& RootSignatureBuilder::AddStaticSampler(uint32_t shaderRegister, D3D12_FILTER filter,
-                                                                 D3D12_TEXTURE_ADDRESS_MODE addressMode, uint32_t space,
-                                                                 D3D12_SHADER_VISIBILITY visibility)
+    RootSignatureBuilder& RootSignatureBuilder::AddStaticSampler(uint32_t shaderRegister, const SamplerState& samplerState,
+                                                                 uint32_t space, D3D12_SHADER_VISIBILITY visibility)
     {
         auto& sampler = m_staticSamplers.emplace_back();
-        sampler.Filter = filter;
-        sampler.AddressU = addressMode;
-        sampler.AddressV = addressMode;
-        sampler.AddressW = addressMode;
+        sampler.Filter = samplerState.filter;
+        sampler.AddressU = samplerState.addressMode;
+        sampler.AddressV = samplerState.addressMode;
+        sampler.AddressW = samplerState.addressMode;
         sampler.MipLODBias = 0;
         sampler.MaxAnisotropy = 16;
-        sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-        sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+        sampler.ComparisonFunc = samplerState.comparisonFunc;
+        sampler.BorderColor = samplerState.borderColor;
         sampler.MinLOD = 0.0f;
         sampler.MaxLOD = D3D12_FLOAT32_MAX;
         sampler.ShaderRegister = shaderRegister;

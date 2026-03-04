@@ -119,8 +119,8 @@ namespace Wild
                 uniforms.emplace_back(uni);
 
                 Uniform pointSampler{0, 0, RootParams::RootResourceType::StaticSampler};
-                pointSampler.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-                pointSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                pointSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+                pointSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                 uniforms.emplace_back(pointSampler);
 
                 int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
@@ -206,8 +206,8 @@ namespace Wild
                 uniforms.emplace_back(bindlessTexture);
 
                 Uniform pointSampler{0, 0, RootParams::RootResourceType::StaticSampler};
-                pointSampler.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-                pointSampler.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                pointSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+                pointSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                 uniforms.emplace_back(pointSampler);
 
                 int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();

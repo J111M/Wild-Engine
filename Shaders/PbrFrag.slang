@@ -57,6 +57,7 @@ Texture2D textures[4096] : register(t0, space0);
 TextureCube cubeTextures[4096] : register(t0, space1);
 
 SamplerState pointSampler : register(s0);
+SamplerComparisonState shadowSampler : register(s1);
 
 struct VSOutput
 {
@@ -118,9 +119,7 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal, out int sh
     {
         for (int y = -1; y <= 1; ++y)
         {
-            float pcfDepth = shadowMap.Sample(pointSampler, projCoords.xy + float2(x, y) * texelSize)
-                                 .r;
-            shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;
+            shadow += shadowMap.SampleCmpLevelZero(shadowSampler, projCoords.xy + float2(x, y) * texelSize, currentDepth - bias);
         }
     }
     shadow /= 9.0;
@@ -246,7 +245,7 @@ float4 main(VSOutput input) : SV_TARGET0
 
     int debugShadow = 0;
     float shadow = ShadowCalculation(positionWS, N, debugShadow);
-    color = (1.0 - shadow) * Lo + ambient + emissive.rgb;
+    color = shadow * Lo + ambient + emissive.rgb;
 
     // switch (debugShadow)
     //{
