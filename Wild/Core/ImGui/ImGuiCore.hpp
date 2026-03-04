@@ -32,6 +32,7 @@ namespace Wild
       private:
         bool Setup(std::shared_ptr<Window> window);
 
+        void DrawMenuBar();
         void DrawInspectorWindow();
         void AddStatsBar();
         void DrawEntityNode(entt::registry& registry, entt::entity entity);
@@ -43,6 +44,9 @@ namespace Wild
         ImGuizmo::MODE m_gizmoMode = ImGuizmo::WORLD;
 
         std::unordered_map<std::string, std::function<void()>> m_panels;
+        // All visible panels
+        std::unordered_map<std::string, bool> m_panelVisible;
+
         std::unordered_map<std::string, std::function<void()>> m_watches;
     };
 

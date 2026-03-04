@@ -77,7 +77,7 @@ namespace Wild
         m_pointLightsBuffer->Allocate(lightData.data());
 
         Camera* camera = GetActiveCamera();
-        WD_INFO("Get camera");
+
         if (camera)
         {
             m_camData.inverseView = glm::inverse(camera->GetView());
@@ -94,11 +94,8 @@ namespace Wild
             m_pbrData.cameraPosition = glm::vec3{};
         }
 
-        WD_INFO("Before index");
         int frameIndex = context->GetBackBufferIndex();
-        WD_INFO("After index %.2f", m_camData.cameraFar);
         m_cameraBuffer[frameIndex]->Allocate(&m_camData);
-        WD_INFO("Allocate");
 
         engine.GetImGui()->AddPanel("Pbr settings", [this]() {
             ImGui::SliderFloat3("Light direction: ", &m_pbrData.lightDirection[0], -20.0f, 20.0f);

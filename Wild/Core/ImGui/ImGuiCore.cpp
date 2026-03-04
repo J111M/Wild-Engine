@@ -19,7 +19,11 @@ namespace Wild
         ImGui::DestroyContext();
     }
 
-    void ImguiCore::AddPanel(const std::string& name, std::function<void()> renderFunc) { m_panels[name] = renderFunc; }
+    void ImguiCore::AddPanel(const std::string& name, std::function<void()> renderFunc)
+    {
+        m_panels[name] = renderFunc;
+        if (m_panelVisible.find(name) == m_panelVisible.end()) m_panelVisible[name] = true;
+    }
 
     void ImguiCore::DrawGizmo(const glm::mat4& view, const glm::mat4& projection)
     {
@@ -121,6 +125,92 @@ namespace Wild
     void ImguiCore::DisplayTexture(Texture* texture)
     {
         if (texture) ImGui::Image((ImTextureID)texture->GetSrv()->GetGpuHandle().ptr, ImVec2(150, 150));
+    }
+
+    void ImguiCore::DrawMenuBar()
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 6.0f));
+        if (ImGui::BeginMainMenuBar())
+        {
+            if (ImGui::BeginMenu("File"))
+            {
+                if (ImGui::MenuItem("New Scene", "Ctrl+N")) {}  // TODO implement scene selecting
+                if (ImGui::MenuItem("Open Scene", "Ctrl+O")) {} // TODO implement scene selecting
+                if (ImGui::MenuItem("Save Scene", "Ctrl+S")) {} // TODO implement scene selecting
+                ImGui::Separator();
+                if (ImGui::MenuItem("Exit", "Alt+F4")) PostQuitMessage(0);
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Edit"))
+            {
+                if (ImGui::MenuItem("Undo", "Ctrl+Z", false, false)) {}
+                if (ImGui::MenuItem("Redo", "Ctrl+Y", false, false)) {}
+                ImGui::Separator();
+                if (ImGui::MenuItem("Select All", "Ctrl+A")) {}
+                if (ImGui::MenuItem("Delete Entity", "Del", false, m_selectedEntity != entt::null))
+                {
+                    engine.GetECS()->GetRegistry().destroy(m_selectedEntity);
+                    m_selectedEntity = entt::null;
+                }
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("View"))
+            {
+                ImGui::SeparatorText("Panels");
+                for (auto& [name, visible] : m_panelVisible)
+                    ImGui::MenuItem(name.c_str(), nullptr, &visible);
+
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Engine"))
+            {
+                // ImGui::SeparatorText("Rendering");
+                // if (ImGui::MenuItem("Wireframe", nullptr, &m_wireframe))
+                //{
+                //     // TODO add wireframe mode
+                // }
+
+                ImGui::SeparatorText("Gizmo Mode");
+                if (ImGui::MenuItem("World Space", nullptr, m_gizmoMode == ImGuizmo::WORLD)) m_gizmoMode = ImGuizmo::WORLD;
+                if (ImGui::MenuItem("Local Space", nullptr, m_gizmoMode == ImGuizmo::LOCAL)) m_gizmoMode = ImGuizmo::LOCAL;
+
+                ImGui::SeparatorText("Scene");
+                if (ImGui::MenuItem("Spawn Point Light"))
+                {
+                    auto e = engine.GetECS()->CreateEntity();
+                    engine.GetECS()->AddComponent<Transform>(e, e);
+                    engine.GetECS()->AddComponent<PointLight>(e);
+                }
+
+                ImGui::EndMenu();
+            }
+            // ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 6.0f));
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
+            ImGui::PushStyleColor(ImGuiCol_BorderShadow, ImVec4(0, 0, 0, 0));
+
+            ImVec2 barPos = ImGui::GetWindowPos();
+            ImVec2 barSize = ImGui::GetWindowSize();
+
+            float panelHeight = barSize.y - 8.0f;
+            float panelWidth = barSize.x * 0.6f;
+            auto panelPos = ImVec2(barPos.x + (barSize.x - panelWidth) * 0.5f, barPos.y + 4.0f);
+            auto panelEnd = ImVec2(panelPos.x + panelWidth, panelPos.y + panelHeight);
+
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(panelPos, panelEnd, IM_COL32(40, 40, 40, 255), 6.0f);
+
+            ImGui::SameLine((ImGui::GetContentRegionMax().x / 2.f) - 15.f);
+
+            ImGui::PopStyleColor(3);
+
+            ImGui::EndMainMenuBar();
+        }
+        ImGui::PopStyleVar();
     }
 
     void ImguiCore::DrawInspectorWindow()
@@ -376,34 +466,7 @@ namespace Wild
         ImGuiID dockspace_id = ImGui::GetID("DockSpace");
         ImGui::DockSpaceOverViewport(ImGui::GetID("DockSpace"), nullptr, ImGuiDockNodeFlags_None);
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 6.0f));
-        if (ImGui::BeginMainMenuBar())
-        {
-
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-            ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
-            ImGui::PushStyleColor(ImGuiCol_BorderShadow, ImVec4(0, 0, 0, 0));
-
-            ImVec2 barPos = ImGui::GetWindowPos();
-            ImVec2 barSize = ImGui::GetWindowSize();
-
-            float panelHeight = barSize.y - 8.0f;
-            float panelWidth = barSize.x * 0.6f;
-            auto panelPos = ImVec2(barPos.x + (barSize.x - panelWidth) * 0.5f, barPos.y + 4.0f);
-            auto panelEnd = ImVec2(panelPos.x + panelWidth, panelPos.y + panelHeight);
-
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
-            draw_list->AddRectFilled(panelPos, panelEnd, IM_COL32(40, 40, 40, 255), 6.0f);
-
-            ImGui::SameLine((ImGui::GetContentRegionMax().x / 2.f) - 15.f);
-
-            ImGui::PopStyleColor(3);
-
-            ImGui::EndMenuBar();
-            ImGui::End();
-        }
-        ImGui::PopStyleVar();
-
+        DrawMenuBar();
         AddStatsBar();
     }
 
@@ -449,7 +512,8 @@ namespace Wild
         // Draw panels
         for (auto& [name, func] : m_panels)
         {
-            if (ImGui::Begin(name.c_str())) { func(); }
+            if (!m_panelVisible[name]) continue;
+            if (ImGui::Begin(name.c_str(), &m_panelVisible[name])) { func(); }
             ImGui::End();
         }
 

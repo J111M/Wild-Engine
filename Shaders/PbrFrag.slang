@@ -177,6 +177,7 @@ float4 main(VSOutput input) : SV_TARGET0
     float3 L = normalize(lightDirection.xyz);
     float3 Lo = EvaluateDirectBRDF(N, V, L, albedo.rgb, F0, roughness, metallic);
 
+    float3 pointLo = float3(0, 0, 0);
     // Point lights
     for (uint i = 0; i < numPointLights; i++)
     {
@@ -188,7 +189,7 @@ float4 main(VSOutput input) : SV_TARGET0
         float plIntensity = pointLights[i].colorIntensity.w;
         float attenuation = plIntensity / (distance * distance);
 
-        Lo += EvaluateDirectBRDF(N, V, pL, albedo.rgb, F0, roughness, metallic) * plColor * attenuation;
+        pointLo += EvaluateDirectBRDF(N, V, pL, albedo.rgb, F0, roughness, metallic) * plColor * attenuation;
     }
 
     float3 irradiance = float3(0.0f);
@@ -245,7 +246,7 @@ float4 main(VSOutput input) : SV_TARGET0
 
     int debugShadow = 0;
     float shadow = ShadowCalculation(positionWS, N, debugShadow);
-    color = shadow * Lo + ambient + emissive.rgb;
+    color = shadow * Lo + pointLo + ambient + emissive.rgb;
 
     // switch (debugShadow)
     //{
