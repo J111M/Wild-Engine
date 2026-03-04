@@ -47,6 +47,7 @@ namespace Wild
         uint32_t normalView{};
         uint32_t depthView{};
         uint32_t shadowMapView[SHADOWMAP_CASCADES];
+        float depthBias = 0.05f;
     };
 
     struct PointLight

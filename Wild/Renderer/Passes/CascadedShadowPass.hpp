@@ -24,6 +24,7 @@ namespace Wild
         glm::vec4 lightDirectionIntensity = glm::vec4(20.0f, 50, 20.0f, 2.0f);
         glm::mat4 viewProj[SHADOWMAP_CASCADES];
         float cascadeDistance[SHADOWMAP_CASCADES];
+        float cascadeSplitDepthRange[SHADOWMAP_CASCADES];
     };
 
     class CascadedShadowMaps : public RenderFeature
@@ -36,8 +37,11 @@ namespace Wild
         virtual void Update(const float dt) override;
 
       private:
+        // Cascade splitting based on https://learnopengl.com/Guest-Articles/2021/CSM modified to work with my framework
         std::vector<glm::vec3> GetFrustumCornersWorldSpace(const glm::mat4& proj, const glm::mat4& view);
-        glm::mat4 GetCascadeMatrix(const glm::vec3& lightDir, const glm::mat4& cameraView, const glm::mat4& cascadeProj);
+        // Cascade splitting based on https://learnopengl.com/Guest-Articles/2021/CSM modified to work with my framework
+        glm::mat4 GetCascadeMatrix(const glm::vec3& lightDir, const glm::mat4& cameraView, const glm::mat4& cascadeProj,
+                                   uint32_t cascadeIndex);
 
         DirectLightBuffer m_directLight;
         CsmRC m_rc{};

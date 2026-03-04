@@ -9,6 +9,7 @@ cbuffer Constants : register(b0)
     uint normalView;
     uint depthView;
     uint4 shadowMapView;
+    float biasValue;
 };
 
 cbuffer matrices : register(b1)
@@ -47,8 +48,9 @@ cbuffer PointLightData : register(b4) { PointLight pointLights[MAX_POINT_LIGHTS]
 cbuffer shadowMapBuffer : register(b5)
 {
     float4 lightDirectionIntensity;
-    column_major float4x4 lightSpaceViewProj[SHADOWMAP_CASCADES];
+    ColumnMajor lightSpaceViewProj[SHADOWMAP_CASCADES];
     float4 cascadeDistance;
+    float4 cascadeSplitDepthRange;
 };
 
 Texture2D textures[4096] : register(t0, space0);
@@ -102,7 +104,8 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal, out int sh
     // Shadow bias
     float3 biasNormal = normalize(normal);
     // Offset by shadow position
-    float bias = max(0.05 * (1.0 - dot(normal, normalize(-lightDirectionIntensity.xyz))), 0.005);
+    float depthRange = cascadeSplitDepthRange[layer];
+    float bias = max((biasValue / depthRange) * (1.0 - dot(normal, normalize(-lightDirectionIntensity.xyz))), 0.005 / depthRange);
 
     float shadow = 0.0f;
     texture2D shadowMap = textures[shadowMapView[layer]];
@@ -116,7 +119,7 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal, out int sh
         for (int y = -1; y <= 1; ++y)
         {
             float pcfDepth = shadowMap.Sample(pointSampler, projCoords.xy + float2(x, y) * texelSize)
-                                 .r; // texture(shadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, layer)).r;
+                                 .r;
             shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;
         }
     }

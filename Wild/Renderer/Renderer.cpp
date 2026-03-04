@@ -198,16 +198,14 @@ namespace Wild
     {
         auto& ecs = engine.GetECS();
 
-        auto& cameras = ecs->View<Camera>();
+       auto& cameras = ecs->View<Camera>();
 
-        Camera* camera = nullptr;
         for (auto cameraEntity : cameras)
         {
-            camera = &ecs->GetComponent<Camera>(cameraEntity);
-            if (camera)
-            {
-                if (camera->IsRenderModeActive()) { return camera; }
-            }
+            if (!ecs->HasComponent<Camera>(cameraEntity)) { continue; }
+
+            Camera& camera = ecs->GetComponent<Camera>(cameraEntity);
+            if (camera.IsRenderModeActive()) { return &camera; }
         }
 
         return nullptr;

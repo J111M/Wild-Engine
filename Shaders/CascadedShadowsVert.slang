@@ -7,12 +7,13 @@ cbuffer rootConstant : register(b0)
     uint cascadeIndex;
 }
 
-cbuffer shadowMapBuffer : register(b1)
-{
-    float4 lightDirectionIntensity;
-    column_major float4x4 projView[SHADOWMAP_CASCADES];
-    float4 cascadeDistance; // Distances are store per float value
-};
+//cbuffer shadowMapBuffer : register(b1)
+//{
+//    float4 lightDirectionIntensity;
+//    ColumnMajor projView[SHADOWMAP_CASCADES]; // When using an array it forces it to row major automatically ! might not be the same for all drivers so has to be tested
+//    float4 cascadeDistance; // Distances are store per float value
+//    float4 cascadeSplitDepthRange;
+//};
 
 struct VSInput
 {
