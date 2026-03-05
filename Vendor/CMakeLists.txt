@@ -13,6 +13,26 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(fastgltf)
 target_link_libraries(Wild PRIVATE fastgltf)
 
+# Pix debugging
+FetchContent_Declare(
+    WinPixEventRuntime
+    URL "https://www.nuget.org/api/v2/package/WinPixEventRuntime/1.0.240308001"
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(WinPixEventRuntime)
+if(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
+    set(PIX_ARCH "ARM64")
+else()
+    set(PIX_ARCH "x64")
+endif()
+target_include_directories(Wild PRIVATE
+    "${winpixeventruntime_SOURCE_DIR}/Include/WinPixEventRuntime"
+)
+target_link_libraries(Wild PRIVATE
+    "${winpixeventruntime_SOURCE_DIR}/bin/${PIX_ARCH}/WinPixEventRuntime.lib"
+)
+set(PIX_DLL "${winpixeventruntime_SOURCE_DIR}/bin/${PIX_ARCH}/WinPixEventRuntime.dll" PARENT_SCOPE)
+
 # GLM
 FetchContent_Declare(
   glm

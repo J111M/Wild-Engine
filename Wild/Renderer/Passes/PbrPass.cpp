@@ -64,12 +64,12 @@ namespace Wild
         std::vector<PointLight> lightData;
         auto& lightsView = ecs->GetRegistry().view<PointLight, Transform>();
 
-        for (auto [entity, light, transform] : lightsView.each())
+        for (auto [entity, pointLight, transform] : lightsView.each())
         {
-            auto& light = lightsView.get<PointLight>(entity);
+            // auto& light = lightsView.get<PointLight>(entity);
             PointLight gpuLight{};
             gpuLight.position = transform.GetPosition();
-            gpuLight.colorIntensity = light.colorIntensity;
+            gpuLight.colorIntensity = pointLight.colorIntensity;
             lightData.push_back(gpuLight);
         }
 

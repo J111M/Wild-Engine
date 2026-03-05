@@ -50,6 +50,7 @@ namespace Wild
         bool m_lightChanged = true;
 
         // Debug values for frustum drawing
+        bool m_drawDebugFrustum = false;
         bool m_lockFrustum = false;
         std::vector<glm::vec3> m_maxExtents;
         std::vector<glm::vec3> m_minExtents;
@@ -58,6 +59,6 @@ namespace Wild
         std::vector<glm::mat4> m_lightView;
         std::vector<std::vector<glm::vec3>> m_frustumCorners;
 
-        float m_zMult = 6.445;
+        float m_zMult = 10.445;
     };
 } // namespace Wild

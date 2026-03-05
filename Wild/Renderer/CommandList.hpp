@@ -57,12 +57,13 @@ namespace Wild
         void SetVertexBuffer() {};
         void SetIndexBuffer() {};
         void Draw(uint32_t size) {};
-
       private:
         void SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil,
                               std::optional<uint32_t> rtArrayIndex = std::nullopt);
 
         const bool CanPassExecute(const std::string& passName);
+
+        uint32_t GetPassColor(std::string_view name);
 
         ComPtr<ID3D12GraphicsCommandList> m_commandList;
         ComPtr<ID3D12CommandAllocator> m_allocator;

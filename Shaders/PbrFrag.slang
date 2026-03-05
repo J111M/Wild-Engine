@@ -248,6 +248,7 @@ float4 main(VSOutput input) : SV_TARGET0
     float shadow = ShadowCalculation(positionWS, N, debugShadow);
     color = shadow * Lo + pointLo + ambient + emissive.rgb;
 
+    // Cascade debugging
     // switch (debugShadow)
     //{
     // case 0:

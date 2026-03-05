@@ -6,6 +6,8 @@
 
 #include "Tools/Common3d12.hpp"
 
+#include <pix3.h>
+
 namespace Wild
 {
     ImguiCore::ImguiCore(std::shared_ptr<Window> window) { Setup(window); }
@@ -181,7 +183,8 @@ namespace Wild
                 if (ImGui::MenuItem("Spawn Point Light"))
                 {
                     auto e = engine.GetECS()->CreateEntity();
-                    engine.GetECS()->AddComponent<Transform>(e, e);
+                    auto& transform = engine.GetECS()->AddComponent<Transform>(e, e);
+                    transform.Name = "Point light";
                     engine.GetECS()->AddComponent<PointLight>(e);
                 }
 
@@ -527,6 +530,12 @@ namespace Wild
         }
         ImGui::End();
 
+#ifdef DEBUG
+        std::string passName = "Imgui pass";
+        std::wstring wstringPassName(passName.begin(), passName.end());
+        PIXBeginEvent(engine.GetGfxContext()->GetCommandList()->GetList().Get(), PIX_COLOR_INDEX(1), wstringPassName.c_str());
+#endif
+
         ImGui::Render();
 
         auto list = engine.GetGfxContext()->GetCommandList()->GetList();
@@ -537,6 +546,8 @@ namespace Wild
         // Render ImGui draw data
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), list.Get());
 
-        engine.GetGfxContext()->GetCommandList()->EndRender();
+#ifdef DEBUG
+        PIXEndEvent(engine.GetGfxContext()->GetCommandList()->GetList().Get());
+#endif
     }
 } // namespace Wild

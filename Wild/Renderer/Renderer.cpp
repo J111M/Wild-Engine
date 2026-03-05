@@ -117,7 +117,8 @@ namespace Wild
         }
 
         list.SetPipelineState(pipeline);
-        list.BeginRender({gfxContext->GetRenderTarget().get()}, {ClearOperation::Store}, nullptr, DSClearOperation::Store);
+        list.BeginRender(
+            {gfxContext->GetRenderTarget().get()}, {ClearOperation::Store}, nullptr, DSClearOperation::Store, "Compositor pass");
         list.GetList()->SetGraphicsRootDescriptorTable(0, compositeTexture->GetSrv()->GetGpuHandle());
         list.GetList()->DrawInstanced(3, 1, 0, 0);
         list.EndRender();
@@ -198,7 +199,7 @@ namespace Wild
     {
         auto& ecs = engine.GetECS();
 
-       auto& cameras = ecs->View<Camera>();
+        auto& cameras = ecs->View<Camera>();
 
         for (auto cameraEntity : cameras)
         {

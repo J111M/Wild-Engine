@@ -74,4 +74,10 @@ add_custom_command(TARGET Wild POST_BUILD
     "$<TARGET_FILE_DIR:Wild>/"
 )
 
+add_custom_command(TARGET Wild POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${PIX_DLL}"
+        $<TARGET_FILE_DIR:Wild>
+)
+
 #${CMAKE_BINARY_DIR}

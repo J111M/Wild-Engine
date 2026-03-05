@@ -293,7 +293,7 @@ namespace Wild
                     renderer.GetOrCreatePipeline("Grass culling pass", PipelineStateType::Compute, settings, uniforms);
 
                 list.SetPipelineState(pipeline);
-                list.BeginRender();
+                list.BeginRender("Grass culling pass");
 
                 UINT frameIndex = context->GetBackBufferIndex();
 
@@ -351,7 +351,7 @@ namespace Wild
                     "Indirect command creation pass", PipelineStateType::Compute, settings, uniforms);
 
                 list.SetPipelineState(pipeline);
-                list.BeginRender();
+                list.BeginRender("Draw command creation pass");
 
                 int frameIndex = context->GetBackBufferIndex();
                 list.SetUnorderedAccessView(0, m_instanceCountBuffer[frameIndex].get());

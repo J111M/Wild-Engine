@@ -4,6 +4,8 @@
 #include "Renderer/Resources/Buffer.hpp"
 #include "Renderer/Resources/Texture.hpp"
 
+#include <pix3.h>
+
 namespace Wild
 {
     CommandList::CommandList(D3D12_COMMAND_LIST_TYPE listType)
@@ -147,10 +149,13 @@ namespace Wild
         m_frameInFlight = true;
         m_pipelineIsSet = false;
 
+        auto gfxContext = engine.GetGfxContext();
+
+#ifdef DEBUG
         std::wstring wstringPassName(passName.begin(), passName.end());
         // m_commandList->BeginEvent(1, wstringPassName.c_str(), (wstringPassName.size() + 1) * sizeof(wchar_t));
-
-        auto gfxContext = engine.GetGfxContext();
+        PIXBeginEvent(m_commandList.Get(), static_cast<UINT32>(GetPassColor(passName)), wstringPassName.c_str());
+#endif // DEBUG
 
         m_commandList->SetGraphicsRootSignature(m_pipelineState->GetRootSignature().Get());
 
@@ -209,8 +214,11 @@ namespace Wild
             return;
         }
 
+#ifdef DEBUG
         std::wstring wstringPassName(passName.begin(), passName.end());
         // m_commandList->BeginEvent(1, wstringPassName.c_str(), (wstringPassName.size() + 1) * sizeof(wchar_t));
+        PIXBeginEvent(m_commandList.Get(), static_cast<UINT32>(GetPassColor(passName)), wstringPassName.c_str());
+#endif // DEBUG
 
         m_frameInFlight = true;
         m_pipelineIsSet = false;
@@ -223,7 +231,13 @@ namespace Wild
 
     void CommandList::EndRender()
     {
+#ifdef DEBUG
+        PIXEndEvent(m_commandList.Get());
         // m_commandList->EndEvent();
+#endif // DEBUG
+
+        if (!m_frameInFlight) WD_WARN("Begin render was never called.");
+
         m_frameInFlight = false;
     }
 
@@ -303,6 +317,18 @@ namespace Wild
         }
 
         return true;
+    }
+
+    // Random hash to pix color
+    uint32_t CommandList::GetPassColor(std::string_view name)
+    {
+        uint32_t h = 2166136261u;
+        for (char c : name)
+            h = (h ^ c) * 16777619u;
+        uint8_t r = 128 + (h & 0x7F);
+        uint8_t g = 128 + ((h >> 8) & 0x7F);
+        uint8_t b = 128 + ((h >> 16) & 0x7F);
+        return PIX_COLOR(r, g, b);
     }
 
 } // namespace Wild
