@@ -3,6 +3,8 @@
 
 #include "Tools/StateTransfer.hpp"
 
+#include <fstream>
+
 namespace Wild
 {
     PipelineState::PipelineState(PipelineStateType Type, const PipelineStateSettings& settings,
@@ -11,9 +13,21 @@ namespace Wild
     {
         m_type = Type;
 
+        // WD_PROFILESCOPE(m_settings.PipelineName);
+
+        m_name = m_settings.PipelineName;
+        m_name = RemoveSpacesFromString(m_name);
+
         CreateRootSignature(uniforms);
 
         if (!m_rootSignature) WD_FATAL("Failed to create root signature.");
+
+        // Create cache folder
+        if (!std::filesystem::exists("PSOCache"))
+        {
+            std::filesystem::create_directory("PSOCache");
+            WD_INFO("Created PSO cache directory");
+        }
 
         switch (m_type)
         {
@@ -30,6 +44,31 @@ namespace Wild
         default:
             break;
         }
+    }
+
+    PipelineState::~PipelineState() { SerializePSO(); }
+
+    void PipelineState::SerializePSO()
+    {
+        ComPtr<ID3DBlob> blob;
+        ThrowIfFailed(m_pso->GetCachedBlob(&blob));
+
+        std::string psoPath = "PSOCache/" + m_name + ".bin";
+        std::string psoTemp = "PSOCache/" + m_name + ".bin" + ".tmp";
+        if (std::filesystem::exists(psoPath)) { return; }
+
+        std::ofstream file(psoTemp, std::ios::binary);
+        if (!file)
+        {
+            WD_ERROR("Failed to open PSO cache for writing");
+            return;
+        }
+
+        file.write(static_cast<const char*>(blob->GetBufferPointer()), blob->GetBufferSize());
+        file.close();
+
+        std::filesystem::rename(psoTemp, psoPath);
+        WD_INFO("PSO cache saved ({} bytes)", blob->GetBufferSize());
     }
 
     void PipelineState::CreateRootSignature(const std::vector<Uniform>& uniforms)
@@ -155,7 +194,91 @@ namespace Wild
         psoDesc.DepthStencilState.BackFace.StencilPassOp = GetDepthStencilOp(m_settings.DepthStencilState.BackFace.StencilPassOp);
         psoDesc.DepthStencilState.BackFace.StencilFunc = GetComparisonFunc(m_settings.DepthStencilState.BackFace.StencilFunc);
 
+        std::string psoPath = "PSOCache/" + m_name + ".bin";
+
+        std::vector<uint8_t> cachedData;
+
+        if (std::filesystem::exists(psoPath))
+        {
+            std::ifstream file(psoPath, std::ios::binary);
+            if (file)
+            {
+                cachedData.assign(std::istreambuf_iterator<char>(file), {});
+                WD_INFO("Found existing PSO cache ({} bytes)", cachedData.size());
+            }
+        }
+
+        if (!cachedData.empty())
+        {
+            psoDesc.CachedPSO.pCachedBlob = cachedData.data();
+            psoDesc.CachedPSO.CachedBlobSizeInBytes = cachedData.size();
+        }
+
         ThrowIfFailed(gfxContext->GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
+
+        // Experimental PSO caching
+        // HRESULT reason = gfxContext->GetDevice()->GetDeviceRemovedReason();
+        //// if (SUCCEEDED(reason)) return;
+
+        // switch (reason)
+        //{
+        // case DXGI_ERROR_DEVICE_HUNG:
+        //     WD_FATAL("Device removed: GPU hung (bad draw call / shader infinite loop)");
+        //     break;
+        // case DXGI_ERROR_DEVICE_RESET:
+        //     WD_FATAL("Device removed: GPU reset (driver crash or invalid command)");
+        //     break;
+        // case DXGI_ERROR_DEVICE_REMOVED:
+        //     WD_FATAL("Device removed: GPU physically removed");
+        //     break;
+        // case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
+        //     WD_FATAL("Device removed: Internal driver error");
+        //     break;
+        // case DXGI_ERROR_INVALID_CALL:
+        //     WD_FATAL("Device removed: Invalid API call (likely a bug)");
+        //     break;
+        // default:
+        //     WD_FATAL("Device removed: Unknown reason (0x{:08X})", static_cast<uint32_t>(reason));
+        //     break;
+        // }
+
+        // HRESULT hr = gfxContext->GetPipelineLibrary()->LoadGraphicsPipeline(
+        //     StringToWString(m_settings.PipelineName).c_str(), &psoDesc, IID_PPV_ARGS(&m_pso));
+
+        // HRESULT reason = gfxContext->GetDevice()->GetDeviceRemovedReason();
+
+        // switch (reason)
+        //{
+        // case DXGI_ERROR_DEVICE_HUNG:
+        //     WD_FATAL("Device removed: GPU hung (bad draw call / shader infinite loop)");
+        //     break;
+        // case DXGI_ERROR_DEVICE_RESET:
+        //     WD_FATAL("Device removed: GPU reset (driver crash or invalid command)");
+        //     break;
+        // case DXGI_ERROR_DEVICE_REMOVED:
+        //     WD_FATAL("Device removed: GPU physically removed");
+        //     break;
+        // case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
+        //     WD_FATAL("Device removed: Internal driver error");
+        //     break;
+        // case DXGI_ERROR_INVALID_CALL:
+        //     WD_FATAL("Device removed: Invalid API call (likely a bug)");
+        //     break;
+        // default:
+        //     WD_FATAL("Device removed: Unknown reason (0x{:08X})", static_cast<uint32_t>(reason));
+        //     break;
+        // }
+
+        // if (hr == E_INVALIDARG)
+        //{
+        //     // Fall back to regular creation
+        //     ThrowIfFailed(gfxContext->GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
+        //     gfxContext->GetPipelineLibrary()->StorePipeline(StringToWString(m_settings.PipelineName).c_str(), m_pso.Get());
+        // }
+        // else
+        //{
+        //     ThrowIfFailed(hr);
+        // }
     }
 
     void PipelineState::CreateComputePSO()
@@ -171,9 +294,44 @@ namespace Wild
         psoDesc.pRootSignature = m_rootSignature.Get();
         psoDesc.CS = m_settings.ShaderState.ComputeShader->GetByteCode();
 
+        std::string psoPath = "PSOCache/" + m_name + ".bin";
+
+        std::vector<uint8_t> cachedData;
+
+        if (std::filesystem::exists(psoPath))
+        {
+            std::ifstream file(psoPath, std::ios::binary);
+            if (file)
+            {
+                cachedData.assign(std::istreambuf_iterator<char>(file), {});
+                WD_INFO("Found existing PSO cache ({} bytes)", cachedData.size());
+            }
+        }
+
+        if (!cachedData.empty())
+        {
+            psoDesc.CachedPSO.pCachedBlob = cachedData.data();
+            psoDesc.CachedPSO.CachedBlobSizeInBytes = cachedData.size();
+        }
+
         ThrowIfFailed(gfxContext->GetDevice()->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
+
+        // HRESULT hr = gfxContext->GetPipelineLibrary()->LoadComputePipeline(
+        //     StringToWString(m_settings.PipelineName).c_str(), &psoDesc, IID_PPV_ARGS(&m_pso));
+
+        // if (hr == E_INVALIDARG)
+        //{
+        //     // Fall back to regular creation
+        //     ThrowIfFailed(gfxContext->GetDevice()->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
+        //     gfxContext->GetPipelineLibrary()->StorePipeline(StringToWString(m_settings.PipelineName).c_str(), m_pso.Get());
+        // }
+        // else
+        //{
+        //     ThrowIfFailed(hr);
+        // }
     }
 
+    // Deprecated
     void PipelineState::CreateMeshPipelinePSO()
     {
         auto gfxContext = engine.GetGfxContext();

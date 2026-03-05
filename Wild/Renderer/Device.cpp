@@ -1,6 +1,7 @@
 #include "Renderer/Device.hpp"
 
 #include <codecvt>
+#include <fstream>
 #include <initguid.h>
 #include <locale>
 
@@ -30,6 +31,8 @@ namespace Wild
 
     void GfxContext::Shutdown()
     {
+        CachePipelineLibrary();
+
         // Release resources manually since we are working with static objects
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)
         {
@@ -64,6 +67,7 @@ namespace Wild
         SetupFactory();
         CreateAdapter();
         CreateDevice();
+        CreatePipelineLibrary();
 
         m_capabilities.GetSupportedFeatures(this);
 
@@ -299,5 +303,55 @@ namespace Wild
 
         std::string rtName = "Backbuffer Render target: " + std::to_string(index);
         m_renderTargets[index]->GetResource()->SetName(StringToWString(rtName).c_str());
+    }
+
+    void GfxContext::CreatePipelineLibrary()
+    {
+        // std::vector<uint8_t> cachedData;
+        // std::ifstream cacheFile("psoCache.bin", std::ios::binary);
+
+        // if (cacheFile.good())
+        //{
+        //     cachedData = std::vector<uint8_t>(std::istreambuf_iterator<char>(cacheFile), std::istreambuf_iterator<char>());
+        // }
+
+        // HRESULT hr = m_device2->CreatePipelineLibrary(cachedData.data(), cachedData.size(), IID_PPV_ARGS(&m_pipelineLibrary));
+
+        //// Check if cache is valid and if the driver is the same else refresh
+        // if (FAILED(hr))
+        //{
+        //     WD_WARN("PSO cache invalid (0x{:#x}), rebuilding...", static_cast<uint32_t>(hr));
+        //     std::filesystem::remove("psoCache.bin"); // delete corrupt file
+        //     cachedData.clear();
+        //     ThrowIfFailed(m_device2->CreatePipelineLibrary(nullptr, 0, IID_PPV_ARGS(&m_pipelineLibrary)));
+        // }
+        /* else if (hr == E_INVALIDARG || hr == D3D12_ERROR_DRIVER_VERSION_MISMATCH)
+         {
+             WD_WARN("PSO cache is invalid rebuilding...");
+             m_device2->CreatePipelineLibrary(nullptr, 0, IID_PPV_ARGS(&m_pipelineLibrary));
+         }*/
+    }
+
+    void GfxContext::CachePipelineLibrary()
+    {
+        /*if (!m_pipelineLibrary) { WD_FATAL("Pipeline library was not created!"); }
+
+        WD_INFO("PSO is cached.");
+
+        size_t size = m_pipelineLibrary->GetSerializedSize();
+        if (size == 0) return;
+
+        std::vector<uint8_t> data(size);
+        ThrowIfFailed(m_pipelineLibrary->Serialize(data.data(), size));
+
+        std::ofstream file("psoCache.bin", std::ios::binary);
+
+        if (!file)
+        {
+            WD_ERROR("Failed to open psoCache.bin for writing");
+            return;
+        }
+        file.write(reinterpret_cast<char*>(data.data()), size);
+        if (!file) WD_ERROR("Failed to write PSO cache to disk");*/
     }
 } // namespace Wild

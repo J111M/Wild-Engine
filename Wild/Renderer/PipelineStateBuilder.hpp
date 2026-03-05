@@ -40,13 +40,15 @@ namespace Wild
     {
       public:
         PipelineState(PipelineStateType Type, const PipelineStateSettings& settings, const std::vector<Uniform>& uniforms = {});
-        ~PipelineState() {};
+        ~PipelineState();
 
         ComPtr<ID3D12PipelineState> GetPso() { return m_pso; }
         ComPtr<ID3D12RootSignature> GetRootSignature() { return m_rootSignature; }
         const PipelineStateSettings& GetPipelineSettings() { return m_settings; }
 
         const PipelineStateType GetPassType() const { return m_type; }
+
+        void SerializePSO();
 
       private:
         void CreateRootSignature(const std::vector<Uniform>& uniforms);
@@ -59,6 +61,8 @@ namespace Wild
 
         ComPtr<ID3D12PipelineState> m_pso;
         ComPtr<ID3D12RootSignature> m_rootSignature;
+
+        std::string m_name;
 
         bool m_isComputePass = false;
         bool m_hasRootConstant = false;

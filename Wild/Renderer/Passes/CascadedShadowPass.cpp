@@ -48,7 +48,8 @@ namespace Wild
                 settings.RasterizerState.CullMode = CullMode::Front;
 
                 // Hard coded size for now TODO use texture size
-                settings.RasterizerState.Viewport.size = glm::vec2(2048, 2048);
+                settings.RasterizerState.Viewport.size =
+                    glm::vec2(passData.shadowMap[0]->Width(), passData.shadowMap[0]->Height());
 
                 // Setting up the input layout
                 settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));

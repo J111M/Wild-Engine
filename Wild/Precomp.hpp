@@ -25,6 +25,7 @@
 #undef min
 #undef max
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <wrl.h>
@@ -68,6 +69,13 @@ class NonCopyable
     NonCopyable(NonCopyable&&) = delete;
     NonCopyable& operator=(NonCopyable&&) = delete;
 };
+
+static std::string RemoveSpacesFromString(const std::string& s)
+{
+    std::string result = s;
+    std::replace(result.begin(), result.end(), ' ', '_');
+    return result;
+}
 
 // TODO only include into engine files
 #include "Core/Engine.hpp"

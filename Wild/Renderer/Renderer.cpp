@@ -164,10 +164,12 @@ namespace Wild
     }
 
     std::shared_ptr<PipelineState> Renderer::GetOrCreatePipeline(const std::string& key, PipelineStateType Type,
-                                                                 const PipelineStateSettings& settings,
+                                                                 PipelineStateSettings& settings,
                                                                  const std::vector<Uniform>& uniforms)
     {
         if (HasPipelineInCache(key)) return m_pipelineCache.at(key);
+
+        settings.PipelineName = key;
 
         // If the unordered map doesn't contain a pipeline at hash value create a new one
         auto it = m_pipelineCache.emplace(key, std::make_shared<PipelineState>(Type, settings, uniforms)).first;

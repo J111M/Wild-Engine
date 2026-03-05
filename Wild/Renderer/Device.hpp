@@ -27,6 +27,7 @@ namespace Wild
         ComPtr<ID3D12Device> GetDevice() { return m_device; }
         ComPtr<ID3D12Device2> GetDevice2() { return m_device2; }
         ComPtr<IDXGIFactory4> GetFactory() { return m_factory; }
+        ComPtr<ID3D12PipelineLibrary> GetPipelineLibrary() { return m_pipelineLibrary; }
         std::string GetAdapterName();
 
         const GfxCapabilities& GetCapabilities() const { return m_capabilities; }
@@ -73,6 +74,9 @@ namespace Wild
         void CreateSwapchain();
         void CreateTextureFromSwapchain(UINT index);
 
+        void CreatePipelineLibrary();
+        void CachePipelineLibrary();
+
         ComPtr<IDXGIFactory4> m_factory;
 
         // factory flags
@@ -84,6 +88,9 @@ namespace Wild
         ComPtr<ID3D12Device> m_device;
         ComPtr<ID3D12Device2> m_device2;
         ComPtr<ID3D12DebugDevice> m_debugDevice;
+
+        // Pipeline library for caching the PSO's
+        ComPtr<ID3D12PipelineLibrary> m_pipelineLibrary;
 
         GfxCapabilities m_capabilities;
 
