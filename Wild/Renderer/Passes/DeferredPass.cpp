@@ -9,7 +9,7 @@ namespace Wild
     {
         auto ecs = engine.GetECS();
 
-        for (size_t i = 0; i < 10; i++)
+        for (size_t i = 0; i < 1; i++)
         {
             auto entity = ecs->CreateEntity();
             auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
@@ -18,14 +18,6 @@ namespace Wild
             transform.SetPosition(glm::vec3(i * 3, 5, i * 3));
         }
 
-        {
-            auto entity = ecs->CreateEntity();
-            auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
-            ecs->AddComponent<Model>(entity, "Assets/Models/tower/scene.gltf", entity);
-            transform.SetScale(glm::vec3(2, 2, 2));
-            transform.SetPosition(glm::vec3(-2, 7, -2));
-        }
-        
         auto entity = ecs->CreateEntity();
         auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
         ecs->AddComponent<Model>(entity, "Assets/Models/Cube/scene.gltf", entity);
