@@ -111,6 +111,7 @@ namespace Wild
 
             SetWindowData(frameCount, frameTime);
         }
+        m_gfxContext->CachePipelineLibrary();
     }
 
     void Engine::Shutdown()

@@ -43,6 +43,8 @@ namespace Wild
 
         std::shared_ptr<CommandList> GetCommandList() { return m_directCommandList[m_backBufferIndex]; }
 
+        void CachePipelineLibrary();
+
         // TODO add possible command list for compute commands
         // std::shared_ptr<CommandList> GetComputeCommandList() { return m_computeCommandList[m_backBufferIndex]; }
 
@@ -75,7 +77,8 @@ namespace Wild
         void CreateTextureFromSwapchain(UINT index);
 
         void CreatePipelineLibrary();
-        void CachePipelineLibrary();
+        bool m_usesLegacyCache = false;
+        std::vector<uint8_t> m_libraryData;
 
         ComPtr<IDXGIFactory4> m_factory;
 
