@@ -86,20 +86,12 @@ namespace Wild
             m_camData.cameraFar = camera->GetNearFar().y;
             m_pbrData.cameraPosition = camera->GetPosition();
         }
-        else
-        {
-            m_camData.inverseView = glm::mat4{};
-            m_camData.inverseProj = glm::mat4{};
-            m_camData.cameraFar = 50.0f;
-            m_pbrData.cameraPosition = glm::vec3{};
-        }
 
         int frameIndex = context->GetBackBufferIndex();
         m_cameraBuffer[frameIndex]->Allocate(&m_camData);
 
         engine.GetImGui()->AddPanel("Pbr settings", [this]() {
             ImGui::SliderFloat3("Light direction: ", &m_pbrData.lightDirection[0], -20.0f, 20.0f);
-            ImGui::SliderFloat("Depth bias: ", &m_rc.depthBias, 0.005, 1.0f);
 
             const char* debugModes[] = {"None", "Albedo", "Normals", "Roughness", "Metallic", "AO", "Depth"};
 
@@ -230,6 +222,7 @@ namespace Wild
                 m_rc.normalView = deferredData->normalMetallicTexture->GetSrv()->BindlessView();
                 m_rc.emissiveView = deferredData->emissiveTexture->GetSrv()->BindlessView();
                 m_rc.depthView = deferredData->depthTexture->GetSrv()->BindlessView();
+                m_rc.depthBias = shadowMapData->biasValue;
 
                 // Get shader resource view's from the shadowmap depth textures
                 for (size_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)

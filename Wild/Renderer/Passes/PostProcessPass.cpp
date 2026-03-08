@@ -37,9 +37,9 @@ namespace Wild
 
         engine.GetImGui()->AddPanel("Volumetric Fog Settings", [this]() {
             ImGui::SliderInt("Step Count", reinterpret_cast<int*>(&m_vrc.stepCount), 1, 256);
-            ImGui::SliderFloat("Step Size", &m_vrc.stepSize, 0.01f, 2.0f);
-            ImGui::SliderFloat("Scattering Density", &m_vrc.scatteringDensity, 0.001f, 2.0f);
-            ImGui::SliderFloat("Density", &m_vrc.density, 0.001f, 0.2f);
+            ImGui::SliderFloat("Step Size", &m_vrc.stepSize, 0.1f, 2.0f);
+            ImGui::SliderFloat("Scattering Density", &m_vrc.scatteringDensity, 0.0f, 2.0f);
+            ImGui::SliderFloat("Density", &m_vrc.density, 0.0f, 0.2f);
             ImGui::ColorEdit3("Scattering Color", &m_vrc.scatteringColor[0]);
             ImGui::ColorEdit3("Sun Color", &m_vrc.sunColorIntensity[0]);
             ImGui::SliderFloat("Sun Intensity", &m_vrc.sunColorIntensity.w, 0.001f, 2.0f);
@@ -55,6 +55,7 @@ namespace Wild
         auto* passData = rg.AllocatePassData<VolumetricPassData>();
         auto* skyboxData = rg.GetPassData<VolumetricPassData, SkyPassData>();
         auto* pbrData = rg.GetPassData<VolumetricPassData, PbrPassData>();
+        auto* shadowData = rg.GetPassData<VolumetricPassData, CsmPassData>();
 
         {
             TextureDesc desc;
@@ -72,16 +73,23 @@ namespace Wild
         rg.AddPass<VolumetricPassData>(
             "Volumetrics pass",
             PassType::Compute,
-            [&renderer, skyboxData, pbrData, this](VolumetricPassData& passData, CommandList& list) {
+            [&renderer, skyboxData, pbrData, shadowData, this](VolumetricPassData& passData, CommandList& list) {
                 passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 renderer.irradianceMap->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+                for (size_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
+                {
+                    // TODO batcht transition together to optimize
+                    shadowData->shadowMap[cascade]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    m_vrc.shadowMapView[cascade] = shadowData->shadowMap[cascade]->GetSrv()->BindlessView();
+                }
 
                 PipelineStateSettings settings{};
                 settings.ShaderState.ComputeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/PostProcess/Volumetrics.slang");
 
                 std::vector<Uniform> uniforms;
-                uniforms.reserve(5);
+                uniforms.reserve(6);
 
                 Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(VolumetricRC)};
                 uniforms.emplace_back(rootConstant);
@@ -91,6 +99,9 @@ namespace Wild
 
                 Uniform lightsBuffer{2, 0, RootParams::RootResourceType::ConstantBufferView};
                 uniforms.emplace_back(lightsBuffer);
+
+                Uniform shadowBuffer{3, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(shadowBuffer);
 
                 // Output render target
                 Uniform outputTexture{0, 0, RootParams::RootResourceType::DescriptorTable};
@@ -123,6 +134,12 @@ namespace Wild
                 pointSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                 uniforms.emplace_back(pointSampler);
 
+                Uniform shadowSampler{1, 0, RootParams::RootResourceType::StaticSampler};
+                shadowSampler.samplerState.filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+                shadowSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+                shadowSampler.samplerState.comparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+                uniforms.emplace_back(shadowSampler);
+
                 int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
 
                 auto& pipeline = renderer.GetOrCreatePipeline("Volumetrics pass", PipelineStateType::Compute, settings, uniforms);
@@ -137,12 +154,14 @@ namespace Wild
 
                 if (renderer.irradianceMap) { m_vrc.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView(); }
                 m_vrc.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
+                m_vrc.biasValue = shadowData->biasValue;
 
                 list.SetRootConstant<VolumetricRC>(0u, m_vrc);
                 list.SetConstantBufferView(1u, m_sceneDataBuffer[frameIndex].get());
                 list.SetConstantBufferView(2u, pbrData->pointlights.get());
-                list.SetUnorderedAccessView(3u, passData.finalTexture);
-                list.SetBindlessHeap(4u);
+                list.SetConstantBufferView(3u, shadowData->directLightBuffer.get());
+                list.SetUnorderedAccessView(4u, passData.finalTexture);
+                list.SetBindlessHeap(5u);
 
                 // Thread group size of 8 to reduce occupancy
                 list.GetList()->Dispatch(
@@ -151,7 +170,6 @@ namespace Wild
 
                 renderer.irradianceMap->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                // renderer.compositeTexture = passData.finalTexture;
             });
     }
 

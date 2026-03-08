@@ -38,6 +38,7 @@ namespace Wild
                     WD_FATAL("Can't have more than 4 cascades");
                     return;
                 }
+                passData.biasValue = m_shadowBias;
 
                 PipelineStateSettings settings{};
                 settings.ShaderState.VertexShader =
@@ -187,6 +188,7 @@ namespace Wild
                 m_lightChanged = true;
             }
 
+            ImGui::SliderFloat("Bias value", &m_shadowBias, 0.001, 20.0f);
             ImGui::SliderFloat("Z Mult", &m_zMult, 0.01, 20.0f);
 
             if (ImGui::Button("Draw light cascaded and frustum")) { m_drawDebugFrustum = !m_drawDebugFrustum; }

@@ -10,6 +10,7 @@ namespace Wild
     {
         Texture* shadowMap[SHADOWMAP_CASCADES];
         std::shared_ptr<Buffer> directLightBuffer;
+        float biasValue;
     };
 
     struct CsmRC
@@ -59,6 +60,7 @@ namespace Wild
         std::vector<glm::mat4> m_lightView;
         std::vector<std::vector<glm::vec3>> m_frustumCorners;
 
+        float m_shadowBias = 0.05f;
         float m_zMult = 10.445;
     };
 } // namespace Wild

@@ -31,7 +31,10 @@ namespace Wild
         glm::vec4 sunColorIntensity = glm::vec4(1.0, 0.95, 0.8, 1.0f);
 
         float anisotropy = 0.3f;
-        float pad[3];
+        float biasValue{};
+        float pad[2];
+
+        uint32_t shadowMapView[4]; // Max of 4 shadow maps
     };
 
     struct FinalPostProcessPassData
@@ -50,8 +53,8 @@ namespace Wild
     {
         glm::mat4 inverseProj;
         glm::mat4 inverseView;
+        glm::mat4 viewSpace;
         glm::vec3 cameraPosition;
-        float pad;
         glm::vec3 lightDirection;
     };
 
