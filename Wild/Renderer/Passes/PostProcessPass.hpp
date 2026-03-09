@@ -5,6 +5,19 @@
 
 namespace Wild
 {
+    /// Pre computed volumetric noise pass
+    struct VolumetricNoiseRC
+    {
+        float textureSize;
+        float cellCount = 4;
+    };
+
+    struct VolumetricNoisePassData
+    {
+        Texture* volumetricNoise; // Worley combined with perlin noise
+    };
+
+    /// Volumetric ray march pass
     struct VolumetricPassData
     {
         Texture* finalTexture;
@@ -30,13 +43,19 @@ namespace Wild
 
         glm::vec4 sunColorIntensity = glm::vec4(1.0, 0.95, 0.8, 1.0f);
 
-        float anisotropy = 0.3f;
+        float anisotropy = 0.875f;
         float biasValue{};
-        float pad[2];
+        float noiseScale = 50.0f;
+        float pad;
 
         uint32_t shadowMapView[4]; // Max of 4 shadow maps
+
+        glm::vec4 windDirectionTime = glm::vec4(0.5, 0.2, 0.5, 0);
+
+        uint32_t noiseView{};
     };
 
+    /// Final post process pass HDR and other effects
     struct FinalPostProcessPassData
     {
         Texture* finalTexture;
@@ -68,13 +87,23 @@ namespace Wild
         virtual void Update(const float dt) override;
 
       private:
+        void VolumetricNoisePass(Renderer& renderer, RenderGraph& rg);
         void VolumetricsPass(Renderer& renderer, RenderGraph& rg);
         void FinalPostProcessPass(Renderer& renderer, RenderGraph& rg);
 
-        VolumetricRC m_vrc{};
+        // Volumetric noise
+        VolumetricNoiseRC m_noiseRC{};
+        bool m_recomputeVolumetricNoise = true;
+
+        // Volumetric data
+        VolumetricRC m_volumetricRC{};
         SceneBuffer m_sceneData{};
         std::unique_ptr<Buffer> m_sceneDataBuffer[BACK_BUFFER_COUNT];
 
-        PostProcessRC m_pprc{};
+        float m_fogTime{};
+        float m_windSpeed = 0.5f;
+
+        // Post process data
+        PostProcessRC m_postProcessRC{};
     };
 } // namespace Wild

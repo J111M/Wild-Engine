@@ -13,6 +13,7 @@ namespace Wild
 {
     enum class TextureType
     {
+        TEXTURE_3D,
         TEXTURE_2D,
         TEXTURE_1D,
         CUBEMAP,

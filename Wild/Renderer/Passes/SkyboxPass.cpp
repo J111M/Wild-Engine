@@ -25,7 +25,7 @@ namespace Wild
         {
             TextureDesc texDesc;
             texDesc.width = 512;
-            texDesc.Height = 512;
+            texDesc.height = 512;
             texDesc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
             texDesc.format = DXGI_FORMAT_R16G16_FLOAT;
             texDesc.name = "BRDF LUT";
@@ -37,8 +37,8 @@ namespace Wild
         {
             TextureDesc texDesc;
             texDesc.width = 512;
-            texDesc.Height = 512;
-            texDesc.Layers = 6;
+            texDesc.height = 512;
+            texDesc.depthOrArray = 6;
             texDesc.type = TextureType::CUBEMAP;
             texDesc.mips = m_specularMips;
             texDesc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
@@ -209,8 +209,8 @@ namespace Wild
         {
             TextureDesc desc;
             desc.width = 512;
-            desc.Height = 512;
-            desc.Layers = 6;
+            desc.height = 512;
+            desc.depthOrArray = 6;
             desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
             desc.name = "Environment cubemap";
             desc.usage = TextureDesc::gpuOnly;
@@ -223,8 +223,8 @@ namespace Wild
         {
             TextureDesc desc;
             desc.width = 32;
-            desc.Height = 32;
-            desc.Layers = 6;
+            desc.height = 32;
+            desc.depthOrArray = 6;
             desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
             desc.name = "Irradiance cubemap";
             desc.usage = TextureDesc::gpuOnly;
@@ -488,9 +488,9 @@ namespace Wild
                         auto desc = m_specularMap->GetDesc();
                         for (uint32_t mip = 0; mip < desc.mips; mip++)
                         {
-                            for (uint32_t face = 0; face < desc.Layers; face++)
+                            for (uint32_t face = 0; face < desc.depthOrArray; face++)
                             {
-                                uint32_t uavIndex = mip * desc.Layers + face;
+                                uint32_t uavIndex = mip * desc.depthOrArray + face;
                                 rc.mipSize = desc.width * std::pow(0.5, mip);
                                 rc.roughness = (float)mip / (float)(desc.mips - 1);
                                 rc.face = face;

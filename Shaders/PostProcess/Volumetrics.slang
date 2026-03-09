@@ -1,5 +1,7 @@
+#include "../Helper/Common.slang"
 #include "../ShadowInc.slang"
 #include "Formula.slang"
+
 
 cbuffer RootConsant : register(b0)
 {
@@ -22,9 +24,14 @@ cbuffer RootConsant : register(b0)
 
     float anisotropy;
     float biasValue;
-    float2 pad;
+    float noiseScale;
+    float pad;
 
     uint4 shadowMapView;
+
+    float4 windDirectionTime;
+
+    uint noiseTextureView;
 };
 
 cbuffer SceneData : register(b1)
@@ -61,19 +68,16 @@ RWTexture2D<float4> outputTexture : register(u0);
 
 Texture2D textures[4096] : register(t0, space0);
 TextureCube textureCubes[4096] : register(t0, space1);
+Texture3D textures3D[4096] : register(t0, space2);
 
 SamplerState pointSampler : register(s0);
 SamplerComparisonState shadowSampler : register(s1);
+SamplerState noiseSampler : register(s2);
 
 #define PI 3.14159265358979323846
 
 ///  Pseudo-random function https://thebookofshaders.com/10/
-float randomOffset(float2 pos)
-{
-    return fract(sin(dot(pos.xy,
-                         float2(145.0, 7.233))) *
-        4274.84205094213454340);
-}
+float randomOffset(float2 pos) { return fract(sin(dot(pos.xy, float2(145.0, 7.233))) * 4274.84205094213454340); }
 
 float4 GetWorldSpacePosition(float3 position)
 {
@@ -84,7 +88,7 @@ float4 GetWorldSpacePosition(float3 position)
 }
 
 // Shadow sample
-float ShadowCalculation(float3 marchPosition, float3 normal, out int layerDepth)
+float ShadowCalculation(float3 marchPosition)
 {
     float4 viewSpacePosition = mul(viewSpace, float4(marchPosition, 1.0f));
 
@@ -101,7 +105,6 @@ float ShadowCalculation(float3 marchPosition, float3 normal, out int layerDepth)
     }
 
     if (layer == -1) { layer = SHADOWMAP_CASCADES - 1; }
-    layerDepth = layer;
 
     // Convert worldSpace to light space
     float4 lightSpacePosition = mul(lightSpaceViewProj[layer], float4(marchPosition, 1.0));
@@ -121,25 +124,16 @@ float ShadowCalculation(float3 marchPosition, float3 normal, out int layerDepth)
     if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 1.0;
 
     // Shadow bias
-    //float3 biasNormal = normalize(normal);
-    // Offset by shadow position
-    //float depthRange = cascadeSplitDepthRange[layer];
-    //float bias = max((biasValue / depthRange) * (1.0 - dot(normal, normalize(-lightDirectionIntensity.xyz))), 0.005 / depthRange);
-
     float bias = biasValue / cascadeSplitDepthRange[layer];
-    float shadow = textures[shadowMapView[layer]].SampleCmpLevelZero(
-    shadowSampler, projCoords.xy, currentDepth - bias);
+    float shadow = textures[shadowMapView[layer]].SampleCmpLevelZero(shadowSampler, projCoords.xy, currentDepth - bias);
 
     return shadow;
 }
 
 float LinearizeDepth(float depth) { return (nearFar.x * nearFar.y) / (nearFar.y - depth * (nearFar.y - nearFar.x)); }
 
-float SampleHeightBasedDensity(float height)
-{
-    float heightDensity = exp(-max(0.0, height - 5.0) * 0.08);
-    return heightDensity * density;
-}
+// Exponentiol height falloff
+float HeightFactor(float height) { return exp(-max(0.0, height - 5.0) * 0.10); }
 
 // source https://lonvanettinger.com/portfolio-pages/fog-ray-march-article-1
 float BeersLaw(float density, float distance) { return exp(-distance * density); }
@@ -154,6 +148,7 @@ float PhaseFunctionSchlick(float3 w0, float3 w1)
     return nom / denom;
 }
 
+float4 SampleNoiseDensity(float3 uvw) { return textures3D[noiseTextureView].Sample(noiseSampler, uvw); }
 
 [shader("compute")]
 [numthreads(8, 8, 1)]
@@ -188,7 +183,7 @@ void main(uint3 id: SV_DispatchThreadID)
     // Current position in the march
     float3 marchPosition = rayOrigin;
     float jitter = randomOffset(worldPosition.xy + worldPosition.z);
-    marchPosition +=  (stepVector * jitter);
+    marchPosition += (stepVector * jitter);
 
     // Radiance out
     float3 radiance = float3(0.0);
@@ -199,7 +194,14 @@ void main(uint3 id: SV_DispatchThreadID)
     [loop]
     for (float i = 0; i < rayDistance; i += stepSize)
     {
-        float densitySample = SampleHeightBasedDensity(marchPosition.y);
+        // Noise uv sample position
+        float3 uvw = (marchPosition / noiseScale) + float3(windDirectionTime.xyz * windDirectionTime.w);
+        float4 noise = SampleNoiseDensity(uvw);                                   // Normalize to 500 units
+        float base = noise.r;                                                     // Perlin/worley noise
+        float detail = dot(noise.gba, float3(0.625, 0.25, 0.125));                // Weighted octaves
+        float densitySample = saturate(remap(base, detail - 1.0, 1.0, 0.0, 1.0)) * HeightFactor(marchPosition.y);
+        float sigmaA = densitySample * density * stepSize;                        // Absorption coefficient
+        float sigmaS = (densitySample * scatteringDensity * stepSize);                       // Scattering coefficient
 
         float3 inScatter = float3(0.0f);
         for (uint plIndex = 0; plIndex < numOfPointLights; plIndex++)
@@ -214,10 +216,10 @@ void main(uint3 id: SV_DispatchThreadID)
             // In Scattering
             float phi = pointLight.colorIntensity.a; // Light intensity
             float denom = 4.0 * PI * lightDistance * lightDistance;
-            float3 lightIn = BeersLaw(densitySample, lightDistance) * pointLight.colorIntensity.rgb * 1.0f * phi / denom; // TODO apply point light shadows
+            float3 lightIn = BeersLaw(sigmaA, lightDistance) * pointLight.colorIntensity.rgb * 1.0f * phi /
+                denom; // TODO apply point light shadows
 
-            inScatter += lightIn * scatteringDensity * scatteringColor.rgb *
-                PhaseFunctionSchlick(normalize(lightToMarchPos), worldToCamera);
+            inScatter += lightIn * sigmaS * scatteringColor.rgb * PhaseFunctionSchlick(normalize(lightToMarchPos), worldToCamera);
         }
 
         // Directional light
@@ -225,35 +227,23 @@ void main(uint3 id: SV_DispatchThreadID)
             float3 sunDirection = normalize(-lightDirectionIntensity.xyz);
             float sunIntensity = lightDirectionIntensity.w;
 
-            // 1.0f - shadow sample
-            int layer;
-            float visibility = ShadowCalculation(marchPosition, float3(0, 0, 0), layer);
+            // Shadow sample
+            float visibility = ShadowCalculation(marchPosition);
 
-            float3 lightIn = BeersLaw(densitySample, stepSize) * sunIntensity * visibility;
+            float3 lightIn = BeersLaw(sigmaA, stepSize) * sunIntensity * visibility;
 
-            switch (layer)
-            {
-            case 0: inScatter += float3(1 / 5, 0, 0);
-            case 1: inScatter += float3(0, 1 / 5, 0);
-            case 2: inScatter += float3(0, 0, 1 / 5);
-            case 3: inScatter += float3(1 / 5, 1 / 5, 0);
-            }
-
-            float3 sunInScatter =
-                lightIn * scatteringDensity * scatteringColor.rgb * PhaseFunctionSchlick(-sunDirection, worldToCamera);
+            float3 sunInScatter = lightIn * sigmaS * scatteringColor.rgb * PhaseFunctionSchlick(-sunDirection, worldToCamera);
 
             inScatter += sunInScatter;
         }
 
         radiance += inScatter * transmittance * stepSize;
-        transmittance *= BeersLaw(densitySample, stepSize);
+        transmittance *= BeersLaw(sigmaA, stepSize);
 
         marchPosition += stepVector;
     }
 
     float3 finalColor = srcTexture.rgb * transmittance + radiance;
-
-    
 
     outputTexture.Store(coords, float4(float3(finalColor), 1.0f));
 }

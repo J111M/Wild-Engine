@@ -105,7 +105,7 @@ namespace Wild
                     {
                         TextureDesc desc{};
                         desc.width = texWidth;
-                        desc.Height = texHeight;
+                        desc.height = texHeight;
                         desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
                         desc.format = DXGI_FORMAT_R32_FLOAT;
 
@@ -185,7 +185,7 @@ namespace Wild
         {
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
-            desc.Height = engine.GetGfxContext()->GetHeight();
+            desc.height = engine.GetGfxContext()->GetHeight();
             desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
             desc.name = "Albedo render target";
             desc.usage = TextureDesc::gpuOnly;
@@ -197,7 +197,7 @@ namespace Wild
         {
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
-            desc.Height = engine.GetGfxContext()->GetHeight();
+            desc.height = engine.GetGfxContext()->GetHeight();
             desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
             desc.name = "Normal render target";
             desc.usage = TextureDesc::gpuOnly;
@@ -209,7 +209,7 @@ namespace Wild
         {
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
-            desc.Height = engine.GetGfxContext()->GetHeight();
+            desc.height = engine.GetGfxContext()->GetHeight();
             desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
             desc.name = "Emissive render target";
             desc.usage = TextureDesc::gpuOnly;
@@ -221,7 +221,7 @@ namespace Wild
         {
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
-            desc.Height = engine.GetGfxContext()->GetHeight();
+            desc.height = engine.GetGfxContext()->GetHeight();
             desc.name = "DepthStencil Texture";
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(

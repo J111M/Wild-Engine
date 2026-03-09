@@ -139,3 +139,32 @@ float2 HashFloat2InRange(uint seed, float minVal, float maxVal)
     float y = HashFloatInRange(seed ^ 0x6C8E9CF5u, minVal, maxVal);
     return float2(x, y);
 }
+
+// 3 input 3 output hash from https://gist.github.com/mpottinger/54d99732d4831d8137d178b4a6007d1a
+uint3 murmurHash33(uint3 src) {
+    const uint M = 0x5bd1e995u;
+    uint3 h = uint3(1190494759u, 2147483647u, 3559788179u);
+    src *= M; src ^= src >> 24u; src *= M;
+    h *= M; h ^= src.x; h *= M; h ^= src.y; h *= M; h ^= src.z;
+    h ^= h >> 13u; h *= M; h ^= h >> 15u;
+    return h;
+}
+
+uint3 murmurHash33Tiled(uint3 src, uint3 period) {
+    src = src % period;
+    return murmurHash33(src);
+}
+
+// 3 outputs, 3 inputs
+float3 hash33(float3 src) {
+    uint3 h = murmurHash33(asuint(src));
+    return asfloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
+}
+
+float3 hash33Tiled(float3 src, float3 period) {
+    // Convert to integer cell coords and wrap
+    int3 i = int3(floor(src)) % int3(period);
+    i = (i + int3(period)) % int3(period);
+    uint3 h = murmurHash33(uint3(i));
+    return asfloat(h & 0x007fffffu | 0x3f800000u) - 1.0;
+}

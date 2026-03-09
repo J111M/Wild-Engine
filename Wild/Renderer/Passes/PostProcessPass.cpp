@@ -16,12 +16,15 @@ namespace Wild
 
     void PostProcessPass::Add(Renderer& renderer, RenderGraph& rg)
     {
+        VolumetricNoisePass(renderer, rg);
         VolumetricsPass(renderer, rg);
         FinalPostProcessPass(renderer, rg);
     }
 
     void PostProcessPass::Update(const float dt)
     {
+        m_fogTime += m_windSpeed * dt;
+
         auto ecs = engine.GetECS();
         Camera* camera = GetActiveCamera();
 
@@ -31,24 +34,89 @@ namespace Wild
             m_sceneData.inverseProj = glm::inverse(camera->GetProjection());
             m_sceneData.viewSpace = camera->GetView();
             m_sceneData.cameraPosition = camera->GetPosition();
-            m_vrc.nearFar = camera->GetNearFar();
+            m_volumetricRC.nearFar = camera->GetNearFar();
         }
 
         m_sceneData.lightDirection = glm::vec3(-0.3, 14.0, -2.5);
 
         engine.GetImGui()->AddPanel("Volumetric Fog Settings", [this]() {
-            ImGui::SliderInt("Step Count", reinterpret_cast<int*>(&m_vrc.stepCount), 1, 256);
-            ImGui::SliderFloat("Step Size", &m_vrc.stepSize, 0.1f, 2.0f);
-            ImGui::SliderFloat("Scattering Density", &m_vrc.scatteringDensity, 0.0f, 2.0f);
-            ImGui::SliderFloat("Density", &m_vrc.density, 0.0f, 0.2f);
-            ImGui::ColorEdit3("Scattering Color", &m_vrc.scatteringColor[0]);
-            ImGui::ColorEdit3("Sun Color", &m_vrc.sunColorIntensity[0]);
-            ImGui::SliderFloat("Sun Intensity", &m_vrc.sunColorIntensity.w, 0.001f, 2.0f);
-            ImGui::SliderFloat("Anisotropy", &m_vrc.anisotropy, 0.001f, 0.99f);
+            ImGui::SliderInt("Step Count", reinterpret_cast<int*>(&m_volumetricRC.stepCount), 1, 256);
+            ImGui::SliderFloat("Step Size", &m_volumetricRC.stepSize, 0.1f, 2.0f);
+            ImGui::SliderFloat("Scattering Density", &m_volumetricRC.scatteringDensity, 0.0f, 2.0f);
+            ImGui::SliderFloat("Density", &m_volumetricRC.density, 0.0f, 0.2f);
+            ImGui::ColorEdit3("Scattering Color", &m_volumetricRC.scatteringColor[0]);
+            ImGui::ColorEdit3("Sun Color", &m_volumetricRC.sunColorIntensity[0]);
+            ImGui::SliderFloat("Sun Intensity", &m_volumetricRC.sunColorIntensity.w, 0.001f, 2.0f);
+            ImGui::SliderFloat("Anisotropy", &m_volumetricRC.anisotropy, 0.001f, 0.99f);
+            ImGui::SliderFloat3("Wind direction", &m_volumetricRC.windDirectionTime[0], -1.0f, 1.0f);
+            ImGui::SliderFloat("Wind speed", &m_windSpeed, 0.0f, 5.0f);
+            ImGui::SliderFloat("Wind noise scale", &m_volumetricRC.noiseScale, 1.0f, 500.0f);
         });
+
+        m_volumetricRC.windDirectionTime.a = m_fogTime;
 
         int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
         m_sceneDataBuffer[frameIndex]->Allocate(&m_sceneData);
+    }
+
+    void PostProcessPass::VolumetricNoisePass(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<VolumetricNoisePassData>();
+
+        TextureDesc desc;
+        desc.width = 128;
+        desc.height = 128;
+        desc.depthOrArray = 128;
+        desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        desc.name = "Volumetric noise texture";
+        desc.usage = TextureDesc::gpuOnly;
+        desc.type = TextureType::TEXTURE_3D;
+        desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::shaderResource | TextureDesc::readWrite);
+        desc.shouldStayInCache = true;
+        passData->volumetricNoise = rg.CreateTransientTexture("Volumetric noise texture", desc);
+
+        rg.AddPass<VolumetricNoisePassData>(
+            "Precompute volumetric noise pass",
+            PassType::Compute,
+            [&renderer, desc, this](VolumetricNoisePassData& passData, CommandList& list) {
+                if (m_recomputeVolumetricNoise)
+                {
+                    m_noiseRC.textureSize = desc.width;
+                    m_noiseRC.cellCount = 4;
+
+                    PipelineStateSettings settings{};
+                    settings.ShaderState.ComputeShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/PostProcess/VolumetricNoise.slang");
+
+                    std::vector<Uniform> uniforms;
+
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(VolumetricNoiseRC)};
+                    uniforms.emplace_back(rootConstant);
+
+                    Uniform volumetricNoiseTexture{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE uavRange{};
+                    uavRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                    volumetricNoiseTexture.ranges.emplace_back(uavRange);
+                    uniforms.emplace_back(volumetricNoiseTexture);
+
+                    auto& pipeline = renderer.GetOrCreatePipeline(
+                        "Precompute volumetric noise pass", PipelineStateType::Compute, settings, uniforms);
+                    list.SetPipelineState(pipeline);
+                    list.BeginRender("Precompute volumetric noise pass");
+
+                    list.SetRootConstant<VolumetricNoiseRC>(0, m_noiseRC);
+                    list.SetUnorderedAccessView(1, passData.volumetricNoise);
+
+                    // Use 3D texture dimension
+                    list.GetList()->Dispatch((desc.width + 7) / 8, (desc.height + 7) / 8, (desc.depthOrArray + 7) / 8);
+
+                    list.EndRender();
+
+                    passData.volumetricNoise->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+                    m_recomputeVolumetricNoise = false;
+                }
+            });
     }
 
     void PostProcessPass::VolumetricsPass(Renderer& renderer, RenderGraph& rg)
@@ -57,11 +125,12 @@ namespace Wild
         auto* skyboxData = rg.GetPassData<VolumetricPassData, SkyPassData>();
         auto* pbrData = rg.GetPassData<VolumetricPassData, PbrPassData>();
         auto* shadowData = rg.GetPassData<VolumetricPassData, CsmPassData>();
+        auto* volumetricNoise = rg.GetPassData<VolumetricPassData, VolumetricNoisePassData>();
 
         {
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
-            desc.Height = engine.GetGfxContext()->GetHeight();
+            desc.height = engine.GetGfxContext()->GetHeight();
             desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
             desc.name = "Post Process Texture";
             desc.usage = TextureDesc::gpuOnly;
@@ -74,7 +143,7 @@ namespace Wild
         rg.AddPass<VolumetricPassData>(
             "Volumetrics pass",
             PassType::Compute,
-            [&renderer, skyboxData, pbrData, shadowData, this](VolumetricPassData& passData, CommandList& list) {
+            [&renderer, skyboxData, pbrData, shadowData, volumetricNoise, this](VolumetricPassData& passData, CommandList& list) {
                 passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 renderer.irradianceMap->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
@@ -82,7 +151,7 @@ namespace Wild
                 {
                     // TODO batcht transition together to optimize
                     shadowData->shadowMap[cascade]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                    m_vrc.shadowMapView[cascade] = shadowData->shadowMap[cascade]->GetSrv()->BindlessView();
+                    m_volumetricRC.shadowMapView[cascade] = shadowData->shadowMap[cascade]->GetSrv()->BindlessView();
                 }
 
                 PipelineStateSettings settings{};
@@ -121,12 +190,13 @@ namespace Wild
                 uni.ranges.emplace_back(textures);
 
                 CD3DX12_DESCRIPTOR_RANGE cubeMaps{};
-                cubeMaps.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-                              UINT_MAX,
-                              0,
-                              1,
-                              D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for cube maps
+                cubeMaps.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
                 uni.ranges.emplace_back(cubeMaps);
+
+                CD3DX12_DESCRIPTOR_RANGE textures3D{};
+                textures3D.Init(
+                    D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 2, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+                uni.ranges.emplace_back(textures3D);
 
                 uniforms.emplace_back(uni);
 
@@ -141,6 +211,11 @@ namespace Wild
                 shadowSampler.samplerState.comparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
                 uniforms.emplace_back(shadowSampler);
 
+                Uniform fogSampler{2, 0, RootParams::RootResourceType::StaticSampler};
+                fogSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                fogSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+                uniforms.emplace_back(fogSampler);
+
                 int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
 
                 auto& pipeline = renderer.GetOrCreatePipeline("Volumetrics pass", PipelineStateType::Compute, settings, uniforms);
@@ -149,15 +224,16 @@ namespace Wild
 
                 skyboxData->finalTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 passData.depthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                m_vrc.srcTextureView = skyboxData->finalTexture->GetSrv()->BindlessView();
-                m_vrc.depthView = passData.depthTexture->GetSrv()->BindlessView();
-                m_vrc.numOfPointLights = pbrData->numOfPointLights;
+                m_volumetricRC.srcTextureView = skyboxData->finalTexture->GetSrv()->BindlessView();
+                m_volumetricRC.depthView = passData.depthTexture->GetSrv()->BindlessView();
+                m_volumetricRC.numOfPointLights = pbrData->numOfPointLights;
+                m_volumetricRC.noiseView = volumetricNoise->volumetricNoise->GetSrv()->BindlessView();
 
-                if (renderer.irradianceMap) { m_vrc.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView(); }
-                m_vrc.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
-                m_vrc.biasValue = shadowData->biasValue;
+                if (renderer.irradianceMap) { m_volumetricRC.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView(); }
+                m_volumetricRC.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
+                m_volumetricRC.biasValue = shadowData->biasValue;
 
-                list.SetRootConstant<VolumetricRC>(0u, m_vrc);
+                list.SetRootConstant<VolumetricRC>(0u, m_volumetricRC);
                 list.SetConstantBufferView(1u, m_sceneDataBuffer[frameIndex].get());
                 list.SetConstantBufferView(2u, pbrData->pointlights.get());
                 list.SetConstantBufferView(3u, shadowData->directLightBuffer.get());
@@ -182,7 +258,7 @@ namespace Wild
         {
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
-            desc.Height = engine.GetGfxContext()->GetHeight();
+            desc.height = engine.GetGfxContext()->GetHeight();
             desc.format = DXGI_FORMAT_R10G10B10A2_UNORM;
             desc.name = "Final Post Process Assemble texture";
             desc.usage = TextureDesc::gpuOnly;
@@ -236,10 +312,10 @@ namespace Wild
                 list.SetPipelineState(pipeline);
                 list.BeginRender("Post process and tonemap pass");
 
-                m_pprc.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
-                m_pprc.srcTextureView = volumetricData->finalTexture->GetSrv()->BindlessView();
+                m_postProcessRC.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
+                m_postProcessRC.srcTextureView = volumetricData->finalTexture->GetSrv()->BindlessView();
 
-                list.SetRootConstant<PostProcessRC>(0u, m_pprc);
+                list.SetRootConstant<PostProcessRC>(0u, m_postProcessRC);
                 list.SetUnorderedAccessView(1u, passData.finalTexture);
                 list.SetBindlessHeap(2u);
 

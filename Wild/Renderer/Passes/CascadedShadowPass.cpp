@@ -21,7 +21,7 @@ namespace Wild
         {
             TextureDesc desc;
             desc.width = 2048;
-            desc.Height = 2048;
+            desc.height = 2048;
             std::string name = "Shadow map cascade: " + std::to_string(cascade);
             desc.name = name;
             desc.usage = TextureDesc::gpuOnly;

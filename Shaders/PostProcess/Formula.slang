@@ -1,5 +1,3 @@
-
-
 float Hash(float3 p)
 {
     p = frac(p * float3(443.897, 441.423, 437.195));

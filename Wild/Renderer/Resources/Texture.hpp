@@ -31,9 +31,8 @@ namespace Wild
         TextureType type = TextureType::TEXTURE_2D;
         UsageFlag usage = cpuWrite;
         uint32_t width{0};
-        uint32_t Height{0};
-        uint32_t Depth{1};
-        uint32_t Layers{1};
+        uint32_t height{0};
+        uint32_t depthOrArray{1};
         uint32_t mips{1};
 
         // TODO make abstracted format type
@@ -69,7 +68,7 @@ namespace Wild
         TextureDesc GetDesc() { return m_desc; }
 
         uint32_t Width() const { return m_desc.width; }
-        uint32_t Height() const { return m_desc.Height; }
+        uint32_t Height() const { return m_desc.height; }
 
         std::shared_ptr<RenderTargetView> GetRtv() const;
         std::shared_ptr<RenderTargetView> GetRtv(uint32_t index) const;

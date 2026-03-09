@@ -277,7 +277,7 @@ namespace Wild
 
         TextureDesc desc{};
         desc.width = std::max(m_window->GetWidth(), 1);
-        desc.Height = std::max(m_window->GetHeight(), 1);
+        desc.height = std::max(m_window->GetHeight(), 1);
 
         desc.usage = TextureDesc::gpuOnly;
         desc.flag = TextureDesc::depthStencil;
@@ -292,7 +292,7 @@ namespace Wild
         m_swapchain->GetDesc1(&scDesc);
 
         desc.width = m_clientWidth;
-        desc.Height = m_clientHeight;
+        desc.height = m_clientHeight;
 
         desc.usage = TextureDesc::gpuOnly;
         desc.flag = TextureDesc::renderTarget;

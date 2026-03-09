@@ -45,10 +45,26 @@ namespace Wild
         if (m_desc.flag & TextureDesc::renderTarget)
         {
             D3D12_RESOURCE_DESC textureDesc = {};
-            textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+
+            switch (m_desc.type)
+            {
+            case Wild::TextureType::TEXTURE_3D:
+                textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+                break;
+            case Wild::TextureType::TEXTURE_2D:
+                textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+                break;
+            case Wild::TextureType::TEXTURE_1D:
+                textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+                break;
+            default:
+                textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+                break;
+            }
+
             textureDesc.Width = m_desc.width;
-            textureDesc.Height = m_desc.Height;
-            textureDesc.DepthOrArraySize = m_desc.Layers;
+            textureDesc.Height = m_desc.height;
+            textureDesc.DepthOrArraySize = m_desc.depthOrArray;
             textureDesc.MipLevels = m_desc.mips;
             textureDesc.Format = m_desc.format;
             textureDesc.SampleDesc.Count = 1;
@@ -78,15 +94,50 @@ namespace Wild
 
             D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
             rtvDesc.Format = m_desc.format;
-            rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-            if (m_desc.Layers > 1)
+
+            switch (m_desc.type)
             {
-                for (uint32_t face = 0; face < m_desc.Layers; face++)
+            case Wild::TextureType::TEXTURE_3D:
+                rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+                rtvDesc.Texture3D.MipSlice = 0;
+                rtvDesc.Texture3D.FirstWSlice = 0;
+                rtvDesc.Texture3D.WSize = m_desc.depthOrArray;
+                break;
+            case Wild::TextureType::TEXTURE_2D:
+                rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+                break;
+            case Wild::TextureType::TEXTURE_1D:
+                rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
+                break;
+            default:
+                rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+                break;
+            }
+
+            if (m_desc.depthOrArray > 1)
+            {
+                for (uint32_t face = 0; face < m_desc.depthOrArray; face++)
                 {
                     rtvDesc.Texture2DArray.MipSlice = 0;
                     rtvDesc.Texture2DArray.FirstArraySlice = face;
                     rtvDesc.Texture2DArray.ArraySize = 1;
-                    rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+
+                    switch (m_desc.type)
+                    {
+                    case Wild::TextureType::TEXTURE_3D:
+                        WD_WARN("Invalid texture array for 3D textures.");
+                        break;
+                    case Wild::TextureType::TEXTURE_2D:
+                        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                        break;
+                    case Wild::TextureType::TEXTURE_1D:
+                        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+                        break;
+                    default:
+                        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                        break;
+                    }
+
                     m_rtvArray.emplace_back(std::make_shared<RenderTargetView>(m_resource->Handle(), rtvDesc));
                 }
                 m_rtvArrayAvailiable = true;
@@ -103,7 +154,7 @@ namespace Wild
             depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
             depthDesc.Alignment = 0;
             depthDesc.Width = m_desc.width;
-            depthDesc.Height = m_desc.Height;
+            depthDesc.Height = m_desc.height;
             depthDesc.DepthOrArraySize = 1;
             depthDesc.MipLevels = 1;
             depthDesc.Format = DXGI_FORMAT_R32_TYPELESS;
@@ -137,10 +188,26 @@ namespace Wild
         if (m_desc.flag & TextureDesc::ViewFlag::readWrite)
         {
             D3D12_RESOURCE_DESC readWriteDesc = {};
-            readWriteDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+
+            switch (m_desc.type)
+            {
+            case Wild::TextureType::TEXTURE_3D:
+                readWriteDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+                break;
+            case Wild::TextureType::TEXTURE_2D:
+                readWriteDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+                break;
+            case Wild::TextureType::TEXTURE_1D:
+                readWriteDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+                break;
+            default:
+                readWriteDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+                break;
+            }
+
             readWriteDesc.Width = m_desc.width;
-            readWriteDesc.Height = m_desc.Height;
-            readWriteDesc.DepthOrArraySize = m_desc.Layers;
+            readWriteDesc.Height = m_desc.height;
+            readWriteDesc.DepthOrArraySize = m_desc.depthOrArray;
             readWriteDesc.MipLevels = m_desc.mips;
             readWriteDesc.Format = m_desc.format;
             readWriteDesc.SampleDesc.Count = 1;
@@ -162,14 +229,33 @@ namespace Wild
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
             uavDesc.Format = m_desc.format;
-            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+
+            switch (m_desc.type)
+            {
+            case Wild::TextureType::TEXTURE_3D:
+                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+                uavDesc.Texture3D.MipSlice = 0;
+                uavDesc.Texture3D.FirstWSlice = 0;
+                uavDesc.Texture3D.WSize = m_desc.depthOrArray;
+                break;
+            case Wild::TextureType::TEXTURE_2D:
+                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+                break;
+            case Wild::TextureType::TEXTURE_1D:
+                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
+                break;
+            default:
+                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+                break;
+            }
+
             uavDesc.Texture2D.MipSlice = 0;
 
-            if (m_desc.Layers > 1)
+            if (m_desc.depthOrArray > 1 && m_desc.type != TextureType::TEXTURE_3D)
             {
                 for (uint32_t mip = 0; mip < m_desc.mips; mip++)
                 {
-                    for (uint32_t face = 0; face < m_desc.Layers; face++)
+                    for (uint32_t face = 0; face < m_desc.depthOrArray; face++)
                     {
                         uavDesc.Texture2DArray.MipSlice = mip;
                         uavDesc.Texture2DArray.FirstArraySlice = face;
@@ -191,11 +277,34 @@ namespace Wild
         {
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
             srvDesc.Format = m_desc.format;
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+
+            switch (m_desc.type)
+            {
+            case Wild::TextureType::TEXTURE_3D:
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+                srvDesc.Texture3D.MipLevels = m_desc.mips;
+                break;
+            case Wild::TextureType::TEXTURE_2D:
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+                srvDesc.Texture2D.MipLevels = m_desc.mips;
+                srvDesc.Texture2D.MostDetailedMip = 0;
+                break;
+            case Wild::TextureType::TEXTURE_1D:
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
+                break;
+            case Wild::TextureType::CUBEMAP:
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+                srvDesc.Texture2D.MipLevels = m_desc.mips;
+                srvDesc.Texture2D.MostDetailedMip = 0;
+                break;
+            default:
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+                srvDesc.Texture2D.MipLevels = m_desc.mips;
+                srvDesc.Texture2D.MostDetailedMip = 0;
+                break;
+            }
+
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Texture2D.MipLevels = m_desc.mips;
-            srvDesc.Texture2D.MostDetailedMip = 0;
-            if (m_desc.type == TextureType::CUBEMAP) { srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE; }
 
             m_srv = std::make_shared<ShaderResourceView>(m_resource->Handle(), srvDesc);
         }
@@ -234,7 +343,7 @@ namespace Wild
     {
         auto& device = engine.GetGfxContext()->GetDevice();
 
-        UINT numSubresources = m_desc.Layers * m_desc.mips;
+        UINT numSubresources = m_desc.depthOrArray * m_desc.mips;
         std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(numSubresources);
         std::vector<UINT> numRows(numSubresources);
         std::vector<UINT64> rowSizes(numSubresources);
@@ -278,7 +387,7 @@ namespace Wild
 
         for (UINT mip = 0; mip < m_desc.mips; ++mip)
         {
-            for (UINT face = 0; face < m_desc.Layers; ++face)
+            for (UINT face = 0; face < m_desc.depthOrArray; ++face)
             {
                 UINT sub = mip + face * m_desc.mips;
                 auto& fp = footprints[sub];
@@ -327,7 +436,7 @@ namespace Wild
         CommandList tempList(D3D12_COMMAND_LIST_TYPE_DIRECT);
         Transition(tempList, D3D12_RESOURCE_STATE_COPY_DEST);
 
-        UINT numSubresources = m_desc.Layers * m_desc.mips;
+        UINT numSubresources = m_desc.depthOrArray * m_desc.mips;
         std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(numSubresources);
         std::vector<UINT> numRows(numSubresources);
         std::vector<UINT64> rowSizes(numSubresources);
@@ -353,7 +462,7 @@ namespace Wild
 
         for (UINT mip = 0; mip < m_desc.mips; ++mip)
         {
-            for (UINT face = 0; face < m_desc.Layers; ++face)
+            for (UINT face = 0; face < m_desc.depthOrArray; ++face)
             {
                 UINT sub = mip + face * m_desc.mips;
                 auto& fp = footprints[sub];
@@ -503,14 +612,14 @@ namespace Wild
         }
 
         m_desc.width = static_cast<uint32_t>(width);
-        m_desc.Height = static_cast<uint32_t>(height);
+        m_desc.height = static_cast<uint32_t>(height);
 
         D3D12_RESOURCE_DESC textureDesc{};
 
         textureDesc = CD3DX12_RESOURCE_DESC::Tex2D(m_desc.format,
                                                    static_cast<UINT64>(m_desc.width),
-                                                   static_cast<UINT>(m_desc.Height),
-                                                   static_cast<UINT16>(m_desc.Layers),
+                                                   static_cast<UINT>(m_desc.height),
+                                                   static_cast<UINT16>(m_desc.depthOrArray),
                                                    static_cast<UINT16>(m_desc.mips));
 
         // Create resource with copy dest since update subresource will transition it to that
@@ -537,7 +646,7 @@ namespace Wild
         D3D12_SUBRESOURCE_DATA subrsData{};
         subrsData.pData = pixels;
         subrsData.RowPitch = m_desc.width * 4;
-        subrsData.SlicePitch = subrsData.RowPitch * m_desc.Height;
+        subrsData.SlicePitch = subrsData.RowPitch * m_desc.height;
 
         CommandList list(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
@@ -576,14 +685,14 @@ namespace Wild
         }
 
         m_desc.width = static_cast<uint32_t>(width);
-        m_desc.Height = static_cast<uint32_t>(height);
+        m_desc.height = static_cast<uint32_t>(height);
 
         D3D12_RESOURCE_DESC textureDesc{};
 
         textureDesc = CD3DX12_RESOURCE_DESC::Tex2D(m_desc.format,
                                                    static_cast<UINT64>(m_desc.width),
-                                                   static_cast<UINT>(m_desc.Height),
-                                                   static_cast<UINT16>(m_desc.Layers),
+                                                   static_cast<UINT>(m_desc.height),
+                                                   static_cast<UINT16>(m_desc.depthOrArray),
                                                    static_cast<UINT16>(m_desc.mips));
 
         // Create resource with copy dest since update subresource will transition it to that
@@ -610,7 +719,7 @@ namespace Wild
         D3D12_SUBRESOURCE_DATA subrsData{};
         subrsData.pData = pixels;
         subrsData.RowPitch = m_desc.width * 4 * sizeof(float);
-        subrsData.SlicePitch = subrsData.RowPitch * m_desc.Height;
+        subrsData.SlicePitch = subrsData.RowPitch * m_desc.height;
 
         CommandList list(D3D12_COMMAND_LIST_TYPE_DIRECT);
 

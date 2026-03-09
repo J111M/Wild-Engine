@@ -115,7 +115,7 @@ namespace Wild
         {
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
-            desc.Height = engine.GetGfxContext()->GetHeight();
+            desc.height = engine.GetGfxContext()->GetHeight();
             desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
             desc.name = "FinalPbrTexture";
             desc.usage = TextureDesc::gpuOnly;
