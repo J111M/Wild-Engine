@@ -67,6 +67,14 @@ SamplerComparisonState shadowSampler : register(s1);
 
 #define PI 3.14159265358979323846
 
+///  Pseudo-random function https://thebookofshaders.com/10/
+float randomOffset(float2 pos)
+{
+    return fract(sin(dot(pos.xy,
+                         float2(145.0, 7.233))) *
+        4274.84205094213454340);
+}
+
 float4 GetWorldSpacePosition(float3 position)
 {
     float4 positionVS = mul(inverseProj, float4(position, 1.0));
@@ -108,9 +116,9 @@ float ShadowCalculation(float3 marchPosition, float3 normal, out int layerDepth)
     // Fragment depth
     float currentDepth = projCoords.z;
 
-    if (currentDepth > 1.0) { return 0.0; }
+    if (currentDepth > 1.0) { return 1.0; }
 
-    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 1.0;
 
     // Shadow bias
     //float3 biasNormal = normalize(normal);
@@ -118,7 +126,7 @@ float ShadowCalculation(float3 marchPosition, float3 normal, out int layerDepth)
     //float depthRange = cascadeSplitDepthRange[layer];
     //float bias = max((biasValue / depthRange) * (1.0 - dot(normal, normalize(-lightDirectionIntensity.xyz))), 0.005 / depthRange);
 
-    float bias = 0.005 / cascadeSplitDepthRange[layer];
+    float bias = biasValue / cascadeSplitDepthRange[layer];
     float shadow = textures[shadowMapView[layer]].SampleCmpLevelZero(
     shadowSampler, projCoords.xy, currentDepth - bias);
 
@@ -146,6 +154,7 @@ float PhaseFunctionSchlick(float3 w0, float3 w1)
     return nom / denom;
 }
 
+
 [shader("compute")]
 [numthreads(8, 8, 1)]
 void main(uint3 id: SV_DispatchThreadID)
@@ -155,7 +164,7 @@ void main(uint3 id: SV_DispatchThreadID)
 
     float2 uv = coords / textureSize.xy;
 
-    const float maxDistance = 200.0f;
+    const float maxDistance = 100.0f;
 
     float4 srcTexture = textures[NonUniformResourceIndex(srcTextureView)].Load(int3(coords, 0));
 
@@ -178,6 +187,8 @@ void main(uint3 id: SV_DispatchThreadID)
 
     // Current position in the march
     float3 marchPosition = rayOrigin;
+    float jitter = randomOffset(worldPosition.xy + worldPosition.z);
+    marchPosition +=  (stepVector * jitter);
 
     // Radiance out
     float3 radiance = float3(0.0);
@@ -220,17 +231,13 @@ void main(uint3 id: SV_DispatchThreadID)
 
             float3 lightIn = BeersLaw(densitySample, stepSize) * sunIntensity * visibility;
 
-            //switch (layer)
-            //{
-            //case 0:
-            //    inScatter += float3(0.2, 0, 0);
-            //case 1:
-            //    inScatter += float3(0, 0.2, 0);
-            //case 2:
-            //    inScatter += float3(0, 0, 0.2);
-            //case 3:
-            //    inScatter += float3(0.2, 0.2, 0);
-            //}
+            switch (layer)
+            {
+            case 0: inScatter += float3(1 / 5, 0, 0);
+            case 1: inScatter += float3(0, 1 / 5, 0);
+            case 2: inScatter += float3(0, 0, 1 / 5);
+            case 3: inScatter += float3(1 / 5, 1 / 5, 0);
+            }
 
             float3 sunInScatter =
                 lightIn * scatteringDensity * scatteringColor.rgb * PhaseFunctionSchlick(-sunDirection, worldToCamera);

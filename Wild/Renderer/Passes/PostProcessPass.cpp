@@ -29,6 +29,7 @@ namespace Wild
         {
             m_sceneData.inverseView = glm::inverse(camera->GetView());
             m_sceneData.inverseProj = glm::inverse(camera->GetProjection());
+            m_sceneData.viewSpace = camera->GetView();
             m_sceneData.cameraPosition = camera->GetPosition();
             m_vrc.nearFar = camera->GetNearFar();
         }
