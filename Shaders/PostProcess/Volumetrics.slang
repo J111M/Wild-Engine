@@ -201,7 +201,7 @@ void main(uint3 id: SV_DispatchThreadID)
         float detail = dot(noise.gba, float3(0.625, 0.25, 0.125));                // Weighted octaves
         float densitySample = saturate(remap(base, detail - 1.0, 1.0, 0.0, 1.0)) * HeightFactor(marchPosition.y);
         float sigmaA = densitySample * density * stepSize;                        // Absorption coefficient
-        float sigmaS = (densitySample * scatteringDensity * stepSize);                       // Scattering coefficient
+        float sigmaS = densitySample * scatteringDensity * stepSize;                       // Scattering coefficient
 
         float3 inScatter = float3(0.0f);
         for (uint plIndex = 0; plIndex < numOfPointLights; plIndex++)

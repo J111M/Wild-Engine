@@ -3,10 +3,30 @@
 
 #include "Renderer/Resources/Mesh.hpp"
 
+#include <random>
+
 namespace Wild
 {
     OceanPass::OceanPass()
     {
+        // Generate the Gaussian noise
+        std::mt19937 rng(0);
+        std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+
+        std::vector<ComplexValue> val(OCEAN_SIZE * OCEAN_SIZE);
+
+        for (uint32_t i = 0; i < OCEAN_SIZE * OCEAN_SIZE; ++i)
+        {
+            auto [re, im] = BoxMuller(dist(rng), dist(rng));
+            val[i] = {re, im};
+        }
+
+        BufferDesc desc{};
+        desc.bufferSize = sizeof(ComplexValue) * val.size();
+        m_gaussianDistribution = std::make_unique<Buffer>(desc, constant);
+
+        m_gaussianDistribution->Allocate(val.data());
+
         GenerateOceanPlane(64);
         m_chunkEntity = engine.GetECS()->CreateEntity();
         auto& transform = engine.GetECS()->AddComponent<Transform>(m_chunkEntity, glm::vec3(0, 0, 0), m_chunkEntity);
@@ -118,6 +138,8 @@ namespace Wild
 
     void OceanPass::Update(const float dt) {}
 
+    void OceanPass::CalculateIntitialSpectrum(Renderer& renderer, RenderGraph& rg) {}
+
     void OceanPass::GenerateOceanPlane(uint32_t resolution)
     {
         float size = 128.0f;
@@ -173,5 +195,13 @@ namespace Wild
         m_oceanIndices->CreateIndexBuffer(indices);
 
         m_drawCount = indices.size();
+    }
+
+    std::pair<float, float> OceanPass::BoxMuller(float u1, float u2)
+    {
+        float mag = sqrtf(-2.0f * logf(u1 + 1e-6f)); // safe gaurd againts log(0)
+        float z0 = mag * cosf(2.0f * 3.14159265f * u2);
+        float z1 = mag * sinf(2.0f * 3.14159265f * u2);
+        return {z0, z1};
     }
 } // namespace Wild

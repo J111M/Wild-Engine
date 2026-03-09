@@ -5,6 +5,22 @@
 
 namespace Wild
 {
+#define OCEAN_SIZE 1028
+
+    // Gaussian noise
+    struct ComplexValue
+    {
+        float real, imaginary;
+    };
+
+    /// <summary>
+    /// Initial spectrum pass
+    /// </summary>
+
+    struct InitialSpectrumPass
+    {
+    };
+
     struct OceanPassData
     {
         Texture* finalTexture;
@@ -27,7 +43,14 @@ namespace Wild
         virtual void Update(const float dt) override;
 
       private:
+        void CalculateIntitialSpectrum(Renderer& renderer, RenderGraph& rg);
         void GenerateOceanPlane(uint32_t resolution = 128);
+
+        // Box muller formula for generating gaussian distrubted numbers
+        std::pair<float, float> BoxMuller(float u1, float u2);
+
+        /// Initial spectrum
+        std::unique_ptr<Buffer> m_gaussianDistribution{};
 
         OceanRenderRC m_oceanRc{};
 
