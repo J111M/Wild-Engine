@@ -119,14 +119,14 @@ namespace Wild
         return true;
     }
 
-    void ImguiCore::DisplayTexture(std::shared_ptr<Texture> texture)
+    void ImguiCore::DisplayTexture(std::shared_ptr<Texture> texture, glm::vec2 imageSize)
     {
-        if (texture) ImGui::Image((ImTextureID)texture->GetSrv()->GetGpuHandle().ptr, ImVec2(150, 150));
+        if (texture) ImGui::Image((ImTextureID)texture->GetSrv()->GetGpuHandle().ptr, ImVec2(imageSize.x, imageSize.y));
     }
 
-    void ImguiCore::DisplayTexture(Texture* texture)
+    void ImguiCore::DisplayTexture(Texture* texture, glm::vec2 imageSize)
     {
-        if (texture) ImGui::Image((ImTextureID)texture->GetSrv()->GetGpuHandle().ptr, ImVec2(150, 150));
+        if (texture) ImGui::Image((ImTextureID)texture->GetSrv()->GetGpuHandle().ptr, ImVec2(imageSize.x, imageSize.y));
     }
 
     void ImguiCore::DrawMenuBar()

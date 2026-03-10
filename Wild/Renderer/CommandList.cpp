@@ -126,6 +126,7 @@ namespace Wild
 
     void CommandList::SetShaderResourceView(uint32_t rootIndex, Buffer* buffer)
     {
+
         switch (m_pipelineState->GetPassType())
         {
         case PipelineStateType::Graphics:

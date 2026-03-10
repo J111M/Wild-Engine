@@ -26,8 +26,8 @@ namespace Wild
         void DrawViewport(Renderer* renderer);
 
         bool SeperateDragFloat3(const char* name, glm::vec3& value);
-        void DisplayTexture(std::shared_ptr<Texture> texture);
-        void DisplayTexture(Texture* texture);
+        void DisplayTexture(std::shared_ptr<Texture> texture, glm::vec2 imageSize = {150.0f, 150.0f});
+        void DisplayTexture(Texture* texture, glm::vec2 imageSize = {150.0f, 150.0f});
 
       private:
         bool Setup(std::shared_ptr<Window> window);

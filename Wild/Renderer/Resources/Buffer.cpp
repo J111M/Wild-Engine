@@ -7,6 +7,7 @@ namespace Wild
 {
     Buffer::Buffer(BufferDesc desc, BufferType type)
     {
+        desc.type = type;
         m_desc = desc;
 
         switch (type)
@@ -139,6 +140,41 @@ namespace Wild
         Map();
         WriteData(dataSrc, size);
         Unmap();
+    }
+
+    void Buffer::UploadToGPU(void* dataSrc, size_t size)
+    {
+        // Upload staging buffer
+        ComPtr<ID3D12Resource> uploadBuffer;
+
+        size_t uploadSize = m_desc.bufferSize * m_desc.numOfElements;
+
+        auto gfxContext = engine.GetGfxContext();
+
+        gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+                                                         D3D12_HEAP_FLAG_NONE,
+                                                         &CD3DX12_RESOURCE_DESC::Buffer(uploadSize),
+                                                         D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                         nullptr,
+                                                         IID_PPV_ARGS(&uploadBuffer));
+
+        // Copy data into the upload buffer
+        void* mapped = nullptr;
+        uploadBuffer->Map(0, nullptr, &mapped);
+        memcpy(mapped, dataSrc, uploadSize);
+        uploadBuffer->Unmap(0, nullptr);
+
+        auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+
+        m_resource->Transition(list, D3D12_RESOURCE_STATE_COPY_DEST);
+
+        list.GetList()->CopyBufferRegion(m_resource->Handle().Get(), 0, uploadBuffer.Get(), 0, uploadSize);
+
+        m_resource->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        list.Close();
+        gfxContext->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
+        gfxContext->GetCommandQueue(QueueType::Direct)->WaitForFence();
     }
 
     void Buffer::Transition(CommandList& list, D3D12_RESOURCE_STATES newState) { m_resource->Transition(list, newState); }

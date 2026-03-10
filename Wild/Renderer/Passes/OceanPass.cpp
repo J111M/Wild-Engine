@@ -22,10 +22,11 @@ namespace Wild
         }
 
         BufferDesc desc{};
-        desc.bufferSize = sizeof(ComplexValue) * val.size();
-        m_gaussianDistribution = std::make_unique<Buffer>(desc, constant);
+        desc.bufferSize = sizeof(ComplexValue);
+        desc.numOfElements = val.size();
+        m_gaussianDistribution = std::make_unique<Buffer>(desc, uav);
 
-        m_gaussianDistribution->Allocate(val.data());
+        m_gaussianDistribution->UploadToGPU(val.data());
 
         GenerateOceanPlane(64);
         m_chunkEntity = engine.GetECS()->CreateEntity();
@@ -34,6 +35,325 @@ namespace Wild
     }
 
     void OceanPass::Add(Renderer& renderer, RenderGraph& rg)
+    {
+        CalculateIntitialSpectrum(renderer, rg);
+        ConjugateSpectrumPass(renderer, rg);
+        UpdateSpectrum(renderer, rg);
+        AddDrawOceanPass(renderer, rg);
+    }
+
+    void OceanPass::Update(const float dt)
+    {
+        engine.GetImGui()->AddPanel("Ocean Settings", [this]() {
+            ImGui::SliderFloat("Scale", &m_initialSpectrumRC.scale, 0.0f, 1000.0f);
+            ImGui::SliderFloat("Angle", &m_initialSpectrumRC.angle, -3.14159f, 3.14159f);
+            ImGui::SliderFloat("Spread Blend", &m_initialSpectrumRC.spreadBlend, 0.0f, 1.0f);
+            ImGui::SliderFloat("Swell", &m_initialSpectrumRC.swell, 0.0f, 1.0f);
+            ImGui::SliderFloat("Alpha", &m_initialSpectrumRC.alpha, 0.0f, 1.0f);
+            ImGui::SliderFloat("Peak Omega", &m_initialSpectrumRC.peakOmega, 0.0f, 10.0f);
+            ImGui::SliderFloat("Gamma", &m_initialSpectrumRC.gamma, 0.0f, 10.0f);
+            ImGui::SliderFloat("Short Waves Fade", &m_initialSpectrumRC.shortWavesFade, 0.0f, 1.0f);
+
+            ImGui::Checkbox("Recompute Initial spectrum", &m_recomputeInitialSpectrum);
+        });
+
+        m_updateSpectrumRC.time += dt;
+    }
+
+    void OceanPass::CalculateIntitialSpectrum(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<InitialSpectrumPassData>();
+
+        TextureDesc desc;
+        desc.width = OCEAN_SIZE;
+        desc.height = OCEAN_SIZE;
+        desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        desc.name = "InitialSpectrumTexture";
+        desc.usage = TextureDesc::gpuOnly;
+        desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
+        desc.shouldStayInCache = true;
+        passData->initialSpectrumTexture = rg.CreateTransientTexture("InitialSpectrumTexture", desc);
+
+        rg.AddPass<InitialSpectrumPassData>(
+            "Initial spectrum ocean pass",
+            PassType::Compute,
+            [&renderer, desc, this](InitialSpectrumPassData& passData, CommandList& list) {
+                if (m_recomputeInitialSpectrum)
+                {
+                    m_gaussianDistribution->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+                    PipelineStateSettings settings{};
+                    settings.ShaderState.ComputeShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/Ocean/InitialSpectrum.slang");
+
+                    std::vector<Uniform> uniforms;
+
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(InitialSpectrumRC)};
+                    uniforms.emplace_back(rootConstant);
+
+                    Uniform gaussianNumbers{0, 0, RootParams::RootResourceType::ShaderResourceView};
+                    uniforms.emplace_back(gaussianNumbers);
+
+                    Uniform initialSpectrumUAV{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE uavRange{};
+                    uavRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                    initialSpectrumUAV.ranges.emplace_back(uavRange);
+                    uniforms.emplace_back(initialSpectrumUAV);
+
+                    auto& pipeline = renderer.GetOrCreatePipeline(
+                        "Initial spectrum ocean pass", PipelineStateType::Compute, settings, uniforms);
+                    list.SetPipelineState(pipeline);
+                    list.BeginRender("Initial spectrum ocean pass");
+
+                    list.SetRootConstant<InitialSpectrumRC>(0, m_initialSpectrumRC);
+                    list.SetShaderResourceView(1, m_gaussianDistribution.get());
+                    list.SetUnorderedAccessView(2, passData.initialSpectrumTexture);
+
+                    list.GetList()->Dispatch((desc.width + 7) / 8, (desc.height + 7) / 8, 1);
+
+                    list.EndRender();
+
+                    D3D12_RESOURCE_BARRIER uavBarrier = {};
+                    uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                    uavBarrier.UAV.pResource = passData.initialSpectrumTexture->GetResource();
+
+                    list.GetList()->ResourceBarrier(1, &uavBarrier);
+                }
+            });
+    }
+
+    void OceanPass::ConjugateSpectrumPass(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<ConjugatePassData>();
+        auto* initialSpectrumData = rg.GetPassData<ConjugatePassData, InitialSpectrumPassData>();
+
+        passData->conjugatedTexture = initialSpectrumData->initialSpectrumTexture;
+
+        rg.AddPass<ConjugatePassData>(
+            "Conjugate spectrum ocean pass",
+            PassType::Compute,
+            [&renderer, this](ConjugatePassData& passData, CommandList& list) {
+                if (m_recomputeInitialSpectrum)
+                {
+                    PipelineStateSettings settings{};
+                    settings.ShaderState.ComputeShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/Ocean/ConjugateSpectrum.slang");
+
+                    std::vector<Uniform> uniforms;
+
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(InitialSpectrumRC)};
+                    uniforms.emplace_back(rootConstant);
+
+                    Uniform conjugateSpectrumUAV{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE uavRange{};
+                    uavRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                    conjugateSpectrumUAV.ranges.emplace_back(uavRange);
+                    uniforms.emplace_back(conjugateSpectrumUAV);
+
+                    auto& pipeline = renderer.GetOrCreatePipeline(
+                        "Conjugate spectrum ocean pass", PipelineStateType::Compute, settings, uniforms);
+                    list.SetPipelineState(pipeline);
+                    list.BeginRender("Conjugate spectrum ocean pass");
+
+                    list.SetRootConstant<InitialSpectrumRC>(0, m_initialSpectrumRC);
+                    list.SetUnorderedAccessView(1, passData.conjugatedTexture);
+
+                    list.GetList()->Dispatch((OCEAN_SIZE + 7) / 8, (OCEAN_SIZE + 7) / 8, 1);
+
+                    list.EndRender();
+
+                    passData.conjugatedTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+                    m_recomputeInitialSpectrum = false;
+                }
+
+                // engine.GetImGui()->AddPanel("Spectrum texture", [this, passData]() {
+                //     engine.GetImGui()->DisplayTexture(passData.conjugatedTexture, {256, 256});
+                // });
+            });
+    }
+
+    void OceanPass::UpdateSpectrum(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<UpdateSpectrumPassData>();
+        auto* conjugateSpectrumData = rg.GetPassData<UpdateSpectrumPassData, ConjugatePassData>();
+
+        {
+            TextureDesc desc;
+            desc.width = OCEAN_SIZE;
+            desc.height = OCEAN_SIZE;
+            desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+            desc.name = "SpectrumTexture";
+            desc.usage = TextureDesc::gpuOnly;
+            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
+            desc.shouldStayInCache = true;
+            passData->spectrumTexture = rg.CreateTransientTexture("SpectrumTexture", desc);
+        }
+
+        {
+            TextureDesc desc;
+            desc.width = OCEAN_SIZE;
+            desc.height = OCEAN_SIZE;
+            desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+            desc.name = "SpectrumTexture2";
+            desc.usage = TextureDesc::gpuOnly;
+            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
+            desc.shouldStayInCache = true;
+            passData->spectrumTexture1 = rg.CreateTransientTexture("SpectrumTexture2", desc);
+        }
+
+        rg.AddPass<UpdateSpectrumPassData>(
+            "Update spectrum ocean pass",
+            PassType::Compute,
+            [&renderer, conjugateSpectrumData, this](UpdateSpectrumPassData& passData, CommandList& list) {
+                PipelineStateSettings settings{};
+                settings.ShaderState.ComputeShader =
+                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/Ocean/UpdateSpectrum.slang");
+
+                std::vector<Uniform> uniforms;
+
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(UpdateSpectrumRC)};
+                uniforms.emplace_back(rootConstant);
+
+                {
+                    Uniform uni{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE srvRange{};
+                    srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                                  UINT_MAX,
+                                  0,
+                                  0,
+                                  D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+                    uni.ranges.emplace_back(srvRange);
+                    uniforms.emplace_back(uni);
+                }
+
+                {
+                    Uniform displacementUAV{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE uavRange{};
+                    uavRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                    displacementUAV.ranges.emplace_back(uavRange);
+                    uniforms.emplace_back(displacementUAV);
+                }
+
+                {
+                    Uniform slopeUAV{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE uavRange{};
+                    uavRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                    slopeUAV.ranges.emplace_back(uavRange);
+                    uniforms.emplace_back(slopeUAV);
+                }
+
+                auto& pipeline =
+                    renderer.GetOrCreatePipeline("Update spectrum ocean pass", PipelineStateType::Compute, settings, uniforms);
+                list.SetPipelineState(pipeline);
+                list.BeginRender("Update spectrum ocean pass");
+
+                m_updateSpectrumRC.h0TextureView = conjugateSpectrumData->conjugatedTexture->GetSrv()->BindlessView();
+
+                list.SetRootConstant<UpdateSpectrumRC>(0, m_updateSpectrumRC);
+                list.SetBindlessHeap(1);
+                list.SetUnorderedAccessView(2, passData.spectrumTexture);
+                list.SetUnorderedAccessView(3, passData.spectrumTexture1);
+
+                list.GetList()->Dispatch((OCEAN_SIZE + 7) / 8, (OCEAN_SIZE + 7) / 8, 1);
+
+                list.EndRender();
+
+                passData.spectrumTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                passData.spectrumTexture1->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            });
+    }
+
+    void OceanPass::FastFourierPass(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<IFFTPassData>();
+        auto* spectrumData = rg.GetPassData<IFFTPassData, UpdateSpectrumPassData>();
+
+        {
+            TextureDesc desc;
+            desc.width = OCEAN_SIZE;
+            desc.height = OCEAN_SIZE;
+            desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+            desc.name = "Displacement texture";
+            desc.usage = TextureDesc::gpuOnly;
+            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
+            desc.shouldStayInCache = true;
+            passData->displacementMap = rg.CreateTransientTexture("Displacement texture", desc);
+        }
+
+        {
+            TextureDesc desc;
+            desc.width = OCEAN_SIZE;
+            desc.height = OCEAN_SIZE;
+            desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+            desc.name = "Slope texture";
+            desc.usage = TextureDesc::gpuOnly;
+            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
+            desc.shouldStayInCache = true;
+            passData->slopeMap = rg.CreateTransientTexture("Slope texture", desc);
+        }
+
+        rg.AddPass<IFFTPassData>(
+            "Inverse FFT ocean pass", PassType::Compute, [&renderer, this](IFFTPassData& passData, CommandList& list) {
+                PipelineStateSettings settings{};
+                settings.ShaderState.ComputeShader =
+                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/Ocean/InverseFFT.slang");
+
+                std::vector<Uniform> uniforms;
+
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(IFFTRC)};
+                uniforms.emplace_back(rootConstant);
+
+                {
+                    Uniform uni{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE srvRange{};
+                    srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                                  UINT_MAX,
+                                  0,
+                                  0,
+                                  D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+                    uni.ranges.emplace_back(srvRange);
+                    uniforms.emplace_back(uni);
+                }
+
+                {
+                    Uniform displacementUAV{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE uavRange{};
+                    uavRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                    displacementUAV.ranges.emplace_back(uavRange);
+                    uniforms.emplace_back(displacementUAV);
+                }
+
+                {
+                    Uniform slopeUAV{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE uavRange{};
+                    uavRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                    slopeUAV.ranges.emplace_back(uavRange);
+                    uniforms.emplace_back(slopeUAV);
+                }
+
+                auto& pipeline =
+                    renderer.GetOrCreatePipeline("Inverse FFT ocean pass", PipelineStateType::Compute, settings, uniforms);
+                list.SetPipelineState(pipeline);
+                list.BeginRender("Inverse FFT ocean pass");
+
+                list.SetRootConstant<IFFTRC>(0, m_ifftRC);
+                list.SetBindlessHeap(1);
+                list.SetUnorderedAccessView(2, passData.displacementMap);
+                list.SetUnorderedAccessView(3, passData.slopeMap);
+
+                list.GetList()->Dispatch((OCEAN_SIZE + 7) / 8, (OCEAN_SIZE + 7) / 8, 1);
+
+                list.EndRender();
+
+                engine.GetImGui()->AddPanel("Spectrum texture", [this, passData]() {
+                    engine.GetImGui()->DisplayTexture(passData.displacementMap, {256, 256});
+                    engine.GetImGui()->DisplayTexture(passData.slopeMap, {256, 256});
+                });
+            });
+    }
+
+    void OceanPass::AddDrawOceanPass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<OceanPassData>();
         auto* pbrData = rg.GetPassData<OceanPassData, PbrPassData>();
@@ -135,10 +455,6 @@ namespace Wild
                 list.EndRender();
             });
     }
-
-    void OceanPass::Update(const float dt) {}
-
-    void OceanPass::CalculateIntitialSpectrum(Renderer& renderer, RenderGraph& rg) {}
 
     void OceanPass::GenerateOceanPlane(uint32_t resolution)
     {
