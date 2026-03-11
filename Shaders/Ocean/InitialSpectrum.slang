@@ -1,11 +1,8 @@
-#include "OceanCommon.slang"
 #include "../Helper/Rng.slang"
+#include "OceanCommon.slang"
+// Implementation reference https://github.com/gasgiant/FFT-Ocean/
 
-// Implementation referenced from https://github.com/gasgiant/FFT-Ocean/
-// Initial spectrum implementation is based on it
-
-cbuffer RootConsant : register(b0)
-{
+struct SpectrumSettings {
     float scale;
     float angle;
     float spreadBlend;
@@ -15,9 +12,16 @@ cbuffer RootConsant : register(b0)
     float peakOmega;
     float gamma;
     float shortWavesFade;
+}
+
+cbuffer RootConsant : register(b0)
+{
+    SpectrumSettings spectrum0;
+    SpectrumSettings spectrum1;
+
+    uint4 lengthScale;
 
     float oceanDepth;
-
     uint oceanSize;
 }
 
@@ -29,7 +33,7 @@ struct ComplexValue
 
 StructuredBuffer<ComplexValue> complexValues : register(t0);
 
-RWTexture2D<float4> OutputTexture : register(u0);
+RWTexture3D<float4> OutputTexture : register(u0);
 
 #define SIGMA_L 0.07
 #define SIGMA_R 0.09
@@ -48,20 +52,20 @@ float TMACorrection(float omega)
     return 1.0f;
 }
 
-float NormalizationFactor(float s) {
+float NormalizationFactor(float s)
+{
     float s2 = s * s;
     float s3 = s2 * s;
     float s4 = s3 * s;
-    if (s < 5) return -0.000564f * s4 + 0.00776f * s3 - 0.044f * s2 + 0.192f * s + 0.163f;
-    else return -4.80e-08f * s4 + 1.07e-05f * s3 - 9.53e-04f * s2 + 5.90e-02f * s + 3.93e-01f;
+    if (s < 5)
+        return -0.000564f * s4 + 0.00776f * s3 - 0.044f * s2 + 0.192f * s + 0.163f;
+    else
+        return -4.80e-08f * s4 + 1.07e-05f * s3 - 9.53e-04f * s2 + 5.90e-02f * s + 3.93e-01f;
 }
 
-float Cosine2s(float theta, float s)
-{
-	return NormalizationFactor(s) * pow(abs(cos(0.5 * theta)), 2 * s);
-}
+float Cosine2s(float theta, float s) { return NormalizationFactor(s) * pow(abs(cos(0.5 * theta)), 2 * s); }
 
-float SpreadPower(float omega)
+float SpreadPower(float omega, float peakOmega)
 {
     if (omega > peakOmega)
         return 9.77 * pow(abs(omega / peakOmega), -2.5);
@@ -69,69 +73,52 @@ float SpreadPower(float omega)
         return 6.97 * pow(abs(omega / peakOmega), 5);
 }
 
-float WaveDirectionSpectrum(float theta, float omega)
+float WaveDirectionSpectrum(float theta, float omega, SpectrumSettings settings)
 {
-    float s = SpreadPower(omega)
-		+ 16 * tanh(min(omega / peakOmega, 20)) * swell * swell;
-    return lerp(2 / 3.1415 * cos(theta) * cos(theta), Cosine2s(theta - angle, s), spreadBlend);
+    float s = SpreadPower(omega, settings.peakOmega) + 16 * tanh(min(omega / settings.peakOmega, 20)) * settings.swell * settings.swell;
+    return lerp(2 / 3.1415 * cos(theta) * cos(theta), Cosine2s(theta - settings.angle, s), settings.spreadBlend);
 }
 
 // returns the frequency domain of the JONSWAP wave energy spectrum
-float JONSWAPSpectrum(float omega)
+float JONSWAPSpectrum(float omega, SpectrumSettings settings)
 {
-    float sigma = (omega <= peakOmega) ? SIGMA_L : SIGMA_R;
+    float sigma = (omega <= settings.peakOmega) ? 0.07f : 0.09f;
 
-    float r = exp(-(omega - peakOmega) * (omega - peakOmega) / 2.0f / sigma / sigma / peakOmega / peakOmega);
+    float r = exp(-(omega - settings.peakOmega) * (omega - settings.peakOmega) / 2.0f / sigma / sigma / settings.peakOmega / settings.peakOmega);
 
     float oneOverOmega = 1.0f / omega;
-    float peakOmegaOverOmega = peakOmega / omega;
-
-    // Spectral energy
-    return scale * TMACorrection(omega) * alpha * GRAVITY * GRAVITY * pow(oneOverOmega, 5) *
-        exp(-1.25f * pow(peakOmegaOverOmega, 4)) * pow(abs(gamma), r);
+    float peakOmegaOverOmega = settings.peakOmega / omega;
+    // Spectral energy output
+    return settings.scale * TMACorrection(omega) * settings.alpha * GRAVITY * GRAVITY
+		* oneOverOmega * oneOverOmega * oneOverOmega * oneOverOmega * oneOverOmega
+		* exp(-1.25f * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega)
+		* pow(abs(settings.gamma), r);
 }
 
 // The time it takes for small waves to fade
-float ShortWavesFade(float kLength)
+float ShortWavesFade(float kLength, SpectrumSettings settings)
 {
     // Exponential fade
-    return exp(-shortWavesFade * shortWavesFade * kLength * kLength);
+    return exp(-settings.shortWavesFade * settings.shortWavesFade * kLength * kLength);
 }
 
 // Calculate Omega
-float AngularFrequency(float k) { return sqrt(GRAVITY * k * tanh(min(k * oceanDepth, 20))); }
+float AngularFrequency(float kLength) { return sqrt(GRAVITY * kLength * tanh(min(kLength * oceanDepth, 20))); }
 
 // (dw/dk)
-float GroupVelocity(float k)
+float GroupVelocity(float kLength)
 {
-    float th = tanh(min(k * oceanDepth, 20));
-    float ch = cosh(k * oceanDepth);
-    return GRAVITY * (oceanDepth * k / ch / ch + th) / AngularFrequency(k) / 2;
+    float th = tanh(min(kLength * oceanDepth, 20));
+    float ch = cosh(kLength * oceanDepth);
+    return GRAVITY * (oceanDepth * kLength / ch / ch + th) / AngularFrequency(kLength) / 2;
 }
 
-// Compute h0(k)
-float2 ComputeH0(float2 k, uint2 id)
+float2 BoxMuller(float u1, float u2)
 {
-    float kLen = length(k);
-
-    ComplexValue val = complexValues[id.y * oceanSize + id.x];
-
-    float deltaK = 2.0f * PI / (oceanSize / 4);
-
-    if (0.0001f <= kLen && kLen <= 9000.0f)
-    {
-        float kAngle = atan2(k.y, k.x);
-
-        // Calculate wave energy dispersion
-        float omega = AngularFrequency(kLen);
-        float dOmegadk = GroupVelocity(kLen);
-
-        float spectralEnergySpectrum = JONSWAPSpectrum(omega) * WaveDirectionSpectrum(kAngle, omega) * ShortWavesFade(kLen);
-
-        return float2(val.real, val.imaginary) * sqrt(2 * spectralEnergySpectrum * abs(dOmegadk) / kLen * deltaK * deltaK);
-    }
-
-    return float2(0.0f);
+    float mag = sqrt(-2.0f * log(u1 + 1e-6f)); // safe gaurd againts log(0)
+    float z0 = mag * cos(2.0f * 3.14159265f * u2);
+    float z1 = mag * sin(2.0f * 3.14159265f * u2);
+    return float2(z0, z1);
 }
 
 [shader("compute")]
@@ -140,15 +127,46 @@ void main(uint3 id: SV_DispatchThreadID)
 {
     if (id.x >= oceanSize || id.y >= oceanSize) return;
 
+    uint seed = id.x + oceanSize * id.y + oceanSize;
+
     float halfN = oceanSize / 2.0f;
 
-    float deltaK = 2.0f * PI / (oceanSize / 4);
+    for (int i = 0; i < 4; ++i)
+    {
+        // Compute h0(k), k is the wave vector
+        float2 h0 = float2(0.0f);
 
-    float2 K = ((float2)id.xy - halfN) * deltaK;
+        float deltaK = 2.0f * PI / float(lengthScale[i]);
+        float2 K = ((float2)id.xy - halfN) * deltaK;
+        float kLen = length(K);
 
-    // K wave vector
-    float2 h0 = ComputeH0(K, id.xy);
+        // ComplexValue val = complexValues[id.y * oceanSize + id.x];
+        seed += i + murmurHash11(seed) * 10;
+        float4 uniformRandom = float4(uhash11(seed), uhash11(seed * 2), uhash11(seed * 3), uhash11(seed * 4));
+        // Generate 2 sets of Gaussian ranadomized numbers to prevent the samples being the same
+        float2 gauss1 = BoxMuller(uniformRandom.x, uniformRandom.y);
+        float2 gauss2 = BoxMuller(uniformRandom.z, uniformRandom.w);
 
-    // h0(k)
-    OutputTexture[id.xy] = float4(h0, 0, 1);
+        if (0.0001f <= kLen && kLen <= 9000.0f)
+        {
+            float kAngle = atan2(K.y, K.x);
+
+            // Calculate wave energy dispersion
+            float omega = AngularFrequency(kLen);
+            float dOmegadk = GroupVelocity(kLen);
+
+            float spectralEnergySpectrum = JONSWAPSpectrum(omega, spectrum0) * WaveDirectionSpectrum(kAngle, omega, spectrum0) * ShortWavesFade(kLen, spectrum0);
+
+            if (spectrum1.scale > 0) {
+                spectralEnergySpectrum += JONSWAPSpectrum(omega, spectrum1) * WaveDirectionSpectrum(kAngle, omega, spectrum1) * ShortWavesFade(kLen, spectrum1);
+            }
+
+            h0 = float2(gauss2.x, gauss1.y) * sqrt(2 * spectralEnergySpectrum * abs(dOmegadk) / kLen * deltaK * deltaK);
+        }
+        else{
+            h0 = float2(0.0f,0.0f);
+        }
+        // h0(k)
+        OutputTexture[uint3(id.xy, i)] = float4(h0, 0.0f, 0.0f);
+    }
 }

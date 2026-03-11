@@ -2,15 +2,17 @@
 
 cbuffer RootConsant : register(b0)
 {
+    uint4 lengthScale;
+
     float time;
     uint oceanSize;
     uint h0TextureView;
 }
 
-Texture2D<float4> textures[4096] : register(t0);
+Texture3D<float4> textures[4096] : register(t0);
 
-RWTexture2D<float4> DisplacementTexture : register(u0);
-RWTexture2D<float4> SlopeTexture : register(u1);
+RWTexture3D<float4> spectrumTexture : register(u0);
+//RWTexture2D<float4> SlopeTexture : register(u1);
 
 // https://www.tutorialspoint.com/cplusplus-program-to-perform-complex-number-multiplication
 float2 ComplexMult(float2 a, float2 b) {
@@ -32,15 +34,16 @@ void main(uint3 id: SV_DispatchThreadID)
 {
     if (id.x >= oceanSize || id.y >= oceanSize) return;
 
+    for (int i = 0; i < 4; ++i) {
     // Fetch amplitude signals
-    float4 spectralSpectrumSignal = textures[h0TextureView][id.xy];
+    float4 spectralSpectrumSignal = textures[h0TextureView][uint3(id.xy, i)];
     float2 h0 = spectralSpectrumSignal.xy;
     float2 h0conj = spectralSpectrumSignal.zw;
 
     float halfN = oceanSize / 2.0f;
 
     // Create vector K, higher K values means shorter waves
-    float deltaK = 2.0f * PI / (oceanSize / 4);
+    float deltaK = 2.0f * PI / float(lengthScale[i]);
     float2 K = ((float2)id.xy - halfN) * deltaK;
 
     float kMag = length(K);
@@ -76,6 +79,7 @@ void main(uint3 id: SV_DispatchThreadID)
     float2 hSlopeZ = float2(displaceXdx.x - displaceZdz.y, displaceXdx.y + displaceZdz.x);
 
     // Store data in displacement and slope texture
-    DisplacementTexture[id.xy] = float4(hDisplacementX, hDisplacementZ);
-    SlopeTexture[id.xy] = float4(hSlopeX, hSlopeZ);
+    spectrumTexture[uint3(id.xy, i * 2)] = float4(hDisplacementX, hDisplacementZ);
+    spectrumTexture[uint3(id.xy, i * 2 + 1)] = float4(hSlopeX, hSlopeZ);
+    }
 }

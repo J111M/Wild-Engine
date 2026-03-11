@@ -6,6 +6,8 @@
 namespace Wild
 {
 #define OCEAN_SIZE 512
+#define OCEAN_CASCADES 4 // Max cascades of 4
+#define GRAVITY 9.81
 
     // Gaussian noise
     struct ComplexValue
@@ -22,19 +24,26 @@ namespace Wild
         Texture* initialSpectrumTexture;
     };
 
-    struct InitialSpectrumRC
+    struct SpectrumSettings
     {
-        float scale{0.3f};
-        float angle{0.0f};       // wind direction in radians
-        float spreadBlend{1.0f}; // fully spread
-        float swell{0.0f};       // no swell
+        float scale{1.0f};
+        float angle{0.3f};
+        float spreadBlend{1.0f};
+        float swell{0.198f};
 
         float alpha{0.0081f};   // Phillips constant, classic JONSWAP default
         float peakOmega{1.56f}; // peak frequency ~2 rad/s is typical for moderate wind
-        float gamma{3.3f};      // JONSWAP peak enhancement factor, standard default
-        float shortWavesFade{0.1f};
+        float gamma{4.3f};      // JONSWAP peak enhancement factor, standard default
+        float shortWavesFade{0.5f};
+    };
 
-        float oceanDepth = 20.0f;
+    struct InitialSpectrumRC
+    {
+        SpectrumSettings m_spectrumSettings[2];
+
+        uint32_t lengthScale[4] = {250, 32, 16, 4};
+
+        float oceanDepth = 200.0f;
 
         uint32_t oceanSize = OCEAN_SIZE;
     };
@@ -55,11 +64,12 @@ namespace Wild
     struct UpdateSpectrumPassData
     {
         Texture* spectrumTexture;
-        Texture* spectrumTexture1;
     };
 
     struct UpdateSpectrumRC
     {
+        uint32_t lengthScale[4] = {250, 32, 16, 4};
+
         float time{};
         uint32_t oceanSize = OCEAN_SIZE;
         uint32_t h0TextureView{};
@@ -71,22 +81,37 @@ namespace Wild
 
     struct IFFTPassData
     {
-        Texture* displacementMap;
-        Texture* slopeMap;
+        Texture* fourierTarget;
     };
 
     struct IFFTRC
     {
         uint32_t oceanSize = OCEAN_SIZE;
-        uint32_t horizontalFlag{};
+        uint32_t axisFlag{};
         uint32_t spectrumTextureView{};
-        uint32_t spectrumTextureView2{};
+    };
+
+    /// <summary>
+    /// Assemble ocean render pass
+    /// </summary>
+
+    struct AssembleOceanPassData
+    {
+        Texture* displacementTexture;
+        Texture* slopeTexture;
+    };
+
+    struct AssembleOceanRC
+    {
+        uint32_t oceanSize = OCEAN_SIZE;
+        uint32_t fourierTextureView{};
+        uint32_t fourierTextureView1{};
     };
 
     /// <summary>
     /// Ocean render pass
     /// </summary>
-    ///
+
     struct OceanPassData
     {
         Texture* finalTexture;
@@ -97,6 +122,8 @@ namespace Wild
     {
         glm::mat4 worldMatix{};
         glm::mat4 invModel{};
+        uint32_t displacementMapView{};
+        uint32_t slopeMapView{};
     };
 
     class OceanPass : public RenderFeature
@@ -113,6 +140,7 @@ namespace Wild
         void ConjugateSpectrumPass(Renderer& renderer, RenderGraph& rg);
         void UpdateSpectrum(Renderer& renderer, RenderGraph& rg);
         void FastFourierPass(Renderer& renderer, RenderGraph& rg);
+        void AssembleOceanPass(Renderer& renderer, RenderGraph& rg);
         void AddDrawOceanPass(Renderer& renderer, RenderGraph& rg);
 
         void GenerateOceanPlane(uint32_t resolution = 128);
@@ -124,6 +152,9 @@ namespace Wild
         bool m_recomputeInitialSpectrum = true;
         std::unique_ptr<Buffer> m_gaussianDistribution{};
         InitialSpectrumRC m_initialSpectrumRC{};
+
+        float m_fetch[2] = {800000.0f, 100000.0f};
+        float m_windSpeed[2] = {12.0f, 8.0f};
 
         /// Update spectrum
         UpdateSpectrumRC m_updateSpectrumRC{};

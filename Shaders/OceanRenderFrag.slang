@@ -9,6 +9,8 @@ cbuffer Constants : register(b0)
 {
     column_major float4x4 world;
     column_major float4x4 invTransposeModel;
+    uint displacementMapView;
+    uint slopeMapView;
 }
 
 Texture2D textures[4096] : register(t0, space0);
