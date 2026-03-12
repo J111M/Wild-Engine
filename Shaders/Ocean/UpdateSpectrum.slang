@@ -16,10 +16,7 @@ RWTexture3D<float4> spectrumTexture : register(u0);
 
 // https://www.tutorialspoint.com/cplusplus-program-to-perform-complex-number-multiplication
 float2 ComplexMult(float2 a, float2 b) {
-    return float2(
-        a.x * b.x - a.y * b.y,
-        a.x * b.y + a.y * b.x
-    );
+    return float2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
 }
 
 float4 Permute(float4 data, float2 id) {
@@ -35,51 +32,47 @@ void main(uint3 id: SV_DispatchThreadID)
     if (id.x >= oceanSize || id.y >= oceanSize) return;
 
     for (int i = 0; i < 4; ++i) {
-    // Fetch amplitude signals
-    float4 spectralSpectrumSignal = textures[h0TextureView][uint3(id.xy, i)];
-    float2 h0 = spectralSpectrumSignal.xy;
-    float2 h0conj = spectralSpectrumSignal.zw;
+        // Fetch amplitude signals
+        float4 spectralSpectrumSignal = textures[h0TextureView][uint3(id.xy, i)];
+        float2 h0 = spectralSpectrumSignal.xy;
+        float2 h0conj = spectralSpectrumSignal.zw;
 
-    float halfN = oceanSize / 2.0f;
+        float halfN = OCEAN_SIZE / 2.0f;
+        float2 K = (id.xy - halfN) * 2.0f * PI / float(lengthScale[i]);
+        float kMag = length(K);
+        float kMagRcp = rcp(kMag);
 
-    // Create vector K, higher K values means shorter waves
-    float deltaK = 2.0f * PI / float(lengthScale[i]);
-    float2 K = ((float2)id.xy - halfN) * deltaK;
+        if (kMag < 0.0001f) {
+            kMagRcp = 1.0f;
+        }
 
-    float kMag = length(K);
-    float kMagRcp = rcp(kMag);
+        float w_0 = 2.0f * PI / 200.0f;
+        float dispersion = floor(sqrt(GRAVITY * kMag) / w_0) * w_0 * time;
 
-    if (kMag < 0.0001f) 
-        kMagRcp = 1.0f;
+        float2 exponent = EulersFormula(dispersion);
 
-    float w_0 = 2.0f * PI / 200.0f; // frequency loop
-    // Wave frequency speed
-    float dispersion = floor(sqrt(GRAVITY * kMag) / w_0) * w_0 * time;
+        float2 htilde = ComplexMult(h0, exponent) + ComplexMult(h0conj, float2(exponent.x, -exponent.y));
+        float2 ih = float2(-htilde.y, htilde.x);
 
-    float2 exponent = EulersFormula(dispersion);
+        float2 displacementX = ih * K.x * kMagRcp;
+        float2 displacementY = htilde;
+        float2 displacementZ = ih * K.y * kMagRcp;
 
-    float2 htilde = ComplexMult(h0, exponent) + ComplexMult(h0conj, float2(exponent.x, -exponent.y));
-    float2 ih = float2(-htilde.y, htilde.x);
+        float2 displacementX_dx = -htilde * K.x * K.x * kMagRcp;
+        float2 displacementY_dx = ih * K.x;
+        float2 displacementZ_dx = -htilde * K.x * K.y * kMagRcp;
 
-    float2 displaceX = ih * K.x * kMagRcp;
-    float2 displaceY = htilde;
-    float2 displaceZ = ih * K.y * kMagRcp;
+        float2 displacementY_dz = ih * K.y;
+        float2 displacementZ_dz = -htilde * K.y * K.y * kMagRcp;
 
-    float2 displaceXdx = -htilde * K.x * K.x * kMagRcp;
-    float2 displaceYdx = ih * K.x;
-    float2 displaceZdx = -htilde * K.x * K.y * kMagRcp;
+        float2 htildeDisplacementX = float2(displacementX.x - displacementZ.y, displacementX.y + displacementZ.x);
+        float2 htildeDisplacementZ = float2(displacementY.x - displacementZ_dx.y, displacementY.y + displacementZ_dx.x);
+        
+        float2 htildeSlopeX = float2(displacementY_dx.x - displacementY_dz.y, displacementY_dx.y + displacementY_dz.x);
+        float2 htildeSlopeZ = float2(displacementX_dx.x - displacementZ_dz.y, displacementX_dx.y + displacementZ_dz.x);
 
-    float2 displaceYdz = ih * K.y;
-    float2 displaceZdz = -htilde * K.y * K.y * kMagRcp;
-
-    float2 hDisplacementX = float2(displaceX.x - displaceZ.y, displaceX.y + displaceZ.x);
-    float2 hDisplacementZ = float2(displaceY.x - displaceZdx.y, displaceY.y + displaceZdx.x);
-
-    float2 hSlopeX = float2(displaceYdx.x - displaceYdz.y, displaceYdx.y + displaceYdz.x);
-    float2 hSlopeZ = float2(displaceXdx.x - displaceZdz.y, displaceXdx.y + displaceZdz.x);
-
-    // Store data in displacement and slope texture
-    spectrumTexture[uint3(id.xy, i * 2)] = float4(hDisplacementX, hDisplacementZ);
-    spectrumTexture[uint3(id.xy, i * 2 + 1)] = float4(hSlopeX, hSlopeZ);
+        // Store data in displacement and slope texture
+        spectrumTexture[uint3(id.xy, i * 2)] = float4(htildeDisplacementX, htildeDisplacementZ);
+        spectrumTexture[uint3(id.xy, i * 2 + 1)] = float4(htildeSlopeX, htildeSlopeZ);
     }
 }

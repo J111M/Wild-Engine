@@ -26,14 +26,14 @@ namespace Wild
 
     struct SpectrumSettings
     {
-        float scale{1.0f};
+        float scale{250.0f};
         float angle{0.3f};
         float spreadBlend{1.0f};
         float swell{0.198f};
 
-        float alpha{0.0081f};   // Phillips constant, classic JONSWAP default
-        float peakOmega{1.56f}; // peak frequency ~2 rad/s is typical for moderate wind
-        float gamma{4.3f};      // JONSWAP peak enhancement factor, standard default
+        float alpha{0.0081f};
+        float peakOmega{1.56f};
+        float gamma{4.3f};
         float shortWavesFade{0.5f};
     };
 
@@ -43,7 +43,7 @@ namespace Wild
 
         uint32_t lengthScale[4] = {250, 32, 16, 4};
 
-        float oceanDepth = 200.0f;
+        float oceanDepth = 60.0f;
 
         uint32_t oceanSize = OCEAN_SIZE;
     };
@@ -105,12 +105,23 @@ namespace Wild
     {
         uint32_t oceanSize = OCEAN_SIZE;
         uint32_t fourierTextureView{};
-        uint32_t fourierTextureView1{};
+
+        float foamBias = 1.5f;
+        float foamDecayRate = 2.5f;
+        float foamThreshold = 0.68f; // Set between 50 - 55
+        float foamAdd = 0.5f;
     };
 
     /// <summary>
     /// Ocean render pass
     /// </summary>
+
+    struct OceanCameraData
+    {
+        glm::mat4 projViewMatrix{};
+        glm::mat4 modelMatix{};
+        glm::mat4 invModel{};
+    };
 
     struct OceanPassData
     {
@@ -120,10 +131,14 @@ namespace Wild
 
     struct OceanRenderRC
     {
-        glm::mat4 worldMatix{};
-        glm::mat4 invModel{};
+        glm::vec4 cameraPosition{};
+
+        float uvScalars[4] = {2.9f, 5.7f, 8.2f, 10.0f};
+
         uint32_t displacementMapView{};
         uint32_t slopeMapView{};
+        uint32_t irradianceView{};
+        uint32_t specularView{};
     };
 
     class OceanPass : public RenderFeature
@@ -153,7 +168,7 @@ namespace Wild
         std::unique_ptr<Buffer> m_gaussianDistribution{};
         InitialSpectrumRC m_initialSpectrumRC{};
 
-        float m_fetch[2] = {800000.0f, 100000.0f};
+        float m_fetch[2] = {112299.0f, 100000.0f};
         float m_windSpeed[2] = {12.0f, 8.0f};
 
         /// Update spectrum
@@ -161,6 +176,9 @@ namespace Wild
 
         /// FFT
         IFFTRC m_ifftRC;
+
+        ///  Texture assemble data
+        AssembleOceanRC m_assembleRC{};
 
         ///  Draw ocean
         OceanRenderRC m_oceanRc{};
@@ -170,6 +188,7 @@ namespace Wild
         // Ocean mesh
         std::unique_ptr<Buffer> m_oceanVertices;
         std::unique_ptr<Buffer> m_oceanIndices;
+        std::unique_ptr<Buffer> m_cameraBuffer{};
         uint32_t m_drawCount{};
     };
 

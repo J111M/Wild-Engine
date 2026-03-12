@@ -4,7 +4,11 @@ cbuffer RootConsant : register(b0)
 {
     uint oceanSize;
     uint fourierTextureView;
-    // Add foam parameters
+
+    float foamBias;
+    float foamDecayRate;
+    float foamThreshold;
+    float foamAdd;
 }
 
 Texture3D<float4> textures[4096] : register(t0);
@@ -33,11 +37,6 @@ void main(uint3 id: SV_DispatchThreadID)
         float3 displacement = float3(lambda.x * displace.r, displace.b, lambda.y * displace.g);
 
         float2 slopes = slope.rg / (1 + abs(slope.ba * lambda));
-
-        float foamBias = 1.5f;
-        float foamDecayRate = 2.5f;
-        float foamThreshold = 0.68f; // Set between 50 - 55
-        float foamAdd = 0.5f;
 
         float foam = displace.a;
         foam *= exp(-foamDecayRate);

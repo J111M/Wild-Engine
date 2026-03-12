@@ -21,17 +21,24 @@ namespace Wild
             val[i] = {re, im};
         }
 
-        BufferDesc desc{};
-        desc.bufferSize = sizeof(ComplexValue);
-        desc.numOfElements = val.size();
-        m_gaussianDistribution = std::make_unique<Buffer>(desc, uav);
+        {
+            BufferDesc desc{};
+            desc.bufferSize = sizeof(ComplexValue);
+            desc.numOfElements = val.size();
+            m_gaussianDistribution = std::make_unique<Buffer>(desc, uav);
+            m_gaussianDistribution->UploadToGPU(val.data());
+        }
 
-        m_gaussianDistribution->UploadToGPU(val.data());
-
-        GenerateOceanPlane(64);
+        GenerateOceanPlane(256);
         m_chunkEntity = engine.GetECS()->CreateEntity();
         auto& transform = engine.GetECS()->AddComponent<Transform>(m_chunkEntity, glm::vec3(0, 0, 0), m_chunkEntity);
         transform.SetPosition(glm::vec3(0, -9, 0));
+
+        {
+            BufferDesc desc{};
+            desc.bufferSize = sizeof(CameraBuffer);
+            m_cameraBuffer = std::make_unique<Buffer>(desc, BufferType::constant);
+        }
     }
 
     void OceanPass::Add(Renderer& renderer, RenderGraph& rg)
@@ -47,28 +54,49 @@ namespace Wild
     void OceanPass::Update(const float dt)
     {
         engine.GetImGui()->AddPanel("Ocean Settings", [this]() {
-            for (size_t i = 0; i < 2; i++)
+            if (ImGui::CollapsingHeader("Spectrum settings"))
             {
-                ImGui::PushID(i);
-                ImGui::Text("Spectrum %d", i);
-                ImGui::SliderFloat("Scale", &m_initialSpectrumRC.m_spectrumSettings[i].scale, 0.0f, 5);
-                ImGui::SliderFloat("Angle", &m_initialSpectrumRC.m_spectrumSettings[i].angle, -3.14159f, 3.14159f);
-                ImGui::SliderFloat("Spread Blend", &m_initialSpectrumRC.m_spectrumSettings[i].spreadBlend, 0.0f, 1.0f);
-                ImGui::SliderFloat("Swell", &m_initialSpectrumRC.m_spectrumSettings[i].swell, 0.01f, 1.0f);
-                ImGui::SliderFloat("Gamma", &m_initialSpectrumRC.m_spectrumSettings[i].gamma, 0.0f, 10.0f);
-                ImGui::SliderFloat("Short Waves Fade", &m_initialSpectrumRC.m_spectrumSettings[i].shortWavesFade, 0.0f, 1.0f);
-                ImGui::SliderFloat("Fetch", &m_fetch[i], 0.0f, 200000.0f);
-                ImGui::SliderFloat("Wind speed", &m_windSpeed[i], 0.0f, 200.0f);
-                ImGui::Separator();
-                ImGui::PopID();
+                for (size_t i = 0; i < 2; i++)
+                {
+                    ImGui::PushID(i);
+                    ImGui::Text("Spectrum %d", i);
+                    ImGui::SliderFloat("Scale", &m_initialSpectrumRC.m_spectrumSettings[i].scale, 0.0f, 500);
+                    ImGui::SliderFloat("Angle", &m_initialSpectrumRC.m_spectrumSettings[i].angle, -3.14159f, 3.14159f);
+                    ImGui::SliderFloat("Spread Blend", &m_initialSpectrumRC.m_spectrumSettings[i].spreadBlend, 0.0f, 1.0f);
+                    ImGui::SliderFloat("Swell", &m_initialSpectrumRC.m_spectrumSettings[i].swell, 0.01f, 1.0f);
+                    ImGui::SliderFloat("Gamma", &m_initialSpectrumRC.m_spectrumSettings[i].gamma, 0.0f, 10.0f);
+                    ImGui::SliderFloat("Short Waves Fade", &m_initialSpectrumRC.m_spectrumSettings[i].shortWavesFade, 0.0f, 1.0f);
+                    ImGui::SliderFloat("Alpha", &m_initialSpectrumRC.m_spectrumSettings[i].alpha, 0.0f, 0.5);
+                    ImGui::SliderFloat("Peak omega", &m_initialSpectrumRC.m_spectrumSettings[i].peakOmega, 0.0f, 10.0f);
+                    ImGui::Separator();
+                    ImGui::PopID();
+                }
+            }
+
+            if (ImGui::CollapsingHeader("Foam settings"))
+            {
+                ImGui::SliderFloat("Foam Bias", &m_assembleRC.foamBias, 1.4f, 1.6f);
+                ImGui::SliderFloat("Foam Decay Rate", &m_assembleRC.foamDecayRate, 0.0f, 1.0f);
+                ImGui::SliderFloat("Foam Threshold", &m_assembleRC.foamThreshold, 0.0f, 1.0f);
+                ImGui::SliderFloat("Foam Add", &m_assembleRC.foamAdd, 0.0f, 2.0f);
             }
 
             ImGui::SliderFloat("Ocean depth", &m_initialSpectrumRC.oceanDepth, 0.0f, 100.0f);
 
-            ImGui::Checkbox("Recompute Initial spectrum", &m_recomputeInitialSpectrum);
+            ImGui::Separator();
+            for (size_t i = 0; i < 4; i++)
+            {
+                std::string name = "OceanScalar " + std::to_string(i);
+                ImGui::SliderFloat(name.c_str(), &m_oceanRc.uvScalars[i], 0.0f, 10.0f, "%.01f");
+            }
+            ImGui::Separator();
+
+            static bool updateSpectrum = false;
+            ImGui::Checkbox("Recompute Initial spectrum", &updateSpectrum);
+            if (updateSpectrum) m_recomputeInitialSpectrum = true;
         });
 
-        m_updateSpectrumRC.time += dt;
+        m_updateSpectrumRC.time += 1.0 * dt;
     }
 
     void OceanPass::CalculateIntitialSpectrum(Renderer& renderer, RenderGraph& rg)
@@ -115,16 +143,16 @@ namespace Wild
                     initialSpectrumUAV.ranges.emplace_back(uavRange);
                     uniforms.emplace_back(initialSpectrumUAV);
 
-                    // 2 spectrum settings
-                    for (size_t i = 0; i < 2; i++)
-                    {
-                        m_initialSpectrumRC.m_spectrumSettings[i].alpha =
-                            0.076f * glm::pow(GRAVITY * m_fetch[i] / m_windSpeed[i] / m_windSpeed[i], -0.22f);
+                    //// 2 spectrum settings
+                    // for (size_t i = 0; i < 2; i++)
+                    //{
+                    //     m_initialSpectrumRC.m_spectrumSettings[i].alpha =
+                    //         0.076f * glm::pow(GRAVITY * m_fetch[i] / m_windSpeed[i] / m_windSpeed[i], -0.22f);
 
-                        float fetch = GRAVITY * m_fetch[i] / (m_windSpeed[i] * m_windSpeed[i]);
-                        m_initialSpectrumRC.m_spectrumSettings[i].peakOmega =
-                            22.0f * (GRAVITY / m_windSpeed[i]) * pow(fetch, -0.33f);
-                    }
+                    //    float fetch = GRAVITY * m_fetch[i] / (m_windSpeed[i] * m_windSpeed[i]);
+                    //    m_initialSpectrumRC.m_spectrumSettings[i].peakOmega =
+                    //        22.0f * (GRAVITY / m_windSpeed[i]) * pow(fetch, -0.33f);
+                    //}
 
                     auto& pipeline = renderer.GetOrCreatePipeline(
                         "Initial spectrum ocean pass", PipelineStateType::Compute, settings, uniforms);
@@ -145,13 +173,6 @@ namespace Wild
 
                     list.GetList()->ResourceBarrier(1, &uavBarrier);
                 }
-
-                // passData.initialSpectrumTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-                // engine.GetImGui()->AddPanel("Spectrum texture", [this, passData]() {
-                //     engine.GetImGui()->DisplayTexture(passData.initialSpectrumTexture, {1028, 1028});
-                //     // engine.GetImGui()->DisplayTexture(passData.fourierTarget1, {256, 256});
-                // });
             });
     }
 
@@ -199,10 +220,6 @@ namespace Wild
 
                     m_recomputeInitialSpectrum = false;
                 }
-
-                // engine.GetImGui()->AddPanel("Spectrum texture", [this, passData]() {
-                //     engine.GetImGui()->DisplayTexture(passData.conjugatedTexture, {256, 256});
-                // });
             });
     }
 
@@ -359,11 +376,6 @@ namespace Wild
                 list.EndRender();
 
                 passData.fourierTarget->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-                /* engine.GetImGui()->AddPanel("Spectrum texture", [this, spectrumData]() {
-                     engine.GetImGui()->DisplayTexture(spectrumData->spectrumTexture, {256, 256});
-                     engine.GetImGui()->DisplayTexture(spectrumData->spectrumTexture1, {256, 256});
-                 });*/
             });
     }
 
@@ -444,14 +456,12 @@ namespace Wild
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Assemble ocean pass", PipelineStateType::Compute, settings, uniforms);
 
-                AssembleOceanRC oceanRC{};
-
-                oceanRC.fourierTextureView = fourierData->fourierTarget->GetSrv()->BindlessView();
+                m_assembleRC.fourierTextureView = fourierData->fourierTarget->GetSrv()->BindlessView();
 
                 list.SetPipelineState(pipeline);
                 list.BeginRender("Assemble ocean pass");
 
-                list.SetRootConstant<AssembleOceanRC>(0, oceanRC);
+                list.SetRootConstant<AssembleOceanRC>(0, m_assembleRC);
                 list.SetBindlessHeap(1);
                 list.SetUnorderedAccessView(2, passData.displacementTexture);
                 list.SetUnorderedAccessView(3, passData.slopeTexture);
@@ -462,11 +472,6 @@ namespace Wild
 
                 passData.displacementTexture->Transition(list, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
                 passData.slopeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-                /*   engine.GetImGui()->AddPanel("Spectrum texture", [this, passData]() {
-                       engine.GetImGui()->DisplayTexture(passData.displacementTexture, {256, 256});
-                       engine.GetImGui()->DisplayTexture(passData.slopeTexture, {256, 256});
-                   });*/
             });
     }
 
@@ -490,16 +495,6 @@ namespace Wild
 
                 settings.renderTargetsFormat.push_back(passData.finalTexture->GetDesc().format);
 
-                settings.RasterizerState.BlendDesc.RenderTarget[0].BlendEnable = true;
-                // settings.RasterizerState.BlendDesc.RenderTarget[0].logic = FALSE;
-                settings.RasterizerState.BlendDesc.RenderTarget[0].SrcBlend = Blend::SrcAlpha;
-                settings.RasterizerState.BlendDesc.RenderTarget[0].DestBlend = Blend::InvSrcAlpha;
-                settings.RasterizerState.BlendDesc.RenderTarget[0].BlendOperation = BlendOp::Add;
-                settings.RasterizerState.BlendDesc.RenderTarget[0].SrcBlendAlpha = Blend::One;
-                settings.RasterizerState.BlendDesc.RenderTarget[0].DestBlendAlpha = Blend::Zero;
-                settings.RasterizerState.BlendDesc.RenderTarget[0].BlendOperationAlpha = BlendOp::Add;
-                settings.RasterizerState.BlendDesc.RenderTarget[0].RenderTargetWriteMask = ColorWrite::EnableAll;
-
                 settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
                 settings.ShaderState.InputLayout.emplace_back(
                     InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
@@ -512,6 +507,9 @@ namespace Wild
 
                 Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(OceanRenderRC)};
                 uniforms.emplace_back(rootConstant);
+
+                Uniform cameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(cameraUni);
 
                 // Bindless resources
                 {
@@ -537,7 +535,7 @@ namespace Wild
                 {
                     Uniform uni{0, 0, RootParams::RootResourceType::StaticSampler};
                     uni.samplerState.filter = D3D12_FILTER_ANISOTROPIC;
-                    uni.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                    uni.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
                     uniforms.emplace_back(uni);
                 }
 
@@ -549,6 +547,20 @@ namespace Wild
 
                 Camera* camera = GetActiveCamera();
 
+                OceanCameraData cameraData;
+
+                if (camera)
+                {
+                    auto& transform = ecs->GetComponent<Transform>(m_chunkEntity);
+                    cameraData.modelMatix = transform.GetWorldMatrix();
+                    cameraData.projViewMatrix = camera->GetProjection() * camera->GetView();
+                    cameraData.invModel = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
+                    glm::vec3 camPos = camera->GetPosition();
+                    m_oceanRc.cameraPosition = glm::vec4(camPos, 1.0f);
+                }
+
+                m_cameraBuffer->Allocate(&cameraData);
+
                 list.SetPipelineState(pipeline);
                 list.BeginRender({passData.finalTexture},
                                  {ClearOperation::Store},
@@ -556,18 +568,14 @@ namespace Wild
                                  DSClearOperation::Store,
                                  "Ocean render pass");
 
-                if (camera)
-                {
-                    auto& transform = ecs->GetComponent<Transform>(m_chunkEntity);
-                    m_oceanRc.worldMatix = camera->GetProjection() * camera->GetView() * transform.GetWorldMatrix();
-                    m_oceanRc.invModel = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
-                }
-
                 m_oceanRc.displacementMapView = fftOceanData->displacementTexture->GetSrv()->BindlessView();
                 m_oceanRc.slopeMapView = fftOceanData->slopeTexture->GetSrv()->BindlessView();
+                if (renderer.irradianceMap) { m_oceanRc.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView(); }
+                if (renderer.specularMap) { m_oceanRc.specularView = renderer.specularMap->GetSrv()->BindlessView(); }
 
                 list.SetRootConstant<OceanRenderRC>(0, m_oceanRc);
-                list.SetBindlessHeap(1);
+                list.SetConstantBufferView(1, m_cameraBuffer.get());
+                list.SetBindlessHeap(2);
 
                 list.GetList()->IASetVertexBuffers(0, 1, &m_oceanVertices->GetVBView()->View());
                 list.GetList()->IASetIndexBuffer(&m_oceanIndices->GetIBView()->View());
@@ -579,7 +587,7 @@ namespace Wild
 
     void OceanPass::GenerateOceanPlane(uint32_t resolution)
     {
-        float size = 128.0f;
+        float size = 250.0f;
         float halfSize = size / 2.0f;
         float step = size / resolution;
 

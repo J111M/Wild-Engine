@@ -1,6 +1,6 @@
 #include "../Helper/Common.slang"
 #include "../Helper/Rng.slang"
-
+#include "OceanCommon.slang"
 // Implementation referenced from https://github.com/gasgiant/FFT-Ocean/
 // Initial spectrum implementation is based on it
 
@@ -39,7 +39,7 @@ void main(uint3 id: SV_DispatchThreadID)
     for (int i = 0; i < 4; ++i) {
         // Get origional h0 variables
         float2 h0 = OutputTexture[uint3(id.xy, i)].rg;
-        float2 h0conj = OutputTexture[uint3(uint2((oceanSize - id.x) % oceanSize, (oceanSize - id.y) % oceanSize), i)].rg;
+        float2 h0conj = OutputTexture[uint3(uint2((OCEAN_SIZE - id.x) % OCEAN_SIZE, (OCEAN_SIZE - id.y) % OCEAN_SIZE), i)].rg;
 
         // h0 Conjugate
         OutputTexture[uint3(id.xy, i)] = float4(h0, h0conj.x, -h0conj.y);

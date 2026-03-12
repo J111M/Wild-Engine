@@ -159,7 +159,7 @@ void main(uint3 id: SV_DispatchThreadID)
 
     float2 uv = coords / textureSize.xy;
 
-    const float maxDistance = 100.0f;
+    const float maxDistance = 200.0f;
 
     float4 srcTexture = textures[NonUniformResourceIndex(srcTextureView)].Load(int3(coords, 0));
 
