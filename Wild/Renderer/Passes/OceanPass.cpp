@@ -81,13 +81,35 @@ namespace Wild
                 ImGui::SliderFloat("Foam Add", &m_assembleRC.foamAdd, 0.0f, 2.0f);
             }
 
+            if (ImGui::CollapsingHeader("Water Settings"))
+            {
+                ImGui::SliderFloat("Normal Scalar", &m_oceanRC.normalScalar, 0.0f, 30.0f);
+                ImGui::SliderFloat("Reflection Scalar", &m_oceanRC.reflectionScalar, 0.0f, 1.0f);
+                ImGui::SliderFloat("Wave Height Scalar", &m_oceanRC.waveHeightScalar, 0.0f, 5.0f);
+                ImGui::SliderFloat("Air Bubble Density", &m_oceanRC.airBubbleDensity, 0.0f, 5.0f);
+            }
+
+            if (ImGui::CollapsingHeader("Color Settings"))
+            {
+                ImGui::ColorEdit4("Water Scatter Color", &m_oceanRC.waterScatterColor[0]);
+                ImGui::ColorEdit4("Air Bubbles Color", &m_oceanRC.airBubblesColor[0]);
+                ImGui::ColorEdit4("Foam Color", &m_oceanRC.foamColor[0]);
+            }
+
+            if (ImGui::CollapsingHeader("Scatter Settings"))
+            {
+                ImGui::SliderFloat("Peak Scatter Strength", &m_oceanRC.peakScatterStrength, 0.0f, 5.0f);
+                ImGui::SliderFloat("Scatter Strength", &m_oceanRC.scatterStrength, 0.0f, 5.0f);
+                ImGui::SliderFloat("Scatter Shadow Strength", &m_oceanRC.scatterShadowStrength, 0.0f, 5.0f);
+            }
+
             ImGui::SliderFloat("Ocean depth", &m_initialSpectrumRC.oceanDepth, 0.0f, 100.0f);
 
             ImGui::Separator();
             for (size_t i = 0; i < 4; i++)
             {
                 std::string name = "OceanScalar " + std::to_string(i);
-                ImGui::SliderFloat(name.c_str(), &m_oceanRc.uvScalars[i], 0.0f, 10.0f, "%.01f");
+                ImGui::SliderFloat(name.c_str(), &m_oceanRC.uvScalars[i], 0.0f, 10.0f, "%.01f");
             }
             ImGui::Separator();
 
@@ -534,8 +556,9 @@ namespace Wild
 
                 {
                     Uniform uni{0, 0, RootParams::RootResourceType::StaticSampler};
-                    uni.samplerState.filter = D3D12_FILTER_ANISOTROPIC;
+                    uni.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
                     uni.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+                    uni.samplerState.addressModeW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                     uniforms.emplace_back(uni);
                 }
 
@@ -556,7 +579,7 @@ namespace Wild
                     cameraData.projViewMatrix = camera->GetProjection() * camera->GetView();
                     cameraData.invModel = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
                     glm::vec3 camPos = camera->GetPosition();
-                    m_oceanRc.cameraPosition = glm::vec4(camPos, 1.0f);
+                    m_oceanRC.cameraPosition = glm::vec4(camPos, 1.0f);
                 }
 
                 m_cameraBuffer->Allocate(&cameraData);
@@ -568,12 +591,12 @@ namespace Wild
                                  DSClearOperation::Store,
                                  "Ocean render pass");
 
-                m_oceanRc.displacementMapView = fftOceanData->displacementTexture->GetSrv()->BindlessView();
-                m_oceanRc.slopeMapView = fftOceanData->slopeTexture->GetSrv()->BindlessView();
-                if (renderer.irradianceMap) { m_oceanRc.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView(); }
-                if (renderer.specularMap) { m_oceanRc.specularView = renderer.specularMap->GetSrv()->BindlessView(); }
+                m_oceanRC.displacementMapView = fftOceanData->displacementTexture->GetSrv()->BindlessView();
+                m_oceanRC.slopeMapView = fftOceanData->slopeTexture->GetSrv()->BindlessView();
+                if (renderer.irradianceMap) { m_oceanRC.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView(); }
+                if (renderer.specularMap) { m_oceanRC.specularView = renderer.specularMap->GetSrv()->BindlessView(); }
 
-                list.SetRootConstant<OceanRenderRC>(0, m_oceanRc);
+                list.SetRootConstant<OceanRenderRC>(0, m_oceanRC);
                 list.SetConstantBufferView(1, m_cameraBuffer.get());
                 list.SetBindlessHeap(2);
 

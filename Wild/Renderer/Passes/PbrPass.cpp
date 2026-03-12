@@ -70,7 +70,7 @@ namespace Wild
             PointLight gpuLight{};
             gpuLight.position = transform.GetPosition();
             gpuLight.colorIntensity = pointLight.colorIntensity;
-            lightData.push_back(gpuLight);
+            lightData.emplace_back(gpuLight);
         }
 
         m_pbrData.numOfPointLights = lightData.size();

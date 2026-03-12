@@ -38,7 +38,7 @@ void main(uint3 id: SV_DispatchThreadID)
 
         float2 slopes = slope.rg / (1 + abs(slope.ba * lambda));
 
-        float foam = displace.a;
+        float foam = DisplacementTexture[uint3(id.xy, i)].a;
         foam *= exp(-foamDecayRate);
         foam = saturate(foam);
 

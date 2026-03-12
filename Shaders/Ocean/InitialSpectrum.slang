@@ -1,5 +1,6 @@
 #include "../Helper/Rng.slang"
-#include "OceanCommon.slang"
+#include "OceanCommon.slang"
+
 // Implementation reference https://github.com/gasgiant/FFT-Ocean/
 
 struct SpectrumSettings {

@@ -26,15 +26,15 @@ namespace Wild
 
     struct SpectrumSettings
     {
-        float scale{250.0f};
-        float angle{0.3f};
-        float spreadBlend{1.0f};
+        float scale{9.0f};
+        float angle{2.9f};
+        float spreadBlend{0.7f};
         float swell{0.198f};
 
-        float alpha{0.0081f};
+        float alpha{0.4f};
         float peakOmega{1.56f};
         float gamma{4.3f};
-        float shortWavesFade{0.5f};
+        float shortWavesFade{0.2f};
     };
 
     struct InitialSpectrumRC
@@ -139,6 +139,19 @@ namespace Wild
         uint32_t slopeMapView{};
         uint32_t irradianceView{};
         uint32_t specularView{};
+
+        float normalScalar = 30.0f;
+        float reflectionScalar = 0.9;
+        float waveHeightScalar = 1.0;
+        float airBubbleDensity = 0.3;
+
+        glm::vec4 waterScatterColor = glm::vec4(0.0, 0.08, 0.13, 1);
+        glm::vec4 airBubblesColor = glm::vec4(0.0, 0.41, 0.41, 1);
+        glm::vec4 foamColor = glm::vec4(1, 1, 1, 1);
+
+        float peakScatterStrength = 1.5;
+        float scatterStrength = 1.5;
+        float scatterShadowStrength = 1.5;
     };
 
     class OceanPass : public RenderFeature
@@ -181,7 +194,7 @@ namespace Wild
         AssembleOceanRC m_assembleRC{};
 
         ///  Draw ocean
-        OceanRenderRC m_oceanRc{};
+        OceanRenderRC m_oceanRC{};
 
         Entity m_chunkEntity;
 

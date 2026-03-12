@@ -44,10 +44,10 @@ VSOutput main(VSInput input)
 {
     VSOutput output;
 
-    float4 displacement1 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.x, 0.125f), 0);
-    float4 displacement2 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.y, 0.375f), 0);
-    float4 displacement3 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.z, 0.625f), 0);
-    float4 displacement4 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.w, 0.875f), 0);
+    float4 displacement1 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.x, 0), 0);
+    float4 displacement2 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.y, 0.33f), 0);
+    float4 displacement3 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.z, 0.66f), 0);
+    float4 displacement4 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.w, 1.0f), 0);
     float4 displacement = displacement1 + displacement2 + displacement3 + displacement4;
 
     float3 displacedPosition = input.position + (displacement.xyz * HEIGHT_SCALE);

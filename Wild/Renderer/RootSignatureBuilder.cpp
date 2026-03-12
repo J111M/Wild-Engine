@@ -61,7 +61,7 @@ namespace Wild
         sampler.Filter = samplerState.filter;
         sampler.AddressU = samplerState.addressMode;
         sampler.AddressV = samplerState.addressMode;
-        sampler.AddressW = samplerState.addressMode;
+        sampler.AddressW = samplerState.addressModeW;
         sampler.MipLODBias = 0;
         sampler.MaxAnisotropy = 16;
         sampler.ComparisonFunc = samplerState.comparisonFunc;
