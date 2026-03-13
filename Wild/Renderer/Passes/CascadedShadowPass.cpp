@@ -228,7 +228,7 @@ namespace Wild
                 for (uint32_t nf = 0; nf < 2u; nf++)
                 {
                     const glm::vec2 camNearFar = camera->GetNearFar();
-                    const float shadowDistance = 100.0f;
+                    const float shadowDistance = camNearFar.y;
 
                     const float ratio = static_cast<float>(cascade + nf) / static_cast<float>(SHADOWMAP_CASCADES);
                     float logS = camNearFar.x * std::powf(shadowDistance / camNearFar.x, ratio);

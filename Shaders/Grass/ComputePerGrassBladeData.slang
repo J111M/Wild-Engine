@@ -81,7 +81,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         return;
     }
 
-    float3 bladePosition = float3(rHash1.x + chunkPosition.x, 0, rHash1.y + chunkPosition.y);
+    float3 bladePosition = float3(rHash1.x + chunkPosition.x, -0.2f, rHash1.y + chunkPosition.y);
 
     GrassData[offsetId].worldPosition = bladePosition.xyz;
 

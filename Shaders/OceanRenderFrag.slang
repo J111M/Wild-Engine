@@ -13,37 +13,38 @@ struct PSInput
 
 cbuffer Constants : register(b0)
 {
+    column_major float4x4 modelMatrix;
     float4 cameraPosition;
-
-    float4 uvScalars;
+    float4 lightDirectionIntensity;
 
     uint displacementMapView;
     uint slopeMapView;
     uint irradianceView;
     uint specularView;
+}
+
+cbuffer Camera : register(b1) {
+    column_major float4x4 projViewMatrix;
+    column_major float4x4 invModel;
+}
+
+cbuffer OceanRenderData : register(b2) {
+    float4 uvScalars;
 
     float normalScalar;
     float reflectionScalar;
     float waveHeightScalar;
     float airBubbleDensity;
 
-    float4 waterScatterColor;// = float3(0.0, 0.05, 0.1);
-    float4 airBubblesColor;  // = float3(0.0, 0.15, 0.4);
-    float4 foamColor; // 1,1,1
+    float4 waterScatterColor;
+    float4 airBubblesColor;
+    float4 foamColor;
 
     float peakScatterStrength;
     float scatterStrength;
     float scatterShadowStrength;
     float pad;
-
-    float4 lightDirectionIntensity;
-}
-
-cbuffer Camera : register(b1) {
-    column_major float4x4 projViewMatrix;
-    column_major float4x4 modelMatix;
-    column_major float4x4 invModel;
-}
+};
 
 Texture3D textures[4096] : register(t0, space0);
 TextureCube textureCubes[4096] : register(t0, space1);
@@ -80,10 +81,10 @@ float BeckmannDistribution(float NdotH, float roughness)
 [shader("fragment")]
 float4 main(PSInput input) : SV_TARGET0
 {
-    float4 slope0 = textures[slopeMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.x, 0.0f), 0);
-    float4 slope1 = textures[slopeMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.y, 0.33f), 0);
-    float4 slope2 = textures[slopeMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.z, 0.66f), 0);
-    float4 slope3 = textures[slopeMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.w, 1.0f), 0);
+    float4 slope0 = textures[slopeMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.x, 0));
+    float4 slope1 = textures[slopeMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.y, 1));
+    float4 slope2 = textures[slopeMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.z, 2));
+    float4 slope3 = textures[slopeMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.w, 3));
     float4 slope = slope0 + slope1 + slope2 + slope3;
 
     slope = slope * normalScalar;
@@ -100,11 +101,11 @@ float4 main(PSInput input) : SV_TARGET0
     float NdotH = max(dot(N, H), 0.0001f);
     float NdotV = dot(N, V);
 
-    float4 displacement1 = textures[displacementMapView].Sample(anisotropySampler, float3(input.uv * uvScalars.x, 0.0f));
-    //float4 displacement2 = textures[displacementMapView].Sample(anisotropySampler, float3(input.uv * uvScalars.y, 0.33f));
-    //float4 displacement3 = textures[displacementMapView].Sample(anisotropySampler, float3(input.uv * uvScalars.z, 0.66f));
-    //float4 displacement4 = textures[displacementMapView].Sample(anisotropySampler, float3(input.uv * uvScalars.w, 1.0f));
-    float foam = displacement1.w;
+    //float4 displacement1 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.x, 0));
+    //float4 displacement2 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.y, 1));
+    //float4 displacement3 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.z, 2));
+    //float4 displacement4 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.w, 3));
+    float foam = input.foam; //displacement4.w;// + displacement2.w + displacement3.w + displacement4.w;
     float a = 0.1f + foam * 1.0f; // roughness
 
     float viewShadowing = GeometricShadowingBeckmann(H, V, a);

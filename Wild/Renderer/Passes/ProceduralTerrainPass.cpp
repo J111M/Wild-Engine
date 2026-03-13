@@ -19,17 +19,28 @@ namespace Wild
         m_cameraCbv = std::make_unique<Buffer>(cameraBufferDesc, BufferType::constant);
 
         // Load all terrain textures
-        sandTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sandAlpha.png");
-        sandNormalTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sand_01_normal_dx_2k.png");
-        sandRoughTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sand_01_roughness_2k.png");
-        sandAOTexture = std::make_unique<Texture>("Assets/Textures/sand_01_2k/sand_01_ambient_occlusion_2k.png");
+        grassTexture = std::make_unique<Texture>("Assets/Textures/grass/Grass008_2K-JPG_Color.jpg");
+        grassNormalTexture = std::make_unique<Texture>("Assets/Textures/grass/Grass008_2K-JPG_NormalGL.jpg");
+        grassRoughTexture = std::make_unique<Texture>("Assets/Textures/grass/Grass008_2K-JPG_Roughness.jpg");
+        grassAOTexture = std::make_unique<Texture>("Assets/Textures/grass/Grass008_2K-JPG_AmbientOcclusion.jpg");
 
-        rockTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/rocksAlpha.png");
-        rockNormalTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/cliff_rocks_05_normal_dx_2k.png");
-        rockRoughTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/cliff_rocks_05_roughness_2k.png");
-        rockAOTexture = std::make_unique<Texture>("Assets/Textures/cliff_rocks_05_2k/cliff_rocks_05_ambientocclusion_2k.png");
+        sandTexture = std::make_unique<Texture>("Assets/Textures/sand/Ground054_2K-JPG_Color.jpg");
+        sandNormalTexture = std::make_unique<Texture>("Assets/Textures/sand/Ground054_2K-JPG_NormalGL.jpg");
+        sandRoughTexture = std::make_unique<Texture>("Assets/Textures/sand/Ground054_2K-JPG_Roughness.jpg");
+        sandAOTexture = std::make_unique<Texture>("Assets/Textures/sand/Ground054_2K-JPG_AmbientOcclusion.jpg");
+
+        rockTexture = std::make_unique<Texture>("Assets/Textures/rock/Rock061_2K-JPG_Color.jpg");
+        rockNormalTexture = std::make_unique<Texture>("Assets/Textures/rock/Rock061_2K-JPG_NormalGL.jpg");
+        rockRoughTexture = std::make_unique<Texture>("Assets/Textures/rock/Rock061_2K-JPG_Roughness.jpg");
+        rockAOTexture = std::make_unique<Texture>("Assets/Textures/rock/Rock061_2K-JPG_AmbientOcclusion.jpg");
 
         noiseBlendTexture = std::make_unique<Texture>("Assets/Textures/noiseBlend.png");
+
+        // Grass textures
+        m_terrainTexturesView.grassTexture = grassTexture->GetSrv()->BindlessView();
+        m_terrainTexturesView.grassNormalTexture = grassNormalTexture->GetSrv()->BindlessView();
+        m_terrainTexturesView.grassRoughTexture = grassRoughTexture->GetSrv()->BindlessView();
+        m_terrainTexturesView.grassAOTexture = grassAOTexture->GetSrv()->BindlessView();
 
         // Sand texture
         m_terrainTexturesView.sandTexture = sandTexture->GetSrv()->BindlessView();

@@ -135,6 +135,7 @@ namespace Wild
         m_ibView = std::make_shared<IndexBufferView>(m_resource->Handle(), m_desc.bufferSize, DXGI_FORMAT_R32_UINT);
     }
 
+    // Allocate data
     void Buffer::Allocate(void* dataSrc, size_t size)
     {
         Map();
@@ -142,6 +143,7 @@ namespace Wild
         Unmap();
     }
 
+    // Upload data straight to a GPU buffer
     void Buffer::UploadToGPU(void* dataSrc, size_t size)
     {
         // Upload staging buffer

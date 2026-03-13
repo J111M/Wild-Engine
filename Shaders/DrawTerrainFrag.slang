@@ -31,6 +31,11 @@ cbuffer Constants : register(b0)
 
 cbuffer TextureViews : register(b1)
 {
+    uint grassTexture;
+    uint grassNormalTexture;
+    uint grassRoughTexture;
+    uint grassAOTexture;
+
     uint sandTexture;
     uint sandNormalTexture;
     uint sandRoughTexture;
@@ -156,7 +161,7 @@ PSOut main(PSInput input)
     float3 geoNormal = float3(0.0f);
     float blendedRoughness = 0.0f;
 
-    const float textureScale = 1.1f;
+    const float textureScale = 0.2f;
     float sharpness = 6.0;
 
     float3 normal = normalize(mul((float3x3)invTransposeModel, input.normal.xyz));
@@ -174,10 +179,20 @@ PSOut main(PSInput input)
     noiseBlend = noiseBlend * 2.0f - 1.0f; // Remap -1, 1
 
     // Load terrain texture data
-    float4 grassColor = RandomizedTextureColor(
-        input.uv, float3(0.58, 0.976, 0.53), float3(0.345, 0.525, 0.07), float3(0.933, 0.784, 0.067), 612.51f);
-    float grassRoughness = grassColor.w;
+    float4 grassColor = TriplanarSample(
+        grassTexture,
+        input.worldPosition,
+        blendWeights,
+        textureScale);
+
+    float3 grassNormal = TriplanarNormalSample(grassNormalTexture, input.worldPosition, normal, blendWeights, textureScale);
     grassColor.w = HeightFromColor(grassColor.rgb);
+
+    float grassRoughness = TriplanarSample(
+        grassRoughTexture,
+        input.worldPosition,
+        blendWeights,
+        textureScale).r;
 
     float4 dirtColor = RandomizedTextureColor(
         input.uv, float3(0.561, 0.396, 0.215), float3(0.701, 0.519, 0.215), float3(0.886, 0.643, 0.215), 152.61f);

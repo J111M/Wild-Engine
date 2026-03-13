@@ -2,6 +2,7 @@
 
 #include "Renderer/RenderGraph/RenderGraph.hpp"
 #include "Renderer/Renderer.hpp"
+#include "Systems/OceanChunkSystem.hpp"
 
 namespace Wild
 {
@@ -26,22 +27,22 @@ namespace Wild
 
     struct SpectrumSettings
     {
-        float scale{9.0f};
+        float scale{26.0f};
         float angle{2.9f};
-        float spreadBlend{0.7f};
-        float swell{0.198f};
+        float spreadBlend{1.0f};
+        float swell{0.8f};
 
         float alpha{0.4f};
-        float peakOmega{1.56f};
-        float gamma{4.3f};
-        float shortWavesFade{0.2f};
+        float peakOmega{2.1f};
+        float gamma{3.37f};
+        float shortWavesFade{0.0f};
     };
 
     struct InitialSpectrumRC
     {
         SpectrumSettings m_spectrumSettings[2];
 
-        uint32_t lengthScale[4] = {250, 32, 16, 4};
+        float lengthScale[4] = {250, 32, 16, 4};
 
         float oceanDepth = 60.0f;
 
@@ -68,7 +69,7 @@ namespace Wild
 
     struct UpdateSpectrumRC
     {
-        uint32_t lengthScale[4] = {250, 32, 16, 4};
+        float lengthScale[4] = {250, 32, 16, 4};
 
         float time{};
         uint32_t oceanSize = OCEAN_SIZE;
@@ -113,13 +114,22 @@ namespace Wild
     };
 
     /// <summary>
+    /// Foam filter render pass
+    /// <summary>
+
+    struct FoamFilterPassData
+    {
+        Texture* displacementTexture;
+        Texture* slopeTexture;
+    };
+
+    /// <summary>
     /// Ocean render pass
     /// </summary>
 
     struct OceanCameraData
     {
         glm::mat4 projViewMatrix{};
-        glm::mat4 modelMatix{};
         glm::mat4 invModel{};
     };
 
@@ -129,16 +139,9 @@ namespace Wild
         Texture* depthTexture;
     };
 
-    struct OceanRenderRC
+    struct OceanRenderData
     {
-        glm::vec4 cameraPosition{};
-
-        float uvScalars[4] = {2.9f, 5.7f, 8.2f, 10.0f};
-
-        uint32_t displacementMapView{};
-        uint32_t slopeMapView{};
-        uint32_t irradianceView{};
-        uint32_t specularView{};
+        float uvScalars[4] = {1.0f / 250.0f, 1.0f / 32.0f, 1.0f / 16.0f, 1.0f / 4.0f};
 
         float normalScalar = 30.0f;
         float reflectionScalar = 0.9;
@@ -146,15 +149,25 @@ namespace Wild
         float airBubbleDensity = 0.3;
 
         glm::vec4 waterScatterColor = glm::vec4(0.0, 0.08, 0.13, 1);
-        glm::vec4 airBubblesColor = glm::vec4(0.0, 0.41, 0.41, 1);
+        glm::vec4 airBubblesColor = glm::vec4(0.004, 0.40, 0.36, 1);
         glm::vec4 foamColor = glm::vec4(1, 1, 1, 1);
 
         float peakScatterStrength = 1.5;
         float scatterStrength = 1.5;
         float scatterShadowStrength = 1.5;
         float pad;
+    };
 
-        glm::vec4 directionIntensity{};
+    struct OceanRenderRC
+    {
+        glm::mat4 modelMatrix{};
+        glm::vec4 cameraPosition{};
+        glm::vec4 lightDirectionIntensity{};
+
+        uint32_t displacementMapView{};
+        uint32_t slopeMapView{};
+        uint32_t irradianceView{};
+        uint32_t specularView{};
     };
 
     class OceanPass : public RenderFeature
@@ -172,9 +185,13 @@ namespace Wild
         void UpdateSpectrum(Renderer& renderer, RenderGraph& rg);
         void FastFourierPass(Renderer& renderer, RenderGraph& rg);
         void AssembleOceanPass(Renderer& renderer, RenderGraph& rg);
+        void FoamFilterPass(Renderer& renderer, RenderGraph& rg);
+
         void AddDrawOceanPass(Renderer& renderer, RenderGraph& rg);
 
         void GenerateOceanPlane(uint32_t resolution = 128);
+
+        std::unique_ptr<OceanChunkSystem> m_oceanChunkSystem;
 
         // Box muller formula for generating gaussian distrubted numbers
         std::pair<float, float> BoxMuller(float u1, float u2);
@@ -186,6 +203,7 @@ namespace Wild
 
         float m_fetch[2] = {112299.0f, 100000.0f};
         float m_windSpeed[2] = {12.0f, 8.0f};
+        float m_lenghtScales[4] = {810.6f, 597.2f, 378.5f, 236.2f};
 
         /// Update spectrum
         UpdateSpectrumRC m_updateSpectrumRC{};
@@ -204,6 +222,10 @@ namespace Wild
         // Ocean mesh
         std::unique_ptr<Buffer> m_oceanVertices;
         std::unique_ptr<Buffer> m_oceanIndices;
+
+        OceanRenderData m_oceanRenderData{};
+        std::unique_ptr<Buffer> m_oceanRenderDataBuffer;
+
         std::unique_ptr<Buffer> m_cameraBuffer{};
         uint32_t m_drawCount{};
     };

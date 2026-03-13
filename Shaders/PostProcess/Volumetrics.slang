@@ -2,7 +2,6 @@
 #include "../ShadowInc.slang"
 #include "Formula.slang"
 
-
 cbuffer RootConsant : register(b0)
 {
     float2 textureSize;
@@ -159,7 +158,7 @@ void main(uint3 id: SV_DispatchThreadID)
 
     float2 uv = coords / textureSize.xy;
 
-    const float maxDistance = 200.0f;
+    const float maxDistance = nearFar.y;
 
     float4 srcTexture = textures[NonUniformResourceIndex(srcTextureView)].Load(int3(coords, 0));
 
@@ -196,12 +195,12 @@ void main(uint3 id: SV_DispatchThreadID)
     {
         // Noise uv sample position
         float3 uvw = (marchPosition / noiseScale) + float3(windDirectionTime.xyz * windDirectionTime.w);
-        float4 noise = SampleNoiseDensity(uvw);                                   // Normalize to 500 units
-        float base = noise.r;                                                     // Perlin/worley noise
-        float detail = dot(noise.gba, float3(0.625, 0.25, 0.125));                // Weighted octaves
+        float4 noise = SampleNoiseDensity(uvw);                    // Normalize to 500 units
+        float base = noise.r;                                      // Perlin/worley noise
+        float detail = dot(noise.gba, float3(0.625, 0.25, 0.125)); // Weighted octaves
         float densitySample = saturate(remap(base, detail - 1.0, 1.0, 0.0, 1.0)) * HeightFactor(marchPosition.y);
-        float sigmaA = densitySample * density * stepSize;                        // Absorption coefficient
-        float sigmaS = densitySample * scatteringDensity * stepSize;                       // Scattering coefficient
+        float sigmaA = densitySample * density * stepSize;           // Absorption coefficient
+        float sigmaS = densitySample * scatteringDensity * stepSize; // Scattering coefficient
 
         float3 inScatter = float3(0.0f);
         for (uint plIndex = 0; plIndex < numOfPointLights; plIndex++)

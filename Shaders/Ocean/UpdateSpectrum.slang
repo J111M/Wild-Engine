@@ -2,7 +2,7 @@
 
 cbuffer RootConsant : register(b0)
 {
-    uint4 lengthScale;
+    float4 lengthScale;
 
     float time;
     uint oceanSize;
@@ -38,7 +38,7 @@ void main(uint3 id: SV_DispatchThreadID)
         float2 h0conj = spectralSpectrumSignal.zw;
 
         float halfN = OCEAN_SIZE / 2.0f;
-        float2 K = (id.xy - halfN) * 2.0f * PI / float(lengthScale[i]);
+        float2 K = (id.xy - halfN) * 2.0f * PI / lengthScale[i];
         float kMag = length(K);
         float kMagRcp = rcp(kMag);
 

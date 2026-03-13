@@ -20,7 +20,7 @@ cbuffer RootConsant : register(b0)
     SpectrumSettings spectrum0;
     SpectrumSettings spectrum1;
 
-    uint4 lengthScale;
+    float4 lengthScale;
 
     float oceanDepth;
     uint oceanSize;
@@ -145,7 +145,7 @@ void main(uint3 id: SV_DispatchThreadID)
         // Compute h0(k), k is the wave vector
         float2 h0 = float2(0.0f);
 
-        float deltaK = 2.0f * PI / float(lengthScale[i]);
+        float deltaK = 2.0f * PI / lengthScale[i];
         float2 K = ((float2)id.xy - halfN) * deltaK;
         float kLen = length(K);
 

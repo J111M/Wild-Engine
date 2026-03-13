@@ -59,6 +59,11 @@ namespace Wild
 
     struct TerrainTextures
     {
+        uint32_t grassTexture{};
+        uint32_t grassNormalTexture{};
+        uint32_t grassRoughTexture{};
+        uint32_t grassAOTexture{};
+
         uint32_t sandTexture{};
         uint32_t sandNormalTexture{};
         uint32_t sandRoughTexture{};
