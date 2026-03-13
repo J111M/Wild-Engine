@@ -37,7 +37,14 @@ namespace Wild
             m_volumetricRC.nearFar = camera->GetNearFar();
         }
 
-        m_sceneData.lightDirection = glm::vec3(-0.3, 14.0, -2.5);
+        auto view = ecs->View<DirectionalLight>();
+        for (auto entity : view)
+        {
+            auto& directionalLight = ecs->GetComponent<DirectionalLight>(entity);
+
+            m_sceneData.lightDirection = directionalLight.direction;
+            break;
+        }
 
         engine.GetImGui()->AddPanel("Volumetric Fog Settings", [this]() {
             ImGui::SliderInt("Step Count", reinterpret_cast<int*>(&m_volumetricRC.stepCount), 1, 256);

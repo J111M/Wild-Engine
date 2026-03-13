@@ -55,7 +55,7 @@ float4 main(VSOutput input) : SV_Target0
         color = textureCube[skyCubeView].SampleLevel(linearSampler, dir, mipLevel).rgb;
 
     // Sun
-    float3 sunDir = normalize(lightDirectionIntensity.xyz);
+    float3 sunDir = -normalize(lightDirectionIntensity.xyz);
     float sun = dot(dir, sunDir);
     float sunDisk = smoothstep(0.9995f, 1.0f, sun);
     float sunGlow = pow(max(sun, 0.0f), 64.0f) * 0.3f;

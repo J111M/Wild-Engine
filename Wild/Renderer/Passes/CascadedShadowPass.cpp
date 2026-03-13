@@ -293,7 +293,7 @@ namespace Wild
         glm::vec3 min = glm::vec3(FLT_MAX);
         glm::vec3 max = glm::vec3(-FLT_MAX);
 
-        glm::vec3 normalizeLightDir = glm::normalize(lightDir);
+        glm::vec3 normalizeLightDir = -glm::normalize(lightDir);
 
         const glm::vec3 lightPos = frustumCenter + normalizeLightDir;
 

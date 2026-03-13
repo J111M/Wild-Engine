@@ -224,7 +224,7 @@ void main(uint3 id: SV_DispatchThreadID)
 
         // Directional light
         {
-            float3 sunDirection = -normalize(lightDirectionIntensity.xyz);
+            float3 sunDirection = normalize(lightDirectionIntensity.xyz);
             float sunIntensity = lightDirectionIntensity.w;
 
             // Shadow sample
