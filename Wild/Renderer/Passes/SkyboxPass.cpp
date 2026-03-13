@@ -1,5 +1,6 @@
 #include "Renderer/Passes/SkyboxPass.hpp"
 #include "Renderer/Passes/OceanPass.hpp"
+#include "Renderer/Resources/LightTypes.hpp"
 
 namespace Wild
 {
@@ -71,6 +72,15 @@ namespace Wild
             if (ImGui::SliderInt("Debug mode", &skyMode, 0, 6)) { m_debugSkyboxMode = skyMode; }
             ImGui::Image((ImTextureID)m_brdfLut->GetSrv()->GetGpuHandle().ptr, ImVec2(150, 150));
         });
+
+        auto view = ecs->View<DirectionalLight>();
+        for (auto entity : view)
+        {
+            auto& directionalLight = ecs->GetComponent<DirectionalLight>(entity);
+
+            m_skyRC.lightDirectionIntensity = glm::vec4(directionalLight.direction, directionalLight.colorIntensity.a);
+            break;
+        }
     }
 
     void SkyPass::Add(Renderer& renderer, RenderGraph& rg)
@@ -156,16 +166,13 @@ namespace Wild
                 auto context = engine.GetGfxContext();
                 int frameIndex = context->GetBackBufferIndex();
 
-                SkyRootConstant rc{};
-                // rc.view = m_skyboxTexture->GetSrv()->BindlessView();
-
                 switch (m_debugSkyboxMode)
                 {
                 case 0:
-                    rc.view = m_skyboxTexture->GetSrv()->BindlessView();
+                    m_skyRC.view = m_skyboxTexture->GetSrv()->BindlessView();
                     break;
                 case 1:
-                    if (renderer.irradianceMap) { rc.viewCube = renderer.irradianceMap->GetSrv()->BindlessView(); }
+                    if (renderer.irradianceMap) { m_skyRC.viewCube = renderer.irradianceMap->GetSrv()->BindlessView(); }
                     break;
                 case 2:
                 case 3:
@@ -174,15 +181,15 @@ namespace Wild
                 case 6:
                     if (renderer.specularMap)
                     {
-                        rc.viewCube = renderer.specularMap->GetSrv()->BindlessView();
-                        rc.mipLevel = m_debugSkyboxMode - 2;
+                        m_skyRC.viewCube = renderer.specularMap->GetSrv()->BindlessView();
+                        m_skyRC.mipLevel = m_debugSkyboxMode - 2;
                     }
                     break;
                 default:
                     break;
                 }
 
-                list.SetRootConstant<SkyRootConstant>(0, rc);
+                list.SetRootConstant<SkyRootConstant>(0, m_skyRC);
 
                 list.SetConstantBufferView(1, m_cameraProjection[frameIndex].get());
 

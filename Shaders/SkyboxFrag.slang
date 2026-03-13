@@ -3,6 +3,9 @@ cbuffer Constants : register(b0)
     uint skyView;
     uint skyCubeView;
     uint mipLevel;
+    uint pad;
+
+    float4 lightDirectionIntensity;
 };
 
 cbuffer matrices : register(b1)
@@ -50,6 +53,14 @@ float4 main(VSOutput input) : SV_Target0
 
     if (skyCubeView > 0)
         color = textureCube[skyCubeView].SampleLevel(linearSampler, dir, mipLevel).rgb;
+
+    // Sun
+    float3 sunDir = normalize(lightDirectionIntensity.xyz);
+    float sun = dot(dir, sunDir);
+    float sunDisk = smoothstep(0.9995f, 1.0f, sun);
+    float sunGlow = pow(max(sun, 0.0f), 64.0f) * 0.3f;
+    color += float3(1.0f, 0.9f, 0.6f) * sunDisk * lightDirectionIntensity.w;
+    color += float3(1.0f, 0.7f, 0.3f) * sunGlow * lightDirectionIntensity.w;
 
     return float4(color, 1.0f);
 }

@@ -37,6 +37,9 @@ namespace Wild
         uint32_t view{};
         uint32_t viewCube{};
         uint32_t mipLevel{};
+        uint32_t pad{};
+
+        glm::vec4 lightDirectionIntensity{};
     };
 
     struct IBLRootConstant
@@ -83,5 +86,7 @@ namespace Wild
         std::shared_ptr<Texture> m_brdfLut;
         std::shared_ptr<Texture> m_specularMap;
         uint32_t m_specularMips = 5;
+
+        SkyRootConstant m_skyRC{};
     };
 } // namespace Wild

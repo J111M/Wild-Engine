@@ -279,7 +279,7 @@ namespace Wild
 
         if (ecs->HasComponent<PointLight>(m_selectedEntity))
         {
-            if (ImGui::CollapsingHeader("Planet", ImGuiTreeNodeFlags_DefaultOpen))
+            if (ImGui::CollapsingHeader("Point light", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 auto& ptLight = registry.get<PointLight>(m_selectedEntity);
 
@@ -287,15 +287,34 @@ namespace Wild
                 ImGui::DragFloat("Intensity: ", &ptLight.colorIntensity.w);
             }
         }
-        /*if (ecs.HasComponent<DirectionalLight>(m_selectedEntity))
+
+        if (ecs->HasComponent<DirectionalLight>(m_selectedEntity))
         {
             if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 auto& dLight = registry.get<DirectionalLight>(m_selectedEntity);
 
-                if (SeperateDragFloat3("Direction: ", dLight.lightDir)) {}
+                glm::vec3 dir = glm::normalize(glm::vec3(dLight.direction[0], dLight.direction[1], dLight.direction[2]));
+
+                float pitch = glm::degrees(asinf(glm::clamp(dir.y, -1.0f, 1.0f)));
+                float yaw = glm::degrees(atan2f(dir.x, dir.z));
+
+                float euler[2] = {pitch, yaw};
+
+                if (ImGui::DragFloat2("Rotation: (P/Y) ", euler, 0.5f, -180.0f, 180.0f, "%.1f deg"))
+                {
+                    float p = glm::radians(euler[0]);
+                    float y = glm::radians(euler[1]);
+
+                    dLight.direction[0] = cosf(p) * sinf(y);
+                    dLight.direction[1] = sinf(p);
+                    dLight.direction[2] = cosf(p) * cosf(y);
+                }
+
+                ImGui::ColorEdit3("Color", &dLight.colorIntensity[0]);
+                ImGui::SliderFloat("Intensity", &dLight.colorIntensity.w, 0, 50.0f);
             }
-        }*/
+        }
 
         ImGui::End();
     }

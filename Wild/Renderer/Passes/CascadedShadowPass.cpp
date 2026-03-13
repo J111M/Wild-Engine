@@ -1,5 +1,6 @@
 #include "Renderer/Passes/CascadedShadowPass.hpp"
 #include "Renderer/Passes/ProceduralTerrainPass.hpp"
+#include "Renderer/Resources/LightTypes.hpp"
 #include "Renderer/Resources/Mesh.hpp"
 
 #include "Core/Camera.hpp"
@@ -183,11 +184,6 @@ namespace Wild
     void CascadedShadowMaps::Update(const float dt)
     {
         engine.GetImGui()->AddPanel("Shadowmap settings", [this]() {
-            if (ImGui::SliderFloat3("Light direction: ", &m_directLight.lightDirectionIntensity[0], -100.0f, 100.0f))
-            {
-                m_lightChanged = true;
-            }
-
             ImGui::SliderFloat("Bias value", &m_shadowBias, 0.001, 20.0f);
             ImGui::SliderFloat("Z Mult", &m_zMult, 0.01, 20.0f);
 
@@ -210,6 +206,16 @@ namespace Wild
                     m_lightDirDebug.clear();
                     m_lightDirDebug2.clear();
                 }
+            }
+
+            auto ecs = engine.GetECS();
+            auto view = ecs->View<DirectionalLight>();
+            for (auto entity : view)
+            {
+                auto& directionalLight = ecs->GetComponent<DirectionalLight>(entity);
+
+                m_directLight.lightDirectionIntensity = glm::vec4(directionalLight.direction, directionalLight.colorIntensity.a);
+                break;
             }
 
             for (uint32_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)

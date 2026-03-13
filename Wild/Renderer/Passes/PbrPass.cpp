@@ -5,25 +5,6 @@ namespace Wild
 {
     PbrPass::PbrPass()
     {
-        auto ecs = engine.GetECS();
-        for (size_t y = 1; y < 2; y++)
-        {
-            for (size_t x = 1; x < 2; x++)
-            {
-                auto entity = ecs->CreateEntity();
-                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
-                auto& light = ecs->AddComponent<PointLight>(entity);
-
-                transform.Name = std::string("Light: " + std::to_string(x + y));
-
-                transform.SetPosition(glm::vec3(x * 5, 15, y * 5));
-                light.position = transform.GetPosition();
-
-                float intensity = ((x + y) / 2.0f) + 1.0f;
-                light.colorIntensity = glm::vec4(glm::vec3(1.0, 0.0, 0.0), 20.0f);
-            }
-        }
-
         // Create point light buffer
         {
             BufferDesc desc{};
@@ -91,12 +72,19 @@ namespace Wild
         m_cameraBuffer[frameIndex]->Allocate(&m_camData);
 
         engine.GetImGui()->AddPanel("Pbr settings", [this]() {
-            ImGui::SliderFloat3("Light direction: ", &m_pbrData.lightDirection[0], -20.0f, 20.0f);
-
             const char* debugModes[] = {"None", "Albedo", "Normals", "Roughness", "Metallic", "AO", "Depth"};
 
             ImGui::Combo("Debug view Mode", (int*)&m_pbrData.viewMode, debugModes, IM_ARRAYSIZE(debugModes));
         });
+
+        auto view = ecs->View<DirectionalLight>();
+        for (auto entity : view)
+        {
+            auto& directionalLight = ecs->GetComponent<DirectionalLight>(entity);
+
+            m_pbrData.lightDirectionIntensity = glm::vec4(directionalLight.direction, directionalLight.colorIntensity.a);
+            break;
+        }
 
         m_pbrDataBuffer[frameIndex]->Allocate(&m_pbrData);
     }

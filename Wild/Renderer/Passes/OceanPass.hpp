@@ -152,6 +152,9 @@ namespace Wild
         float peakScatterStrength = 1.5;
         float scatterStrength = 1.5;
         float scatterShadowStrength = 1.5;
+        float pad;
+
+        glm::vec4 directionIntensity{};
     };
 
     class OceanPass : public RenderFeature

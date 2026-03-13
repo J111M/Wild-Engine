@@ -41,7 +41,7 @@ struct PointLight
     float4 lightPosition;
 };
 
-#define MAX_POINT_LIGHTS 50
+#define MAX_POINT_LIGHTS 15
 
 cbuffer PointLightData : register(b4) { PointLight pointLights[MAX_POINT_LIGHTS]; }
 
@@ -106,7 +106,7 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal, out int sh
     float3 biasNormal = normalize(normal);
     // Offset by shadow position
     float depthRange = cascadeSplitDepthRange[layer];
-    float bias = max((biasValue / depthRange) * (1.0 - dot(normal, normalize(-lightDirectionIntensity.xyz))), 0.005 / depthRange);
+    float bias = max((biasValue / depthRange) * (1.0 - dot(normal, -normalize(lightDirectionIntensity.xyz))), 0.005 / depthRange);
 
     float shadow = 0.0f;
     texture2D shadowMap = textures[shadowMapView[layer]];
@@ -174,7 +174,7 @@ float4 main(VSOutput input) : SV_TARGET0
     float ndotv = max(dot(N, V), 0.0f);
 
     // Directional light
-    float3 L = normalize(lightDirection.xyz);
+    float3 L = -normalize(lightDirectionIntensity.xyz);
     float3 Lo = EvaluateDirectBRDF(N, V, L, albedo.rgb, F0, roughness, metallic);
 
     float3 pointLo = float3(0, 0, 0);

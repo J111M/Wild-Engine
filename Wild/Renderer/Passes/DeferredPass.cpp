@@ -18,12 +18,6 @@ namespace Wild
             transform.SetPosition(glm::vec3(i * 3, 5, i * 3));
         }
 
-        auto entity = ecs->CreateEntity();
-        auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
-        ecs->AddComponent<Model>(entity, "Assets/Models/Cube/scene.gltf", entity);
-        transform.SetPosition(glm::vec3(-10, 3, -10));
-        transform.SetScale(glm::vec3(50, 0.1, 50));
-
         m_texture = std::make_unique<Texture>("Assets/Models/DamagedHelmet/glTF/Default_albedo.jpg");
     }
 

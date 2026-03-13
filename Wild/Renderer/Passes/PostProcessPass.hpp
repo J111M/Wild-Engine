@@ -39,7 +39,7 @@ namespace Wild
         float scatteringDensity = 0.3f;
         float density = 0.03f;
 
-        glm::vec4 scatteringColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+        glm::vec4 scatteringColor = glm::vec4(1.0f, 0.854f, 0.67f, 1.0f);
 
         glm::vec4 sunColorIntensity = glm::vec4(1.0, 0.95, 0.8, 1.0f);
 

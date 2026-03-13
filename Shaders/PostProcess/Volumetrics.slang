@@ -51,7 +51,7 @@ struct PointLight
     float4 lightPosition;
 };
 
-#define MAX_POINT_LIGHTS 50
+#define MAX_POINT_LIGHTS 15
 
 cbuffer PointLightData : register(b2) { PointLight pointLights[MAX_POINT_LIGHTS]; }
 
@@ -224,7 +224,7 @@ void main(uint3 id: SV_DispatchThreadID)
 
         // Directional light
         {
-            float3 sunDirection = normalize(-lightDirectionIntensity.xyz);
+            float3 sunDirection = -normalize(lightDirectionIntensity.xyz);
             float sunIntensity = lightDirectionIntensity.w;
 
             // Shadow sample

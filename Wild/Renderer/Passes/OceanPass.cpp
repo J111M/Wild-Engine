@@ -29,7 +29,7 @@ namespace Wild
             m_gaussianDistribution->UploadToGPU(val.data());
         }
 
-        GenerateOceanPlane(256);
+        GenerateOceanPlane(128);
         m_chunkEntity = engine.GetECS()->CreateEntity();
         auto& transform = engine.GetECS()->AddComponent<Transform>(m_chunkEntity, glm::vec3(0, 0, 0), m_chunkEntity);
         transform.SetPosition(glm::vec3(0, -9, 0));
@@ -119,6 +119,16 @@ namespace Wild
         });
 
         m_updateSpectrumRC.time += 1.0 * dt;
+
+        auto ecs = engine.GetECS();
+        auto view = ecs->View<DirectionalLight>();
+        for (auto entity : view)
+        {
+            auto& directionalLight = ecs->GetComponent<DirectionalLight>(entity);
+
+            m_oceanRC.directionIntensity = glm::vec4(directionalLight.direction, directionalLight.colorIntensity.a);
+            break;
+        }
     }
 
     void OceanPass::CalculateIntitialSpectrum(Renderer& renderer, RenderGraph& rg)
@@ -610,7 +620,7 @@ namespace Wild
 
     void OceanPass::GenerateOceanPlane(uint32_t resolution)
     {
-        float size = 250.0f;
+        float size = 128.0f;
         float halfSize = size / 2.0f;
         float step = size / resolution;
 

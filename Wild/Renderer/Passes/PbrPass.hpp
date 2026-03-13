@@ -5,9 +5,11 @@
 
 #include "Renderer/Passes/CascadedShadowPass.hpp"
 
+#include "Renderer/Resources/LightTypes.hpp"
+
 namespace Wild
 {
-#define MAX_POINT_LIGHTS 50;
+#define MAX_POINT_LIGHTS 15;
 
     struct PbrPassData
     {
@@ -28,7 +30,7 @@ namespace Wild
     struct PBRData
     {
         glm::vec3 cameraPosition{};
-        glm::vec3 lightDirection = glm::vec4(-0.3, 14.0, -2.5, 1.0f);
+        glm::vec4 lightDirectionIntensity = glm::vec4(-0.3, 14.0, -2.5, 1.0f);
         uint32_t viewMode = 0;
         uint32_t numOfPointLights{};
     };
@@ -48,12 +50,6 @@ namespace Wild
         uint32_t depthView{};
         uint32_t shadowMapView[SHADOWMAP_CASCADES];
         float depthBias = 0.05f;
-    };
-
-    struct PointLight
-    {
-        glm::vec4 colorIntensity{}; // w component stores intensity
-        glm::vec3 position{};
     };
 
     class PbrPass : public RenderFeature

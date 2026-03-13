@@ -36,6 +36,33 @@ namespace Wild
 
         m_renderFeatures.emplace_back(std::make_unique<PostProcessPass>());
         m_renderFeatures.emplace_back(std::make_unique<DebugLinePass>());
+
+        auto ecs = engine.GetECS();
+
+        {
+            auto entity = ecs->CreateEntity();
+            auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+            auto& light = ecs->AddComponent<DirectionalLight>(entity);
+
+            transform.Name = std::string("Directional light");
+
+            light.direction = glm::vec4(0.89f, 0.41f, 0.18f, 2.0f);
+
+            light.colorIntensity = glm::vec4(glm::vec3(1.0, 0.0, 0.0), 10.0f);
+        }
+
+        {
+            auto entity = ecs->CreateEntity();
+            auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+            auto& light = ecs->AddComponent<PointLight>(entity);
+
+            transform.Name = std::string("Point light");
+
+            transform.SetPosition(glm::vec3(5, 15, 5));
+            light.position = transform.GetPosition();
+
+            light.colorIntensity = glm::vec4(glm::vec3(1.0, 0.0, 0.0), 20.0f);
+        }
     }
 
     Renderer::~Renderer() {}

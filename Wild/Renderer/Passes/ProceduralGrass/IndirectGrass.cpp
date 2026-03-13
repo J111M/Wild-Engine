@@ -1,11 +1,11 @@
-#include "Renderer/Passes/ProceduralGrass/GPUDrivenGrass.hpp"
+#include "Renderer/Passes/ProceduralGrass/IndirectGrass.hpp"
 #include "Renderer/Passes/ProceduralTerrainPass.hpp"
 
 #include <glm/gtc/matrix_access.hpp>
 
 namespace Wild
 {
-    GPUDriveGrass::GPUDriveGrass()
+    IndirectGrass::IndirectGrass()
     {
         BufferDesc desc{};
         desc.bufferSize = sizeof(GrassBladeData);
@@ -83,7 +83,7 @@ namespace Wild
         transform.SetPosition(glm::vec3(-64, 0, -64));
     }
 
-    void GPUDriveGrass::Add(Renderer& renderer, RenderGraph& rg)
+    void IndirectGrass::Add(Renderer& renderer, RenderGraph& rg)
     {
         // Adds each pass to the render graph
         AddComputePerBladeDataPass(renderer, rg);
@@ -93,7 +93,7 @@ namespace Wild
         AddRenderGrass(renderer, rg);
     }
 
-    void GPUDriveGrass::Update(const float dt)
+    void IndirectGrass::Update(const float dt)
     {
         auto& device = engine.GetGfxContext();
         auto& ecs = engine.GetECS();
@@ -134,7 +134,7 @@ namespace Wild
     /// <summary>
     /// Pass that computes my per blade grass data the data will be overwritten when a chunk changes
     /// </summary>
-    void GPUDriveGrass::AddComputePerBladeDataPass(Renderer& renderer, RenderGraph& rg)
+    void IndirectGrass::AddComputePerBladeDataPass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<PerBladePassData>();
         auto* chunkDepency = rg.GetPassData<PerBladePassData, GenerateTerrainPassData>();
@@ -209,7 +209,7 @@ namespace Wild
     /// requirments for how the heap should be created which required me to create another heap specifically for
     /// clearing. Compute made it straight forward and simple without cluttering the code.
     /// </summary>
-    void GPUDriveGrass::AddClearCounterPass(Renderer& renderer, RenderGraph& rg)
+    void IndirectGrass::AddClearCounterPass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<ClearCounterData>();
         // Dependency with per blade grass computation pass
@@ -256,7 +256,7 @@ namespace Wild
     /// and writes the amount of instances to the instance count buffer
     /// which will be used in the AddIndirectDrawCommandsPass.
     /// </summary>
-    void GPUDriveGrass::AddGrassCulling(Renderer& renderer, RenderGraph& rg)
+    void IndirectGrass::AddGrassCulling(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<GrassCullData>();
 
@@ -325,7 +325,7 @@ namespace Wild
     /// <summary>
     /// Creates N amount of draw commands depending on the amount of LOD's the grass blades.
     /// </summary>
-    void GPUDriveGrass::AddIndirectDrawCommandsPass(Renderer& renderer, RenderGraph& rg)
+    void IndirectGrass::AddIndirectDrawCommandsPass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<IndirectCommandsData>();
         auto cullData = rg.GetPassData<IndirectCommandsData, GrassCullData>();
@@ -366,7 +366,7 @@ namespace Wild
             });
     }
 
-    void GPUDriveGrass::AddRenderGrass(Renderer& renderer, RenderGraph& rg)
+    void IndirectGrass::AddRenderGrass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<RenderGrassData>();
         auto indirectPass = rg.GetPassData<RenderGrassData, IndirectCommandsData>();
@@ -487,7 +487,7 @@ namespace Wild
             });
     }
 
-    void GPUDriveGrass::UpdateFrustumData(const int frameIndex)
+    void IndirectGrass::UpdateFrustumData(const int frameIndex)
     {
         auto ecs = engine.GetECS();
         auto& cameras = ecs->View<Camera>();
@@ -530,7 +530,7 @@ namespace Wild
         m_frustumBuffer[frameIndex]->Allocate(&FrustumData);
     }
 
-    void GPUDriveGrass::CreateGrassMeshes()
+    void IndirectGrass::CreateGrassMeshes()
     {
         std::vector<GrassVertex> grassVertices{};
         grassVertices.reserve(21);

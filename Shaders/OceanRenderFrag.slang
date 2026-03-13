@@ -34,6 +34,9 @@ cbuffer Constants : register(b0)
     float peakScatterStrength;
     float scatterStrength;
     float scatterShadowStrength;
+    float pad;
+
+    float4 lightDirectionIntensity;
 }
 
 cbuffer Camera : register(b1) {
@@ -90,17 +93,17 @@ float4 main(PSInput input) : SV_TARGET0
     N = normalize(float3(-slope.x, 1.0f, -slope.y));
 
     float3 V = normalize(cameraPosition.xyz - input.worlPosition.xyz);
-    float3 L = -normalize(float3(5.0, -1.5, -5.0));
+    float3 L = -normalize(float3(lightDirectionIntensity.xyz));
     float3 H = normalize(L + V);
 
     float NdotL = max(dot(N, L), 0.0001f);
     float NdotH = max(dot(N, H), 0.0001f);
     float NdotV = dot(N, V);
 
-    float4 displacement1 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.x, 0.0f), 0);
-    float4 displacement2 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.y, 0.33f), 0);
-    float4 displacement3 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.z, 0.66f), 0);
-    float4 displacement4 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(input.uv * uvScalars.w, 1.0f), 0);
+    float4 displacement1 = textures[displacementMapView].Sample(anisotropySampler, float3(input.uv * uvScalars.x, 0.0f));
+    //float4 displacement2 = textures[displacementMapView].Sample(anisotropySampler, float3(input.uv * uvScalars.y, 0.33f));
+    //float4 displacement3 = textures[displacementMapView].Sample(anisotropySampler, float3(input.uv * uvScalars.z, 0.66f));
+    //float4 displacement4 = textures[displacementMapView].Sample(anisotropySampler, float3(input.uv * uvScalars.w, 1.0f));
     float foam = displacement1.w;
     float a = 0.1f + foam * 1.0f; // roughness
 

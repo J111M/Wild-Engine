@@ -116,11 +116,11 @@ namespace Wild
         uint32_t terrainView{};
     };
 
-    class GPUDriveGrass : public RenderFeature
+    class IndirectGrass : public RenderFeature
     {
       public:
-        GPUDriveGrass();
-        ~GPUDriveGrass() {};
+        IndirectGrass();
+        ~IndirectGrass() {};
 
         virtual void Add(Renderer& renderer, RenderGraph& rg) override;
         virtual void Update(const float dt) override;

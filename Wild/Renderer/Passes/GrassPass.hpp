@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Passes/ProceduralGrass/GPUDrivenGrass.hpp"
+#include "Renderer/Passes/ProceduralGrass/IndirectGrass.hpp"
 #include "Renderer/Passes/ProceduralGrass/MeshShaderGrass.hpp"
 
 namespace Wild
@@ -16,7 +16,7 @@ namespace Wild
         virtual void Update(const float dt) override;
 
       private:
-        std::unique_ptr<GPUDriveGrass> m_gpuDrivenGrass;
+        std::unique_ptr<IndirectGrass> m_gpuDrivenGrass;
         std::unique_ptr<MeshShaderGrass> m_meshShaderGrass;
 
         bool m_meshShaderSupported = false;

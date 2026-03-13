@@ -16,7 +16,7 @@ namespace Wild
         if (m_meshShaderSupported)
             m_meshShaderGrass = std::make_unique<MeshShaderGrass>();
         else
-            m_gpuDrivenGrass = std::make_unique<GPUDriveGrass>();
+            m_gpuDrivenGrass = std::make_unique<IndirectGrass>();
     }
 
     void GrassPass::Add(Renderer& renderer, RenderGraph& rg)
