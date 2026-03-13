@@ -77,6 +77,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
     // Values are determined through testing
     if (slopeAngle >= 4.7f || elevation < -0.63) {
+        GrassData[offsetId].worldPosition = float3(float.maxValue.xxx);
         return;
     }
 

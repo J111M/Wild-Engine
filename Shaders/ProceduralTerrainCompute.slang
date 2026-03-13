@@ -18,12 +18,13 @@ cbuffer Constants : register(b0)
     float valleyScalar;
     int octaves;
     uint seed;
+    float warpScalar;
+
+    float fallOffScalar;
 };
 
 // Terrain heigth map
 RWTexture2D<float> OutputTexture : register(u0);
-
-
 
 // The MIT License
 // Copyright © 2013 Inigo Quilez
@@ -85,21 +86,23 @@ void main(uint3 id: SV_DispatchThreadID)
 {
     if (id.x >= textureSize.x || id.y >= textureSize.y) return;
 
+    float2 seedOffset = float2(uhash11(seed), uhash11(seed * 2)) * 1000000;
+
     // -1, 1 range
     float2 center = float2(0.5f, 0.5f);
     float2 uv = float2(id.xy) / float2(textureSize);
     float dist = max(abs(uv.x - center.x), abs(uv.y - center.y));
 
-    float2 positionInChunk = (chunkPosition + float2(id.xy)) + float2(0.1f);
+    float2 positionInChunk = (chunkPosition + float2(id.xy)) + seedOffset;
 
     float2 falloffWarp = float2(evaluateNoise(positionInChunk * 0.003f + float2(1.7f, 9.2f)),
                                 evaluateNoise(positionInChunk * 0.003f + float2(8.3f, 2.8f)));
 
-    float2 warpedUV = float2(dist, dist) + (falloffWarp * 0.25f);
+    float2 warpedUV = float2(dist, dist) + (falloffWarp * fallOffScalar);
     dist = length(warpedUV);
 
     float falloff = smoothstep(0.5f, 1.0f, dist);
-    //falloff = falloff * falloff;
+    // falloff = falloff * falloff;
 
     float noise = 0.0f;
 
@@ -110,7 +113,7 @@ void main(uint3 id: SV_DispatchThreadID)
                                evaluateNoise(positionInChunk * frequency * 0.4f + float2(5.2f, 1.3f)));
 
     // 0.4 warp strength
-    float2 warpedPos = positionInChunk + warpOffset * 0.4 / frequency;
+    float2 warpedPos = positionInChunk + warpOffset * warpScalar / frequency;
 
     float elevation = fbm(warpedPos, float2(0.0f, 0.0f));
     float ridges = ridgeFbm(warpedPos, float2(50.0f, 100.0f), amplitude * 0.7f, frequency * 0.8f, max(octaves - 1, 2));
@@ -138,7 +141,7 @@ void main(uint3 id: SV_DispatchThreadID)
     float height = blendedElevation - falloff;
 
     height -= (1.0f - borderMask) * 2.0f;
-    //height = height * borderMask - (1.0f - borderMask);
+    // height = height * borderMask - (1.0f - borderMask);
 
     if (height > 0.0f) { height = pow(height, elevationPower); }
 

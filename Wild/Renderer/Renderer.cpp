@@ -48,7 +48,7 @@ namespace Wild
 
             light.direction = glm::vec4(0.89f, 0.41f, 0.18f, 2.0f);
 
-            light.colorIntensity = glm::vec4(glm::vec3(1.0, 0.0, 0.0), 10.0f);
+            light.colorIntensity = glm::vec4(glm::vec3(1.0f, 0.854f, 0.67f), 1.9f);
         }
 
         {

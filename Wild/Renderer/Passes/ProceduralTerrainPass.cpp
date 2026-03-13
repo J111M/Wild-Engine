@@ -68,6 +68,8 @@ namespace Wild
                 ImGui::SliderFloat("Ridge Blend", &m_grc.ridgeBlend, 0.0f, 4.0f);
                 ImGui::SliderFloat("Valley Strength", &m_grc.valleyScalar, -2.0f, 20.0f);
                 ImGui::SliderFloat("Water Level", &m_grc.waterLevel, -0.6f, 0.6f);
+                ImGui::SliderFloat("Warp scalar", &m_grc.warpScalar, 0.0f, 2.5f);
+                ImGui::SliderFloat("Fallof scalar", &m_grc.fallOffScalar, 0.0f, 2.5f);
                 m_drc.waterLevel = m_grc.waterLevel;
             }
 
