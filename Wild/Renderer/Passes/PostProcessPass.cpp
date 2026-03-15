@@ -47,7 +47,7 @@ namespace Wild
         }
 
         engine.GetImGui()->AddPanel("Volumetric Fog Settings", [this]() {
-            ImGui::SliderInt("Step Count", reinterpret_cast<int*>(&m_volumetricRC.stepCount), 1, 256);
+            ImGui::SliderFloat("Step Count", &m_volumetricRC.stepCount, 1, 256);
             ImGui::SliderFloat("Step Size", &m_volumetricRC.stepSize, 0.1f, 2.0f);
             ImGui::SliderFloat("Scattering Density", &m_volumetricRC.scatteringDensity, 0.0f, 2.0f);
             ImGui::SliderFloat("Density", &m_volumetricRC.density, 0.0f, 0.2f);

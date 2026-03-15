@@ -5,8 +5,8 @@
 
 namespace Wild
 {
-#define MAXBLADESPERCHUNK 300000
-#define MAXGRASSBLADES 2500000
+#define MAXBLADESPERCHUNK 200000
+#define MAXGRASSBLADES 200000 // 2500000
 
     /// <summary>
     /// Compute per blade grass data structs

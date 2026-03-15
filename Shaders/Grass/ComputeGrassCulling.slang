@@ -87,7 +87,12 @@ void main(uint3 id : SV_DispatchThreadID)
     GrassData instance = grassInstance[id.x];
 
     float cullRadius = max(instance.height, 1.0);
-    
+
+    // Check if the grass is out of world bounds
+    if (instance.worldPosition.x >= 9999999) {
+        return;
+    }
+
     // Frustum cull
     //if (!IsInFrustum(instance.worldPosition, cullRadius))
     //    return;

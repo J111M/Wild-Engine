@@ -34,7 +34,7 @@ namespace Wild
         uint32_t irradianceView{};
         uint32_t numOfPointLights{};
 
-        uint32_t stepCount = 64;
+        float stepCount = 64;
         float stepSize = 0.5f;
         float scatteringDensity = 0.3f;
         float density = 0.03f;

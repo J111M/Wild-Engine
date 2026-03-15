@@ -12,7 +12,7 @@ cbuffer RootConsant : register(b0)
     uint irradianceView;
     uint numOfPointLights;
 
-    uint stepCount;
+    float stepCount;
     float stepSize;
     float scatteringDensity; // sigma_s
     float density;           // sigma_t
@@ -158,7 +158,7 @@ void main(uint3 id: SV_DispatchThreadID)
 
     float2 uv = coords / textureSize.xy;
 
-    const float maxDistance = nearFar.y;
+    const float maxDistance = nearFar.y * 2;
 
     float4 srcTexture = textures[NonUniformResourceIndex(srcTextureView)].Load(int3(coords, 0));
 
@@ -172,7 +172,7 @@ void main(uint3 id: SV_DispatchThreadID)
     float3 rayDirection = normalize(worldPosition.xyz - rayOrigin);
 
     float sceneDepth = length(worldPosition.xyz - cameraPosition);
-    float rayDistance = min(sceneDepth, maxDistance);
+    float rayDistance = min(min(sceneDepth, maxDistance), stepCount);
 
     float3 worldToCamera = normalize(cameraPosition - worldPosition.xyz);
 
@@ -199,8 +199,16 @@ void main(uint3 id: SV_DispatchThreadID)
         float base = noise.r;                                      // Perlin/worley noise
         float detail = dot(noise.gba, float3(0.625, 0.25, 0.125)); // Weighted octaves
         float densitySample = saturate(remap(base, detail - 1.0, 1.0, 0.0, 1.0)) * HeightFactor(marchPosition.y);
-        float sigmaA = densitySample * density * stepSize;           // Absorption coefficient
-        float sigmaS = densitySample * scatteringDensity * stepSize; // Scattering coefficient
+        float sigmaA = densitySample * density;           // Absorption coefficient
+        float sigmaS = densitySample * scatteringDensity; // Scattering coefficient
+
+        // Early outs
+        if (densitySample < 0.001f) {
+            marchPosition += stepVector;
+            continue;
+        }
+
+        if (transmittance < 0.01f) break;
 
         float3 inScatter = float3(0.0f);
         for (uint plIndex = 0; plIndex < numOfPointLights; plIndex++)
@@ -223,7 +231,7 @@ void main(uint3 id: SV_DispatchThreadID)
 
         // Directional light
         {
-            float3 sunDirection = normalize(lightDirectionIntensity.xyz);
+            float3 sunDirection = -normalize(lightDirectionIntensity.xyz);
             float sunIntensity = lightDirectionIntensity.w;
 
             // Shadow sample
