@@ -9,6 +9,7 @@ namespace Wild
 #define OCEAN_SIZE 512
 #define OCEAN_CASCADES 4 // Max cascades of 4
 #define GRAVITY 9.81
+#define MAX_OCEAN_LOD 3
 
     // Gaussian noise
     struct ComplexValue
@@ -220,14 +221,14 @@ namespace Wild
         Entity m_chunkEntity;
 
         // Ocean mesh
-        std::unique_ptr<Buffer> m_oceanVertices;
-        std::unique_ptr<Buffer> m_oceanIndices;
+        std::unique_ptr<Buffer> m_oceanVertices[MAX_OCEAN_LOD];
+        std::unique_ptr<Buffer> m_oceanIndices[MAX_OCEAN_LOD];
+        uint32_t m_drawCount[MAX_OCEAN_LOD]{};
 
         OceanRenderData m_oceanRenderData{};
         std::unique_ptr<Buffer> m_oceanRenderDataBuffer;
 
         std::unique_ptr<Buffer> m_cameraBuffer{};
-        uint32_t m_drawCount{};
     };
 
 } // namespace Wild

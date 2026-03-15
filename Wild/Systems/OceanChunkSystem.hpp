@@ -10,6 +10,7 @@ namespace Wild
     struct OceanChunk
     {
         glm::vec2 coord;
+        uint32_t lod;
         Entity entity;
     };
 

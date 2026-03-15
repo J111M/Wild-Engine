@@ -36,7 +36,7 @@ namespace Wild
         }
 
         GenerateOceanPlane(64);
-        m_oceanChunkSystem = std::make_unique<OceanChunkSystem>(128.0f, 3, -9);
+        m_oceanChunkSystem = std::make_unique<OceanChunkSystem>(64.0f, 8, -9);
 
         {
             BufferDesc desc{};
@@ -693,9 +693,9 @@ namespace Wild
                     list.SetConstantBufferView(2, m_oceanRenderDataBuffer.get());
                     list.SetBindlessHeap(3);
 
-                    list.GetList()->IASetVertexBuffers(0, 1, &m_oceanVertices->GetVBView()->View());
-                    list.GetList()->IASetIndexBuffer(&m_oceanIndices->GetIBView()->View());
-                    list.GetList()->DrawIndexedInstanced(m_drawCount, 1, 0, 0, 0);
+                    list.GetList()->IASetVertexBuffers(0, 1, &m_oceanVertices[chunk.lod]->GetVBView()->View());
+                    list.GetList()->IASetIndexBuffer(&m_oceanIndices[chunk.lod]->GetIBView()->View());
+                    list.GetList()->DrawIndexedInstanced(m_drawCount[chunk.lod], 1, 0, 0, 0);
                 }
 
                 list.EndRender();
@@ -704,59 +704,62 @@ namespace Wild
 
     void OceanPass::GenerateOceanPlane(uint32_t resolution)
     {
-        float size = 128.0f;
+        float size = 64.0f;
         float halfSize = size / 2.0f;
-        float step = size / resolution;
 
-        std::vector<Vertex> vertices;
-        vertices.reserve(static_cast<size_t>(resolution) * static_cast<size_t>(resolution));
+        for (uint32_t i = 0; i < MAX_OCEAN_LOD; i++) {
+            float step = size / (resolution /  static_cast<float>(1 << i));
 
-        // Generate vertices
-        for (uint32_t z = 0; z <= resolution; z++)
-        {
-            for (uint32_t x = 0; x <= resolution; x++)
+            std::vector<Vertex> vertices;
+            vertices.reserve(static_cast<size_t>(resolution) * static_cast<size_t>(resolution));
+
+            // Generate vertices
+            for (uint32_t z = 0; z <= resolution; z++)
             {
-                Vertex vertex;
-                vertex.position = {-halfSize + x * step, 0.0f, -halfSize + z * step};
-                vertex.color = {1.0f, 1.0f, 1.0f};
-                vertex.normal = {0.0f, 1.0f, 0.0f};
-                vertex.uv = {(float)x / resolution, (float)z / resolution};
-                vertices.push_back(vertex);
+                for (uint32_t x = 0; x <= resolution; x++)
+                {
+                    Vertex vertex;
+                    vertex.position = {-halfSize + x * step, 0.0f, -halfSize + z * step};
+                    vertex.color = {1.0f, 1.0f, 1.0f};
+                    vertex.normal = {0.0f, 1.0f, 0.0f};
+                    vertex.uv = {(float)x / resolution, (float)z / resolution};
+                    vertices.push_back(vertex);
+                }
             }
-        }
 
-        BufferDesc vDesc{};
-        m_oceanVertices = std::make_unique<Buffer>(vDesc);
-        m_oceanVertices->CreateVertexBuffer(vertices);
+            BufferDesc vDesc{};
+            m_oceanVertices[i] = std::make_unique<Buffer>(vDesc);
+            m_oceanVertices[i]->CreateVertexBuffer(vertices);
 
-        std::vector<uint32_t> indices;
-        indices.reserve(static_cast<size_t>(resolution) * static_cast<size_t>(resolution) * 6);
+            std::vector<uint32_t> indices;
+            indices.reserve(static_cast<size_t>(resolution) * static_cast<size_t>(resolution) * 6);
 
-        // Generate indices
-        for (uint32_t z = 0; z < resolution; z++)
-        {
-            for (uint32_t x = 0; x < resolution; x++)
+            // Generate indices
+            for (uint32_t z = 0; z < resolution; z++)
             {
-                uint32_t topLeft = z * (resolution + 1) + x;
-                uint32_t topRight = topLeft + 1;
-                uint32_t bottomLeft = (z + 1) * (resolution + 1) + x;
-                uint32_t bottomRight = bottomLeft + 1;
+                for (uint32_t x = 0; x < resolution; x++)
+                {
+                    uint32_t topLeft = z * (resolution + 1) + x;
+                    uint32_t topRight = topLeft + 1;
+                    uint32_t bottomLeft = (z + 1) * (resolution + 1) + x;
+                    uint32_t bottomRight = bottomLeft + 1;
 
-                indices.push_back(topLeft);
-                indices.push_back(bottomLeft);
-                indices.push_back(topRight);
+                    indices.push_back(topLeft);
+                    indices.push_back(bottomLeft);
+                    indices.push_back(topRight);
 
-                indices.push_back(topRight);
-                indices.push_back(bottomLeft);
-                indices.push_back(bottomRight);
+                    indices.push_back(topRight);
+                    indices.push_back(bottomLeft);
+                    indices.push_back(bottomRight);
+                }
             }
+
+            BufferDesc iDesc{};
+            m_oceanIndices[i] = std::make_unique<Buffer>(vDesc);
+            m_oceanIndices[i]->CreateIndexBuffer(indices);
+
+            m_drawCount[i] = indices.size();
         }
-
-        BufferDesc iDesc{};
-        m_oceanIndices = std::make_unique<Buffer>(vDesc);
-        m_oceanIndices->CreateIndexBuffer(indices);
-
-        m_drawCount = indices.size();
     }
 
     std::pair<float, float> OceanPass::BoxMuller(float u1, float u2)

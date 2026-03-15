@@ -67,6 +67,23 @@ namespace Wild
         {
             CreateChunk(coord);
         }
+
+        glm::vec2 cameraXZ = glm::vec2(cameraPos.x, cameraPos.z);
+        for (auto& chunk : m_chunks)
+        {
+            glm::vec2 chunkCenter = chunk.coord * m_chunkSize;
+            float dist = glm::distance(cameraXZ, chunkCenter);
+
+            uint32_t newLod;
+            if (dist < m_chunkSize * 2.0f)
+                newLod = 0;
+            else if (dist < m_chunkSize * 4.0f)
+                newLod = 1;
+            else
+                newLod = 2;
+
+            chunk.lod = newLod;
+        }
     }
 
     void OceanChunkSystem::ClearChunks()
