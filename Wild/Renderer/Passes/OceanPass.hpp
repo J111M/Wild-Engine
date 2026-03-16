@@ -193,6 +193,7 @@ namespace Wild
         void GenerateOceanPlane(uint32_t resolution = 128);
 
         std::unique_ptr<OceanChunkSystem> m_oceanChunkSystem;
+        bool m_frustumCullingEnabled = true;
 
         // Box muller formula for generating gaussian distrubted numbers
         std::pair<float, float> BoxMuller(float u1, float u2);

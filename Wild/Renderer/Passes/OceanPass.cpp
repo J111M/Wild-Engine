@@ -60,6 +60,8 @@ namespace Wild
     void OceanPass::Update(const float dt)
     {
         engine.GetImGui()->AddPanel("Ocean Settings", [this]() {
+            ImGui::Checkbox("Enable frustum culling ",  &m_frustumCullingEnabled);
+
             if (ImGui::CollapsingHeader("Spectrum settings"))
             {
                 for (size_t i = 0; i < 2; i++)
@@ -78,6 +80,12 @@ namespace Wild
                     ImGui::PopID();
                 }
             }
+
+            static bool updateSpectrum = false;
+            ImGui::Checkbox("Recompute Initial spectrum", &updateSpectrum);
+            if (updateSpectrum) m_recomputeInitialSpectrum = true;
+
+             ImGui::Separator();
 
             if (ImGui::CollapsingHeader("Foam settings"))
             {
@@ -120,11 +128,6 @@ namespace Wild
                     m_recomputeInitialSpectrum = true;
                 }
             }
-            ImGui::Separator();
-
-            static bool updateSpectrum = false;
-            ImGui::Checkbox("Recompute Initial spectrum", &updateSpectrum);
-            if (updateSpectrum) m_recomputeInitialSpectrum = true;
         });
 
         m_initialSpectrumRC.m_spectrumSettings[1].scale = 0.0f;
@@ -662,7 +665,7 @@ namespace Wild
                 if (camera)
                 {
                     glm::vec3 camPos = camera->GetPosition();
-                    m_oceanChunkSystem->Update(camPos);
+                    m_oceanChunkSystem->Update(camPos, camera->GetFrustum(), m_frustumCullingEnabled);
 
                     cameraData.projViewMatrix = camera->GetProjection() * camera->GetView();
                     cameraData.invModel = {}; // glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
@@ -686,6 +689,8 @@ namespace Wild
 
                 for (const auto& chunk : m_oceanChunkSystem->GetOceanChunks())
                 {
+                    if (!chunk.isVisible) continue;
+
                     m_oceanRC.modelMatrix = ecs->GetComponent<Transform>(chunk.entity).GetWorldMatrix();
 
                     list.SetRootConstant<OceanRenderRC>(0, m_oceanRC);

@@ -13,6 +13,11 @@
 
 namespace Wild
 {
+    struct BoundingFrustum
+    {
+        glm::vec4 planes[6]{};
+    };
+
     class Camera
     {
       public:
@@ -39,6 +44,8 @@ namespace Wild
         const float GetAspect() const { return m_aspect; }
 
         const glm::quat& GetCameraQuateurnion();
+
+        const BoundingFrustum GetFrustum() const;
 
       private:
         // Prevents the camera from teleporting

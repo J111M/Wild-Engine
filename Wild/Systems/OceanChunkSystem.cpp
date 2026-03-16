@@ -12,6 +12,25 @@ namespace Wild
 
     OceanChunkSystem::~OceanChunkSystem() { ClearChunks(); }
 
+    bool OceanChunkSystem::IsChunkInsideFrustum(const BoundingFrustum& frustum, const OceanChunk& chunk) { 
+        glm::vec3 min = {chunk.coord.x * m_chunkSize, 0.0f, chunk.coord.y * m_chunkSize};
+        glm::vec3 max = {min.x + m_chunkSize, 32.0f, min.z + m_chunkSize};
+
+        for (const auto& plane : frustum.planes) {
+            glm::vec3 positiveVertex = {(plane.x >= 0) ? max.x : min.x,
+                                        (plane.y >= 0) ? max.y : min.y,
+                                        (plane.z >= 0) ? max.z : min.z};
+
+            // Compute the distance of the positive vertex to the plane
+            float distance = plane.x * positiveVertex.x + plane.y * positiveVertex.y + plane.z * positiveVertex.z + plane.w;
+
+
+            if (distance < 0) { return false; }
+        }
+
+        return true; 
+    }
+
     void OceanChunkSystem::CreateChunk(const glm::vec2& coord)
     {
         OceanChunk chunk;
@@ -29,9 +48,30 @@ namespace Wild
         m_chunks.push_back(chunk);
     }
 
-    void OceanChunkSystem::Update(const glm::vec3& cameraPos)
+    void OceanChunkSystem::Update(const glm::vec3& cameraPos, const BoundingFrustum& frustum, bool updateFrustum)
     {
         glm::vec2 centerCoord = glm::vec2(std::floor(cameraPos.x / m_chunkSize), std::floor(cameraPos.z / m_chunkSize));
+
+        glm::vec2 cameraXZ = glm::vec2(cameraPos.x, cameraPos.z);
+        for (auto& chunk : m_chunks)
+        {
+            // Check what level of detail the chunk needs depending on the distance from the center
+            glm::vec2 chunkCenter = chunk.coord * m_chunkSize;
+            float dist = glm::distance(cameraXZ, chunkCenter);
+
+            uint32_t newLod;
+            if (dist < m_chunkSize * 2.0f)
+                newLod = 0;
+            else if (dist < m_chunkSize * 4.0f)
+                newLod = 1;
+            else
+                newLod = 2;
+
+            // Check if the chunk is inside the frustum
+            if (updateFrustum) { chunk.isVisible = IsChunkInsideFrustum(frustum, chunk); } 
+
+            chunk.lod = newLod;
+        }
 
         if (centerCoord == m_lastCenteredCoord && !m_chunks.empty()) return;
 
@@ -66,23 +106,6 @@ namespace Wild
         for (const auto& coord : desired)
         {
             CreateChunk(coord);
-        }
-
-        glm::vec2 cameraXZ = glm::vec2(cameraPos.x, cameraPos.z);
-        for (auto& chunk : m_chunks)
-        {
-            glm::vec2 chunkCenter = chunk.coord * m_chunkSize;
-            float dist = glm::distance(cameraXZ, chunkCenter);
-
-            uint32_t newLod;
-            if (dist < m_chunkSize * 2.0f)
-                newLod = 0;
-            else if (dist < m_chunkSize * 4.0f)
-                newLod = 1;
-            else
-                newLod = 2;
-
-            chunk.lod = newLod;
         }
     }
 

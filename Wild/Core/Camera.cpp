@@ -1,4 +1,5 @@
 #include "Core/Camera.hpp"
+#include <glm/gtc/matrix_access.hpp>
 
 namespace Wild
 {
@@ -124,5 +125,19 @@ namespace Wild
         // return glm::quat_cast(camRot);*/
 
         return m_quaternion;
+    }
+
+    // Extract frustum planes and return them
+    const BoundingFrustum Camera::GetFrustum() const { 
+        BoundingFrustum frustum{};
+
+        frustum.planes[0] = glm::row(m_cameraMatrix, 3) + glm::row(m_cameraMatrix, 0);
+        frustum.planes[1] = glm::row(m_cameraMatrix, 3) - glm::row(m_cameraMatrix, 0);
+        frustum.planes[2] = glm::row(m_cameraMatrix, 3) + glm::row(m_cameraMatrix, 1);
+        frustum.planes[3] = glm::row(m_cameraMatrix, 3) - glm::row(m_cameraMatrix, 1);
+        frustum.planes[4] = glm::row(m_cameraMatrix, 3) + glm::row(m_cameraMatrix, 2);
+        frustum.planes[5] = glm::row(m_cameraMatrix, 3) - glm::row(m_cameraMatrix, 2);
+
+        return frustum;
     }
 } // namespace Wild
