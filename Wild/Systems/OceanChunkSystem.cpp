@@ -12,23 +12,23 @@ namespace Wild
 
     OceanChunkSystem::~OceanChunkSystem() { ClearChunks(); }
 
-    bool OceanChunkSystem::IsChunkInsideFrustum(const BoundingFrustum& frustum, const OceanChunk& chunk) { 
-        glm::vec3 min = {chunk.coord.x * m_chunkSize, 0.0f, chunk.coord.y * m_chunkSize};
-        glm::vec3 max = {min.x + m_chunkSize, 32.0f, min.z + m_chunkSize};
+    bool OceanChunkSystem::IsChunkInsideFrustum(const BoundingFrustum& frustum, const OceanChunk& chunk)
+    {
+        glm::vec3 min = {(chunk.coord.x * m_chunkSize) - 32.0f, -32.0f, (chunk.coord.y * m_chunkSize) - 32.0f};
+        glm::vec3 max = {min.x + m_chunkSize + 32.0f, 32.0f, min.z + m_chunkSize + 32.0f};
 
-        for (const auto& plane : frustum.planes) {
-            glm::vec3 positiveVertex = {(plane.x >= 0) ? max.x : min.x,
-                                        (plane.y >= 0) ? max.y : min.y,
-                                        (plane.z >= 0) ? max.z : min.z};
+        for (const auto& plane : frustum.planes)
+        {
+            glm::vec3 positiveVertex = {
+                (plane.x >= 0) ? max.x : min.x, (plane.y >= 0) ? max.y : min.y, (plane.z >= 0) ? max.z : min.z};
 
             // Compute the distance of the positive vertex to the plane
             float distance = plane.x * positiveVertex.x + plane.y * positiveVertex.y + plane.z * positiveVertex.z + plane.w;
 
-
             if (distance < 0) { return false; }
         }
 
-        return true; 
+        return true;
     }
 
     void OceanChunkSystem::CreateChunk(const glm::vec2& coord)
@@ -68,7 +68,7 @@ namespace Wild
                 newLod = 2;
 
             // Check if the chunk is inside the frustum
-            if (updateFrustum) { chunk.isVisible = IsChunkInsideFrustum(frustum, chunk); } 
+            if (updateFrustum) { chunk.isVisible = IsChunkInsideFrustum(frustum, chunk); }
 
             chunk.lod = newLod;
         }

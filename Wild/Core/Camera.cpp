@@ -128,7 +128,8 @@ namespace Wild
     }
 
     // Extract frustum planes and return them
-    const BoundingFrustum Camera::GetFrustum() const { 
+    const BoundingFrustum Camera::GetFrustum() const
+    {
         BoundingFrustum frustum{};
 
         frustum.planes[0] = glm::row(m_cameraMatrix, 3) + glm::row(m_cameraMatrix, 0);
@@ -137,6 +138,14 @@ namespace Wild
         frustum.planes[3] = glm::row(m_cameraMatrix, 3) - glm::row(m_cameraMatrix, 1);
         frustum.planes[4] = glm::row(m_cameraMatrix, 3) + glm::row(m_cameraMatrix, 2);
         frustum.planes[5] = glm::row(m_cameraMatrix, 3) - glm::row(m_cameraMatrix, 2);
+
+
+        // Normalize frustum planes
+        for (auto& plane : frustum.planes)
+        {
+            float len = glm::length(glm::vec3(plane));
+            plane /= len;
+        }
 
         return frustum;
     }
