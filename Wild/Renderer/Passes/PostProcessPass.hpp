@@ -100,6 +100,8 @@ namespace Wild
         SceneBuffer m_sceneData{};
         std::unique_ptr<Buffer> m_sceneDataBuffer[BACK_BUFFER_COUNT];
 
+        bool m_enabledVolumetricFog = false;
+
         float m_fogTime{};
         float m_windSpeed = 0.5f;
 

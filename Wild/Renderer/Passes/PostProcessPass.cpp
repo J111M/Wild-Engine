@@ -47,6 +47,7 @@ namespace Wild
         }
 
         engine.GetImGui()->AddPanel("Volumetric Fog Settings", [this]() {
+            ImGui::Checkbox("Enable volumetrics", &m_enabledVolumetricFog);
             ImGui::SliderFloat("Step Count", &m_volumetricRC.stepCount, 1, 256);
             ImGui::SliderFloat("Step Size", &m_volumetricRC.stepSize, 0.1f, 2.0f);
             ImGui::SliderFloat("Scattering Density", &m_volumetricRC.scatteringDensity, 0.0f, 2.0f);
@@ -151,109 +152,119 @@ namespace Wild
             "Volumetrics pass",
             PassType::Compute,
             [&renderer, skyboxData, pbrData, shadowData, volumetricNoise, this](VolumetricPassData& passData, CommandList& list) {
-                passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-                renderer.irradianceMap->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-                for (size_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
+                if (m_enabledVolumetricFog)
                 {
-                    // TODO batcht transition together to optimize
-                    shadowData->shadowMap[cascade]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                    m_volumetricRC.shadowMapView[cascade] = shadowData->shadowMap[cascade]->GetSrv()->BindlessView();
+                    passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                    renderer.irradianceMap->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+                    for (size_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
+                    {
+                        // TODO batcht transition together to optimize
+                        shadowData->shadowMap[cascade]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                        m_volumetricRC.shadowMapView[cascade] = shadowData->shadowMap[cascade]->GetSrv()->BindlessView();
+                    }
+
+                    PipelineStateSettings settings{};
+                    settings.ShaderState.ComputeShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/PostProcess/Volumetrics.slang");
+
+                    std::vector<Uniform> uniforms;
+                    uniforms.reserve(6);
+
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(VolumetricRC)};
+                    uniforms.emplace_back(rootConstant);
+
+                    Uniform cameraBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                    uniforms.emplace_back(cameraBuffer);
+
+                    Uniform lightsBuffer{2, 0, RootParams::RootResourceType::ConstantBufferView};
+                    uniforms.emplace_back(lightsBuffer);
+
+                    Uniform shadowBuffer{3, 0, RootParams::RootResourceType::ConstantBufferView};
+                    uniforms.emplace_back(shadowBuffer);
+
+                    // Output render target
+                    Uniform outputTexture{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE outputUAVRange{};
+                    outputUAVRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                    outputTexture.ranges.emplace_back(outputUAVRange);
+                    uniforms.emplace_back(outputTexture);
+
+                    Uniform uni{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE textures{};
+                    textures.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                                  UINT_MAX,
+                                  0,
+                                  0,
+                                  D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+                    uni.ranges.emplace_back(textures);
+
+                    CD3DX12_DESCRIPTOR_RANGE cubeMaps{};
+                    cubeMaps.Init(
+                        D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+                    uni.ranges.emplace_back(cubeMaps);
+
+                    CD3DX12_DESCRIPTOR_RANGE textures3D{};
+                    textures3D.Init(
+                        D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 2, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+                    uni.ranges.emplace_back(textures3D);
+
+                    uniforms.emplace_back(uni);
+
+                    Uniform pointSampler{0, 0, RootParams::RootResourceType::StaticSampler};
+                    pointSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+                    pointSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                    uniforms.emplace_back(pointSampler);
+
+                    Uniform shadowSampler{1, 0, RootParams::RootResourceType::StaticSampler};
+                    shadowSampler.samplerState.filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+                    shadowSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+                    shadowSampler.samplerState.comparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+                    uniforms.emplace_back(shadowSampler);
+
+                    Uniform fogSampler{2, 0, RootParams::RootResourceType::StaticSampler};
+                    fogSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                    fogSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+                    uniforms.emplace_back(fogSampler);
+
+                    int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
+
+                    auto& pipeline =
+                        renderer.GetOrCreatePipeline("Volumetrics pass", PipelineStateType::Compute, settings, uniforms);
+                    list.SetPipelineState(pipeline);
+                    list.BeginRender("Volumetric pass");
+
+                    skyboxData->finalTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    passData.depthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    m_volumetricRC.srcTextureView = skyboxData->finalTexture->GetSrv()->BindlessView();
+                    m_volumetricRC.depthView = passData.depthTexture->GetSrv()->BindlessView();
+                    m_volumetricRC.numOfPointLights = pbrData->numOfPointLights;
+                    m_volumetricRC.noiseView = volumetricNoise->volumetricNoise->GetSrv()->BindlessView();
+
+                    if (renderer.irradianceMap)
+                    {
+                        m_volumetricRC.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView();
+                    }
+                    m_volumetricRC.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
+                    m_volumetricRC.biasValue = shadowData->biasValue;
+
+                    list.SetRootConstant<VolumetricRC>(0u, m_volumetricRC);
+                    list.SetConstantBufferView(1u, m_sceneDataBuffer[frameIndex].get());
+                    list.SetConstantBufferView(2u, pbrData->pointlights.get());
+                    list.SetConstantBufferView(3u, shadowData->directLightBuffer.get());
+                    list.SetUnorderedAccessView(4u, passData.finalTexture);
+                    list.SetBindlessHeap(5u);
+
+                    // Thread group size of 8 to reduce occupancy
+                    list.GetList()->Dispatch(
+                        (passData.finalTexture->Width() + 7u) / 8u, (passData.finalTexture->Height() + 7u) / 8u, 1u);
+                    list.EndRender();
+
+                    renderer.irradianceMap->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                    passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 }
-
-                PipelineStateSettings settings{};
-                settings.ShaderState.ComputeShader =
-                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/PostProcess/Volumetrics.slang");
-
-                std::vector<Uniform> uniforms;
-                uniforms.reserve(6);
-
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(VolumetricRC)};
-                uniforms.emplace_back(rootConstant);
-
-                Uniform cameraBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
-                uniforms.emplace_back(cameraBuffer);
-
-                Uniform lightsBuffer{2, 0, RootParams::RootResourceType::ConstantBufferView};
-                uniforms.emplace_back(lightsBuffer);
-
-                Uniform shadowBuffer{3, 0, RootParams::RootResourceType::ConstantBufferView};
-                uniforms.emplace_back(shadowBuffer);
-
-                // Output render target
-                Uniform outputTexture{0, 0, RootParams::RootResourceType::DescriptorTable};
-                CD3DX12_DESCRIPTOR_RANGE outputUAVRange{};
-                outputUAVRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
-                outputTexture.ranges.emplace_back(outputUAVRange);
-                uniforms.emplace_back(outputTexture);
-
-                Uniform uni{0, 0, RootParams::RootResourceType::DescriptorTable};
-                CD3DX12_DESCRIPTOR_RANGE textures{};
-                textures.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-                              UINT_MAX,
-                              0,
-                              0,
-                              D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
-                uni.ranges.emplace_back(textures);
-
-                CD3DX12_DESCRIPTOR_RANGE cubeMaps{};
-                cubeMaps.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
-                uni.ranges.emplace_back(cubeMaps);
-
-                CD3DX12_DESCRIPTOR_RANGE textures3D{};
-                textures3D.Init(
-                    D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 2, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
-                uni.ranges.emplace_back(textures3D);
-
-                uniforms.emplace_back(uni);
-
-                Uniform pointSampler{0, 0, RootParams::RootResourceType::StaticSampler};
-                pointSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-                pointSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                uniforms.emplace_back(pointSampler);
-
-                Uniform shadowSampler{1, 0, RootParams::RootResourceType::StaticSampler};
-                shadowSampler.samplerState.filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
-                shadowSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-                shadowSampler.samplerState.comparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-                uniforms.emplace_back(shadowSampler);
-
-                Uniform fogSampler{2, 0, RootParams::RootResourceType::StaticSampler};
-                fogSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                fogSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-                uniforms.emplace_back(fogSampler);
-
-                int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
-
-                auto& pipeline = renderer.GetOrCreatePipeline("Volumetrics pass", PipelineStateType::Compute, settings, uniforms);
-                list.SetPipelineState(pipeline);
-                list.BeginRender("Volumetric pass");
-
-                skyboxData->finalTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                passData.depthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                m_volumetricRC.srcTextureView = skyboxData->finalTexture->GetSrv()->BindlessView();
-                m_volumetricRC.depthView = passData.depthTexture->GetSrv()->BindlessView();
-                m_volumetricRC.numOfPointLights = pbrData->numOfPointLights;
-                m_volumetricRC.noiseView = volumetricNoise->volumetricNoise->GetSrv()->BindlessView();
-
-                if (renderer.irradianceMap) { m_volumetricRC.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView(); }
-                m_volumetricRC.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
-                m_volumetricRC.biasValue = shadowData->biasValue;
-
-                list.SetRootConstant<VolumetricRC>(0u, m_volumetricRC);
-                list.SetConstantBufferView(1u, m_sceneDataBuffer[frameIndex].get());
-                list.SetConstantBufferView(2u, pbrData->pointlights.get());
-                list.SetConstantBufferView(3u, shadowData->directLightBuffer.get());
-                list.SetUnorderedAccessView(4u, passData.finalTexture);
-                list.SetBindlessHeap(5u);
-
-                // Thread group size of 8 to reduce occupancy
-                list.GetList()->Dispatch(
-                    (passData.finalTexture->Width() + 7u) / 8u, (passData.finalTexture->Height() + 7u) / 8u, 1u);
-                list.EndRender();
-
-                renderer.irradianceMap->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                else { passData.finalTexture = skyboxData->finalTexture;
+                }
             });
     }
 

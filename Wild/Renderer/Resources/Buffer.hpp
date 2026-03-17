@@ -88,6 +88,7 @@ namespace Wild
 
         void* m_data = nullptr;
 
+        uint32_t m_dataSize{};
       public:
         template <typename T> void CreateVertexBuffer(const std::vector<T>& vertices)
         {

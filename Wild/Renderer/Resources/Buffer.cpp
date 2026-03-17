@@ -9,6 +9,8 @@ namespace Wild
     {
         desc.type = type;
         m_desc = desc;
+        
+         m_dataSize = desc.bufferSize;
 
         switch (type)
         {
@@ -21,6 +23,8 @@ namespace Wild
         default:
             break;
         }
+
+       desc.bufferSize = m_dataSize;
     }
 
     Buffer::~Buffer() { Unmap(); }
