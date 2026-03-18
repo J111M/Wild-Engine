@@ -263,7 +263,10 @@ namespace Wild
                     renderer.irradianceMap->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                     passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 }
-                else { passData.finalTexture = skyboxData->finalTexture;
+                else
+                {
+                    passData.finalTexture = skyboxData->finalTexture;
+                    passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 }
             });
     }

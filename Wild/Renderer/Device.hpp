@@ -53,8 +53,8 @@ namespace Wild
 
         bool ResizeWindow();
 
-        int GetWidth() { return m_clientWidth; }
-        int GetHeight() { return m_clientHeight; }
+        int GetWidth() { return glm::max(m_clientWidth, 1); }
+        int GetHeight() { return glm::max(m_clientHeight, 1); }
 
         void Flush();
 

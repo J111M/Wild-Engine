@@ -48,45 +48,48 @@ namespace Wild
             e.average /= (float)e.history.size();
         }
 
-        if (ImGui::Begin("Profiler"))
+        if (!engine.GetImGui()->IsFullScreen())
         {
-            if (ImPlot::BeginPlot("Profiler"))
+            if (ImGui::Begin("Profiler"))
             {
-                ImPlot::SetupAxes("Sample", "Time");
-                ImPlot::SetupAxesLimits(0, 300, 0, 3);
-
-                for (auto& i : m_profiledTime)
+                if (ImPlot::BeginPlot("Profiler"))
                 {
-                    auto& e = i.second;
+                    ImPlot::SetupAxes("Sample", "Time");
+                    ImPlot::SetupAxesLimits(0, 300, 0, 3);
 
-                    std::vector<float> vals(e.history.begin(), e.history.end());
-
-                    ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotShaded(i.first.c_str(), vals.data(), (int)vals.size());
-                    ImPlot::PopStyleVar();
-                    ImPlot::PlotLine(i.first.c_str(), vals.data(), (int)vals.size());
-                }
-                ImPlot::EndPlot();
-
-                for (auto& i : m_profiledTime)
-                {
-                    auto& e = i.second;
-
-                    if (ImGui::TreeNode(i.first.c_str(), "%s: %.3f ms", i.first.c_str(), e.average))
+                    for (auto& i : m_profiledTime)
                     {
-                        ImGui::Text("Average: %.3f ms", e.average);
-                        ImGui::Text("Min:     %.3f ms", e.min);
-                        ImGui::Text("Max:     %.3f ms", e.max);
-                        ImGui::Text("Latest:  %.3f ms", e.history.empty() ? 0.0f : e.history.back());
-                        ImGui::Text("Samples: %d", (int)e.history.size());
-                        ImGui::TreePop();
-                    }
+                        auto& e = i.second;
 
-                    i.second.accumilation = {};
+                        std::vector<float> vals(e.history.begin(), e.history.end());
+
+                        ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
+                        ImPlot::PlotShaded(i.first.c_str(), vals.data(), (int)vals.size());
+                        ImPlot::PopStyleVar();
+                        ImPlot::PlotLine(i.first.c_str(), vals.data(), (int)vals.size());
+                    }
+                    ImPlot::EndPlot();
+
+                    for (auto& i : m_profiledTime)
+                    {
+                        auto& e = i.second;
+
+                        if (ImGui::TreeNode(i.first.c_str(), "%s: %.3f ms", i.first.c_str(), e.average))
+                        {
+                            ImGui::Text("Average: %.3f ms", e.average);
+                            ImGui::Text("Min:     %.3f ms", e.min);
+                            ImGui::Text("Max:     %.3f ms", e.max);
+                            ImGui::Text("Latest:  %.3f ms", e.history.empty() ? 0.0f : e.history.back());
+                            ImGui::Text("Samples: %d", (int)e.history.size());
+                            ImGui::TreePop();
+                        }
+
+                        i.second.accumilation = {};
+                    }
                 }
             }
+            ImGui::End();
         }
-        ImGui::End();
     }
 #else
     ProfileScope::ProfileScope(const std::string& name) {}

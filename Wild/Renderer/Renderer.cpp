@@ -50,19 +50,6 @@ namespace Wild
 
             light.colorIntensity = glm::vec4(glm::vec3(1.0f, 0.854f, 0.67f), 1.9f);
         }
-
-        {
-            auto entity = ecs->CreateEntity();
-            auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
-            auto& light = ecs->AddComponent<PointLight>(entity);
-
-            transform.Name = std::string("Point light");
-
-            transform.SetPosition(glm::vec3(5, 15, 5));
-            light.position = transform.GetPosition();
-
-            light.colorIntensity = glm::vec4(glm::vec3(1.0, 0.0, 0.0), 20.0f);
-        }
     }
 
     Renderer::~Renderer() {}

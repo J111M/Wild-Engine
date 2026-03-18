@@ -43,7 +43,7 @@ namespace Wild
 
         glm::vec4 sunColorIntensity = glm::vec4(1.0, 0.95, 0.8, 1.0f);
 
-        float anisotropy = 0.875f;
+        float anisotropy = 0.33f;
         float biasValue{};
         float noiseScale = 50.0f;
         float pad;

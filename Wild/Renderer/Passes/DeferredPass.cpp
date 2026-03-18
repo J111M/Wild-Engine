@@ -1,24 +1,96 @@
 #include "Renderer/Passes/DeferredPass.hpp"
 #include "Renderer/Passes/GrassPass.hpp"
 
+#include "Renderer/Resources/LightTypes.hpp"
 #include "Renderer/Resources/Model.hpp"
 
 namespace Wild
 {
     DeferredPass::DeferredPass()
     {
-        auto ecs = engine.GetECS();
+        // TODO make scene storing via json parsing
+        engine.GetSceneManager()->AddScene("Main Scene", []() {
+            auto ecs = engine.GetECS();
 
-        for (size_t i = 0; i < 1; i++)
-        {
+            glm::vec3 palmPositions[5] = {glm::vec3(16.251, -5.655, 20),
+                                          glm::vec3(-27.567, -6.976, -5.361),
+                                          glm::vec3(-25.417, -6.732, -24.320),
+                                          glm::vec3(4.529, -1.24, -7.303),
+                                          glm::vec3(-5.261, -3.097, 14.194)};
+
+            for (size_t i = 0; i < 5; i++)
+            {
+                auto entity = ecs->CreateEntity();
+                ecs->AddComponent<SceneObject>(entity);
+                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+                ecs->AddComponent<Model>(entity, "Assets/Models/palmtree/quiver_tree_02_2k.gltf", entity);
+                transform.SetScale(glm::vec3(10, 10, 10));
+                transform.SetPosition(palmPositions[i]);
+                transform.Name = "Palm tree";
+            }
+
+            {
+                auto entity = ecs->CreateEntity();
+                ecs->AddComponent<SceneObject>(entity);
+                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+                ecs->AddComponent<Model>(entity, "Assets/Models/ship/ship_pinnace_2k.gltf", entity);
+                transform.SetScale(glm::vec3(1.5, 1.5, 1.5));
+                transform.SetPosition(glm::vec3(70, -9, 40));
+                transform.Name = "Ship";
+            }
+
+            {
+                auto entity = ecs->CreateEntity();
+                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+                auto& light = ecs->AddComponent<PointLight>(entity);
+
+                transform.Name = std::string("Point light");
+
+                transform.SetPosition(glm::vec3(72.157, 5.284, 13.881));
+                light.position = transform.GetPosition();
+
+                light.colorIntensity = glm::vec4(glm::vec3(0.0, 0.6, 0.4), 1200.0f);
+            }
+
+            {
+                auto entity = ecs->CreateEntity();
+                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+                auto& light = ecs->AddComponent<PointLight>(entity);
+
+                transform.Name = std::string("Point light");
+
+                transform.SetPosition(glm::vec3(64.445, 5.685, 13.886));
+                light.position = transform.GetPosition();
+
+                light.colorIntensity = glm::vec4(glm::vec3(0.0, 0.8, 0.5), 1800.0f);
+            }
+
+            {
+                auto entity = ecs->CreateEntity();
+                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+                auto& light = ecs->AddComponent<PointLight>(entity);
+
+                transform.Name = std::string("Point light");
+
+                transform.SetPosition(glm::vec3(69.377, -5.387, 44.431));
+                light.position = transform.GetPosition();
+
+                light.colorIntensity = glm::vec4(glm::vec3(0.0, 0.8, 0.2), 5971.0f);
+            }
+        });
+
+        engine.GetSceneManager()->AddScene("Sponza", []() {
+            auto ecs = engine.GetECS();
             auto entity = ecs->CreateEntity();
+            ecs->AddComponent<SceneObject>(entity);
             auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
-            ecs->AddComponent<Model>(entity, "Assets/Models/DamagedHelmet/glTF/DamagedHelmet.gltf", entity);
+            ecs->AddComponent<Model>(entity, "Assets/Models/Sponza/glTF/Sponza.gltf", entity);
             transform.SetScale(glm::vec3(1, 1, 1));
-            transform.SetPosition(glm::vec3(i * 3, 5, i * 3));
-        }
+            transform.SetPosition(glm::vec3(70, 1, 70));
+            transform.Name = "Sponza";
+        });
 
-        m_texture = std::make_unique<Texture>("Assets/Models/DamagedHelmet/glTF/Default_albedo.jpg");
+        engine.GetSceneManager()->LoadScene("Main Scene");
     }
 
     void DeferredPass::Update(const float dt) {}
@@ -88,8 +160,8 @@ namespace Wild
                                  DSClearOperation::Store,
                                  "Deferred pass");
 
-                auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
-                for (auto&& [entity, trans, mesh] : meshes.each())
+                auto meshes = ecs->GetRegistry().view<Transform, MeshComponent>();
+                for (auto&& [entity, trans, meshComponent] : meshes.each())
                 {
                     m_rc = RootConstant{};
 
@@ -99,7 +171,10 @@ namespace Wild
                         m_rc.invMatrix = glm::transpose(glm::inverse(glm::mat3(trans.GetWorldMatrix())));
                     }
 
-                    auto material = mesh.GetMaterial();
+                    auto& mesh = meshComponent.mesh;
+                    if (!mesh) continue;
+
+                    auto material = mesh->GetMaterial();
                     if (material.m_albedo) m_rc.albedoView = material.m_albedo->GetSrv()->BindlessView();
 
                     if (material.m_normal) m_rc.normalView = material.m_normal->GetSrv()->BindlessView();
@@ -113,16 +188,16 @@ namespace Wild
 
                     list.SetBindlessHeap(1);
 
-                    list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
+                    list.GetList()->IASetVertexBuffers(0, 1, &mesh->GetVertexBuffer()->GetVBView()->View());
 
-                    if (mesh.HasIndexBuffer())
+                    if (mesh->HasIndexBuffer())
                     {
-                        list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
-                        list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
+                        list.GetList()->IASetIndexBuffer(&mesh->GetIndexBuffer()->GetIBView()->View());
+                        list.GetList()->DrawIndexedInstanced(mesh->GetDrawCount(), 1, 0, 0, 0);
                     }
                     else
                     {
-                        list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
+                        list.GetList()->DrawInstanced(mesh->GetDrawCount(), 1, 0, 0);
                     }
                 }
 

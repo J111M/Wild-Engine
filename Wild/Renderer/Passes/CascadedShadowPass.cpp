@@ -81,8 +81,8 @@ namespace Wild
                                      DSClearOperation::DepthClear,
                                      "Cascaded shadow pass");
 
-                    auto meshes = engine.GetECS()->GetRegistry().view<Transform, Mesh>();
-                    for (auto&& [entity, trans, mesh] : meshes.each())
+                    auto meshes = engine.GetECS()->GetRegistry().view<Transform, MeshComponent>();
+                    for (auto&& [entity, trans, meshComponent] : meshes.each())
                     {
                         m_rc.localModel = trans.GetWorldMatrix();
                         m_rc.projView = m_directLight.viewProj[i];
@@ -90,16 +90,18 @@ namespace Wild
 
                         list.SetRootConstant<CsmRC>(0, m_rc);
 
-                        list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
+                        auto& mesh = meshComponent.mesh;
 
-                        if (mesh.HasIndexBuffer())
+                        list.GetList()->IASetVertexBuffers(0, 1, &mesh->GetVertexBuffer()->GetVBView()->View());
+
+                        if (mesh->HasIndexBuffer())
                         {
-                            list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
-                            list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
+                            list.GetList()->IASetIndexBuffer(&mesh->GetIndexBuffer()->GetIBView()->View());
+                            list.GetList()->DrawIndexedInstanced(mesh->GetDrawCount(), 1, 0, 0, 0);
                         }
                         else
                         {
-                            list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
+                            list.GetList()->DrawInstanced(mesh->GetDrawCount(), 1, 0, 0);
                         }
                     }
 
@@ -213,6 +215,16 @@ namespace Wild
             for (auto entity : view)
             {
                 auto& directionalLight = ecs->GetComponent<DirectionalLight>(entity);
+
+                float yaw = dt * 0.05; // radians per second
+
+                float cosYaw = cosf(yaw);
+                float sinYaw = sinf(yaw);
+                float x = directionalLight.direction[0];
+                float z = directionalLight.direction[2];
+
+                directionalLight.direction[0] = x * cosYaw - z * sinYaw;
+                directionalLight.direction[2] = x * sinYaw + z * cosYaw;
 
                 m_directLight.lightDirectionIntensity = glm::vec4(directionalLight.direction, directionalLight.colorIntensity.a);
                 break;

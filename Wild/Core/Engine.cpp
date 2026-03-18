@@ -17,6 +17,11 @@ namespace Wild
         m_shaderTracker = std::make_shared<ShaderTracker>();
         m_profiler = std::make_shared<Profiler>();
 
+        m_resourceSystems.m_meshResourceSystem = std::make_shared<ResourceSystem<Mesh>>();
+        m_resourceSystems.m_textureResourceSystem = std::make_shared<ResourceSystem<Texture>>();
+
+        m_sceneManager = std::make_shared<SceneManager>();
+
         m_renderer = std::make_shared<Renderer>();
     }
 
@@ -117,7 +122,10 @@ namespace Wild
     void Engine::Shutdown()
     {
         m_gfxContext->Flush();
+
+        // Explicitly deleting the smart pointers
         m_renderer.reset();
+        m_sceneManager.reset();
         m_imguiCore.reset();
         m_ecs.reset();
         m_gfxContext->Shutdown();

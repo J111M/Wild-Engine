@@ -36,6 +36,7 @@ namespace Wild
         }
 
         GenerateOceanPlane(64);
+
         m_oceanChunkSystem = std::make_unique<OceanChunkSystem>(64.0f, 8, -9);
 
         {
@@ -60,7 +61,15 @@ namespace Wild
     void OceanPass::Update(const float dt)
     {
         engine.GetImGui()->AddPanel("Ocean Settings", [this]() {
-            ImGui::Checkbox("Enable frustum culling ",  &m_frustumCullingEnabled);
+            if (ImGui::Button("Enable ocean system"))
+            {
+                if (m_oceanChunkSystem)
+                    m_oceanChunkSystem.reset();
+                else
+                    m_oceanChunkSystem = std::make_unique<OceanChunkSystem>(64.0f, 8, -9);
+            }
+
+            ImGui::Checkbox("Enable frustum culling ", &m_frustumCullingEnabled);
 
             if (ImGui::CollapsingHeader("Spectrum settings"))
             {
@@ -85,7 +94,7 @@ namespace Wild
             ImGui::Checkbox("Recompute Initial spectrum", &updateSpectrum);
             if (updateSpectrum) m_recomputeInitialSpectrum = true;
 
-             ImGui::Separator();
+            ImGui::Separator();
 
             if (ImGui::CollapsingHeader("Foam settings"))
             {
@@ -665,7 +674,7 @@ namespace Wild
                 if (camera)
                 {
                     glm::vec3 camPos = camera->GetPosition();
-                    m_oceanChunkSystem->Update(camPos, camera->GetFrustum(), m_frustumCullingEnabled);
+                    if (m_oceanChunkSystem) m_oceanChunkSystem->Update(camPos, camera->GetFrustum(), m_frustumCullingEnabled);
 
                     cameraData.projViewMatrix = camera->GetProjection() * camera->GetView();
                     cameraData.invModel = {}; // glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
@@ -687,20 +696,23 @@ namespace Wild
                 if (renderer.irradianceMap) { m_oceanRC.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView(); }
                 if (renderer.specularMap) { m_oceanRC.specularView = renderer.specularMap->GetSrv()->BindlessView(); }
 
-                for (const auto& chunk : m_oceanChunkSystem->GetOceanChunks())
+                if (m_oceanChunkSystem)
                 {
-                    if (!chunk.isVisible) continue;
+                    for (const auto& chunk : m_oceanChunkSystem->GetOceanChunks())
+                    {
+                        if (!chunk.isVisible) continue;
 
-                    m_oceanRC.modelMatrix = ecs->GetComponent<Transform>(chunk.entity).GetWorldMatrix();
+                        m_oceanRC.modelMatrix = ecs->GetComponent<Transform>(chunk.entity).GetWorldMatrix();
 
-                    list.SetRootConstant<OceanRenderRC>(0, m_oceanRC);
-                    list.SetConstantBufferView(1, m_cameraBuffer.get());
-                    list.SetConstantBufferView(2, m_oceanRenderDataBuffer.get());
-                    list.SetBindlessHeap(3);
+                        list.SetRootConstant<OceanRenderRC>(0, m_oceanRC);
+                        list.SetConstantBufferView(1, m_cameraBuffer.get());
+                        list.SetConstantBufferView(2, m_oceanRenderDataBuffer.get());
+                        list.SetBindlessHeap(3);
 
-                    list.GetList()->IASetVertexBuffers(0, 1, &m_oceanVertices[chunk.lod]->GetVBView()->View());
-                    list.GetList()->IASetIndexBuffer(&m_oceanIndices[chunk.lod]->GetIBView()->View());
-                    list.GetList()->DrawIndexedInstanced(m_drawCount[chunk.lod], 1, 0, 0, 0);
+                        list.GetList()->IASetVertexBuffers(0, 1, &m_oceanVertices[chunk.lod]->GetVBView()->View());
+                        list.GetList()->IASetIndexBuffer(&m_oceanIndices[chunk.lod]->GetIBView()->View());
+                        list.GetList()->DrawIndexedInstanced(m_drawCount[chunk.lod], 1, 0, 0, 0);
+                    }
                 }
 
                 list.EndRender();
@@ -712,8 +724,9 @@ namespace Wild
         float size = 64.0f;
         float halfSize = size / 2.0f;
 
-        for (uint32_t i = 0; i < MAX_OCEAN_LOD; i++) {
-            float step = size / (resolution /  static_cast<float>(1 << i));
+        for (uint32_t i = 0; i < MAX_OCEAN_LOD; i++)
+        {
+            float step = size / (resolution / static_cast<float>(1 << i));
 
             std::vector<Vertex> vertices;
             vertices.reserve(static_cast<size_t>(resolution) * static_cast<size_t>(resolution));

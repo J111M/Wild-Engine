@@ -29,6 +29,8 @@ namespace Wild
         void DisplayTexture(std::shared_ptr<Texture> texture, glm::vec2 imageSize = {150.0f, 150.0f});
         void DisplayTexture(Texture* texture, glm::vec2 imageSize = {150.0f, 150.0f});
 
+        const bool IsFullScreen() const { return m_fullscreen; }
+
       private:
         bool Setup(std::shared_ptr<Window> window);
 
@@ -48,6 +50,8 @@ namespace Wild
         std::unordered_map<std::string, bool> m_panelVisible;
 
         std::unordered_map<std::string, std::function<void()>> m_watches;
+
+        bool m_fullscreen = false;
     };
 
     template <typename T> inline void ImguiCore::Watch(const std::string& name, T* value)

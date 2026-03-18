@@ -53,24 +53,42 @@ namespace Wild
 
     void ImguiCore::DrawViewport(Renderer* renderer)
     {
-        for (size_t i = 0; i < 1; i++)
+        if (m_fullscreen)
         {
-            if (renderer->compositeTexture)
+            ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+            ImGui::SetNextWindowPos(ImVec2(0, 0));
+            ImGui::SetNextWindowSize(displaySize);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+            ImGui::Begin("##FullscreenViewport",
+                         nullptr,
+                         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus |
+                             ImGuiWindowFlags_NoNavFocus);
+            ImGui::Image((ImTextureID)renderer->compositeTexture->GetSrv()->GetGpuHandle().ptr, displaySize);
+            ImGui::End();
+            ImGui::PopStyleVar();
+        }
+        else
+        {
+            for (size_t i = 0; i < 1; i++)
             {
-                ImGui::SetNextWindowContentSize(ImVec2(0.0f, 0.0f));
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-                std::string window_label = "Viewport " + std::to_string(i);
-                ImGui::Begin(window_label.c_str(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+                if (renderer->compositeTexture)
+                {
+                    ImGui::SetNextWindowContentSize(ImVec2(0.0f, 0.0f));
+                    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+                    std::string window_label = "Viewport " + std::to_string(i);
+                    ImGui::Begin(
+                        window_label.c_str(), nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-                // Get the available size of the content region
-                ImVec2 scenePos = ImGui::GetWindowPos();
-                ImVec2 sceneSize = ImGui::GetWindowSize();
+                    // Get the available size of the content region
+                    ImVec2 scenePos = ImGui::GetWindowPos();
+                    ImVec2 sceneSize = ImGui::GetWindowSize();
 
-                ImGui::SetCursorPos(ImVec2(0, 0));
-                ImGui::Image((ImTextureID)renderer->compositeTexture->GetSrv()->GetGpuHandle().ptr, sceneSize);
+                    ImGui::SetCursorPos(ImVec2(0, 0));
+                    ImGui::Image((ImTextureID)renderer->compositeTexture->GetSrv()->GetGpuHandle().ptr, sceneSize);
 
-                ImGui::End();
-                ImGui::PopStyleVar();
+                    ImGui::End();
+                    ImGui::PopStyleVar();
+                }
             }
         }
     }
@@ -136,8 +154,15 @@ namespace Wild
         {
             if (ImGui::BeginMenu("File"))
             {
-                if (ImGui::MenuItem("New Scene", "Ctrl+N")) {}  // TODO implement scene selecting
-                if (ImGui::MenuItem("Open Scene", "Ctrl+O")) {} // TODO implement scene selecting
+                if (ImGui::MenuItem("New Scene", "Ctrl+N")) {} // TODO implement scene selecting
+                if (ImGui::BeginMenu("Open Scene"))
+                {
+                    for (const auto& name : engine.GetSceneManager()->GetSceneNames())
+                    {
+                        if (ImGui::MenuItem(name.c_str())) { engine.GetSceneManager()->LoadScene(name); }
+                    }
+                    ImGui::EndMenu();
+                }
                 if (ImGui::MenuItem("Save Scene", "Ctrl+S")) {} // TODO implement scene selecting
                 ImGui::Separator();
                 if (ImGui::MenuItem("Exit", "Alt+F4")) PostQuitMessage(0);
@@ -258,13 +283,13 @@ namespace Wild
             }
         }
 
-        if (ecs->HasComponent<Mesh>(m_selectedEntity))
+        if (ecs->HasComponent<MeshComponent>(m_selectedEntity))
         {
             if (ImGui::CollapsingHeader("Materials", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                auto& mesh = registry.get<Mesh>(m_selectedEntity);
+                auto& mesh = registry.get<MeshComponent>(m_selectedEntity).mesh;
 
-                auto& material = mesh.GetMaterial();
+                auto& material = mesh->GetMaterial();
 
                 DisplayTexture(material.m_albedo);
                 DisplayTexture(material.m_normal);
@@ -445,6 +470,11 @@ namespace Wild
         else
             label = "Entity " + std::to_string(entt::to_integral(entity));
 
+        if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsOver())
+        {
+            m_selectedEntity = entt::null;
+        }
+
         // Set ImGui TreeNode flags
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
         if (transform.GetChildren().empty()) { flags |= ImGuiTreeNodeFlags_Leaf; }
@@ -485,69 +515,76 @@ namespace Wild
         ImGui::NewFrame();
         ImGuizmo::BeginFrame();
 
-        ImGuiID dockspace_id = ImGui::GetID("DockSpace");
-        ImGui::DockSpaceOverViewport(ImGui::GetID("DockSpace"), nullptr, ImGuiDockNodeFlags_None);
+        if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F)) m_fullscreen = !m_fullscreen;
 
-        DrawMenuBar();
-        AddStatsBar();
+        if (!m_fullscreen)
+        {
+            ImGui::DockSpaceOverViewport(ImGui::GetID("DockSpace"), nullptr, ImGuiDockNodeFlags_None);
+            DrawMenuBar();
+            AddStatsBar();
+        }
     }
 
     void ImguiCore::Draw()
     {
-        DrawInspectorWindow();
-        AddPanel("Hierachy window", [this]() {
-            int rowCount = 0;
-            float rowHeight = ImGui::GetTextLineHeightWithSpacing();
-            ImDrawList* drawList = ImGui::GetWindowDrawList();
-            float windowWidth = ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x;
-            float windHeigth = ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y;
+        if (!m_fullscreen)
+        {
+            DrawInspectorWindow();
+            AddPanel("Hierachy window", [this]() {
+                int rowCount = 0;
+                float rowHeight = ImGui::GetTextLineHeightWithSpacing();
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                float windowWidth = ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x;
+                float windHeigth = ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y;
 
-            ImVec2 windowStartPos = ImGui::GetCursorScreenPos();
+                ImVec2 windowStartPos = ImGui::GetCursorScreenPos();
 
-            int numRows = static_cast<int>(windHeigth / rowHeight);
+                int numRows = static_cast<int>(windHeigth / rowHeight);
 
-            for (size_t i = 0; i < numRows; i++)
-            {
-                ImVec2 rowPos = ImVec2(windowStartPos.x, windowStartPos.y + i * rowHeight);
+                for (size_t i = 0; i < numRows; i++)
+                {
+                    ImVec2 rowPos = ImVec2(windowStartPos.x, windowStartPos.y + i * rowHeight);
 
-                ImU32 bgColor = (rowCount % 2 == 0) ? IM_COL32(2, 2, 2, 255) : // darker gray for even rows
-                    IM_COL32(7, 7, 7, 255);                                    // lighter gray for odd rows
+                    ImU32 bgColor = (rowCount % 2 == 0) ? IM_COL32(2, 2, 2, 255) : // darker gray for even rows
+                        IM_COL32(7, 7, 7, 255);                                    // lighter gray for odd rows
 
-                // Draw filled rectangle covering the entire row width.
-                drawList->AddRectFilled(rowPos, ImVec2(rowPos.x + windowWidth, rowPos.y + rowHeight), bgColor);
+                    // Draw filled rectangle covering the entire row width.
+                    drawList->AddRectFilled(rowPos, ImVec2(rowPos.x + windowWidth, rowPos.y + rowHeight), bgColor);
 
-                // Increase the row counter.
-                rowCount++;
-            }
-            auto& registry = engine.GetECS()->GetRegistry();
-            registry.view<Transform>().each([&](auto entity, Transform& transform) {
-                if (!transform.HasParent()) { DrawEntityNode(registry, entity); }
+                    // Increase the row counter.
+                    rowCount++;
+                }
+                auto& registry = engine.GetECS()->GetRegistry();
+                registry.view<Transform>().each([&](auto entity, Transform& transform) {
+                    if (!transform.HasParent()) { DrawEntityNode(registry, entity); }
+                });
+
+                if (ImGui::RadioButton("Translate", m_gizmoOperation == ImGuizmo::TRANSLATE))
+                    m_gizmoOperation = ImGuizmo::TRANSLATE;
+
+                if (ImGui::RadioButton("Rotate", m_gizmoOperation == ImGuizmo::ROTATE)) m_gizmoOperation = ImGuizmo::ROTATE;
+
+                if (ImGui::RadioButton("Scale", m_gizmoOperation == ImGuizmo::SCALE)) m_gizmoOperation = ImGuizmo::SCALE;
             });
 
-            if (ImGui::RadioButton("Translate", m_gizmoOperation == ImGuizmo::TRANSLATE)) m_gizmoOperation = ImGuizmo::TRANSLATE;
+            // Draw panels
+            for (auto& [name, func] : m_panels)
+            {
+                if (!m_panelVisible[name]) continue;
+                if (ImGui::Begin(name.c_str(), &m_panelVisible[name])) { func(); }
+                ImGui::End();
+            }
 
-            if (ImGui::RadioButton("Rotate", m_gizmoOperation == ImGuizmo::ROTATE)) m_gizmoOperation = ImGuizmo::ROTATE;
-
-            if (ImGui::RadioButton("Scale", m_gizmoOperation == ImGuizmo::SCALE)) m_gizmoOperation = ImGuizmo::SCALE;
-        });
-
-        // Draw panels
-        for (auto& [name, func] : m_panels)
-        {
-            if (!m_panelVisible[name]) continue;
-            if (ImGui::Begin(name.c_str(), &m_panelVisible[name])) { func(); }
+            // Main debug window
+            if (ImGui::Begin("Debug"))
+            {
+                for (auto& [name, func] : m_watches)
+                {
+                    func();
+                }
+            }
             ImGui::End();
         }
-
-        // Main debug window
-        if (ImGui::Begin("Debug"))
-        {
-            for (auto& [name, func] : m_watches)
-            {
-                func();
-            }
-        }
-        ImGui::End();
 
 #ifdef DEBUG
         std::string passName = "Imgui pass";
