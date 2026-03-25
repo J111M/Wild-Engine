@@ -97,7 +97,7 @@ float JONSWAPSpectrum(float omega, SpectrumSettings settings)
     float oneOverOmega = 1.0f / omega;
     float peakOmegaOverOmega = settings.peakOmega / omega;
     // Spectral energy output
-    return (settings.scale * 100000.0f) * TMACorrection(omega) * settings.alpha * GRAVITY * GRAVITY
+    return (settings.scale * 1000.0f) * TMACorrection(omega) * settings.alpha * GRAVITY * GRAVITY
 		* oneOverOmega * oneOverOmega * oneOverOmega * oneOverOmega * oneOverOmega
 		* exp(-1.25f * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega)
 		* pow(abs(settings.gamma), r);
@@ -123,7 +123,7 @@ float GroupVelocity(float kLength)
 
 float2 BoxMuller(float u1, float u2)
 {
-    float R = sqrt(-2.0f * log(u1));
+    float R = sqrt(-2.0f * log(max(u1, 1e-7f)));
     float theta = 2.0f * PI * u2;
 
     return float2(R * cos(theta), R * sin(theta));

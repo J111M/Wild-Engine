@@ -1,5 +1,5 @@
 #define PI 3.14159265358979323846
 #define GRAVITY 9.81
 
-#define OCEAN_SIZE 512
+#define OCEAN_SIZE 1024
 #define LOG_SIZE log2(OCEAN_SIZE)

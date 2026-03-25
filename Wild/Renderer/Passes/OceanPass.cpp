@@ -84,6 +84,8 @@ namespace Wild
                     ImGui::SliderFloat("Gamma", &m_initialSpectrumRC.m_spectrumSettings[i].gamma, 0.0f, 10.0f);
                     ImGui::SliderFloat("Short Waves Fade", &m_initialSpectrumRC.m_spectrumSettings[i].shortWavesFade, 0.0f, 1.0f);
                     ImGui::SliderFloat("Alpha", &m_initialSpectrumRC.m_spectrumSettings[i].alpha, 0.0f, 0.5);
+                    ImGui::SliderFloat("Wind speed", &m_windSpeed[i], 0.0f, 50.0);
+                    ImGui::SliderFloat("Fetch", &m_fetch[i], 1000.0f, 1000000.0);
                     ImGui::SliderFloat("Peak omega", &m_initialSpectrumRC.m_spectrumSettings[i].peakOmega, 0.0f, 10.0f);
                     ImGui::Separator();
                     ImGui::PopID();
@@ -115,7 +117,7 @@ namespace Wild
             if (ImGui::CollapsingHeader("Color Settings"))
             {
                 ImGui::ColorEdit4("Water Scatter Color", &m_oceanRenderData.waterScatterColor[0]);
-                ImGui::ColorEdit4("Air Bubbles Color", &m_oceanRenderData.airBubblesColor[0]);
+                ImGui::ColorEdit4("Air Bubbles Color", &m_oceanRenderData.oceanColor[0]);
                 ImGui::ColorEdit4("Foam Color", &m_oceanRenderData.foamColor[0]);
             }
 
@@ -146,8 +148,6 @@ namespace Wild
             m_oceanRenderData.uvScalars[i] = m_lenghtScales[i];
         }
 
-        m_oceanRenderDataBuffer->Allocate(&m_oceanRenderData);
-
         m_updateSpectrumRC.time += 1.0 * dt;
 
         auto ecs = engine.GetECS();
@@ -156,9 +156,13 @@ namespace Wild
         {
             auto& directionalLight = ecs->GetComponent<DirectionalLight>(entity);
 
+            m_oceanRenderData.depth = m_initialSpectrumRC.oceanDepth;
+            m_oceanRenderData.sunIrradiance = directionalLight.colorIntensity;
             m_oceanRC.lightDirectionIntensity = glm::vec4(directionalLight.direction, directionalLight.colorIntensity.a);
             break;
         }
+
+        m_oceanRenderDataBuffer->Allocate(&m_oceanRenderData);
     }
 
     void OceanPass::CalculateIntitialSpectrum(Renderer& renderer, RenderGraph& rg)
@@ -215,6 +219,10 @@ namespace Wild
                     //    m_initialSpectrumRC.m_spectrumSettings[i].peakOmega =
                     //        22.0f * (GRAVITY / m_windSpeed[i]) * pow(fetch, -0.33f);
                     //}
+
+                    float fetch = GRAVITY * m_fetch[0] / (m_windSpeed[0] * m_windSpeed[0]);
+
+                    m_initialSpectrumRC.m_spectrumSettings[0].peakOmega = 22.0f * (GRAVITY * GRAVITY) / (m_windSpeed[0] * fetch);
 
                     for (size_t i = 0; i < 4; i++)
                     {

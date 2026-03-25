@@ -57,7 +57,7 @@ Texture3D textures[4096] : register(t0, space0);
 TextureCube textureCubes[4096] : register(t0, space1);
 SamplerState anisotropySampler : register(s0);
 
-#define HEIGHT_SCALE 15.0f
+#define HEIGHT_SCALE 100.0f
 
 [shader("vertex")]
 VSOutput main(VSInput input)
@@ -70,12 +70,12 @@ VSOutput main(VSInput input)
     float4 displacement2 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(worldPos.xz / uvScalars.y, 1), 0);
     float4 displacement3 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(worldPos.xz / uvScalars.z, 2), 0);
     float4 displacement4 = textures[displacementMapView].SampleLevel(anisotropySampler, float3(worldPos.xz / uvScalars.w, 3), 0);
-    float4 displacement = displacement1 + displacement2 + displacement3 + displacement4;
+    float4 displacement = displacement1 + displacement2 + displacement3;// + displacement4;
 
     float3 displacedPosition = input.position + (displacement.xyz * HEIGHT_SCALE);
 
     output.waveHeight = displacement.y;
-    output.foam = displacement4.w;
+    output.foam = displacement3.w;
     worldPos = mul(modelMatrix, float4(displacedPosition.xyz, 1.0f));
     output.worlPosition = worldPos.xyz;
     output.position = mul(projViewMatrix, worldPos);

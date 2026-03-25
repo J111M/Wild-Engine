@@ -6,7 +6,7 @@
 
 namespace Wild
 {
-#define OCEAN_SIZE 512
+#define OCEAN_SIZE 1024
 #define OCEAN_CASCADES 4 // Max cascades of 4
 #define GRAVITY 9.81
 #define MAX_OCEAN_LOD 3
@@ -28,7 +28,7 @@ namespace Wild
 
     struct SpectrumSettings
     {
-        float scale{26.0f};
+        float scale{500.0f};
         float angle{2.9f};
         float spreadBlend{1.0f};
         float swell{0.8f};
@@ -45,7 +45,7 @@ namespace Wild
 
         float lengthScale[4] = {250, 32, 16, 4};
 
-        float oceanDepth = 60.0f;
+        float oceanDepth = 50.846;
 
         uint32_t oceanSize = OCEAN_SIZE;
     };
@@ -144,19 +144,20 @@ namespace Wild
     {
         float uvScalars[4] = {1.0f / 250.0f, 1.0f / 32.0f, 1.0f / 16.0f, 1.0f / 4.0f};
 
-        float normalScalar = 30.0f;
-        float reflectionScalar = 0.9;
-        float waveHeightScalar = 1.0;
-        float airBubbleDensity = 0.3;
+        float normalScalar = 15.0f;
+        float reflectionScalar = 0.89;
+        float waveHeightScalar = 2.4;
+        float airBubbleDensity = 0.43;
 
         glm::vec4 waterScatterColor = glm::vec4(0.0, 0.08, 0.13, 1);
-        glm::vec4 airBubblesColor = glm::vec4(0.004, 0.40, 0.36, 1);
+        glm::vec4 oceanColor = glm::vec4(0.004, 0.40, 0.36, 1);
         glm::vec4 foamColor = glm::vec4(1, 1, 1, 1);
+        glm::vec4 sunIrradiance = glm::vec4(0.97, 0.77, 0.77, 1);
 
-        float peakScatterStrength = 1.5;
-        float scatterStrength = 1.5;
-        float scatterShadowStrength = 1.5;
-        float pad;
+        float peakScatterStrength = 2.33;
+        float scatterStrength = 1.226;
+        float scatterShadowStrength = 2.02;
+        float depth{};
     };
 
     struct OceanRenderRC
@@ -203,8 +204,8 @@ namespace Wild
         std::unique_ptr<Buffer> m_gaussianDistribution{};
         InitialSpectrumRC m_initialSpectrumRC{};
 
-        float m_fetch[2] = {112299.0f, 100000.0f};
-        float m_windSpeed[2] = {12.0f, 8.0f};
+        float m_fetch[2] = {1400, 100000.0f};
+        float m_windSpeed[2] = {9.5f, 8.0f};
         float m_lenghtScales[4] = {810.6f, 597.2f, 378.5f, 236.2f};
 
         /// Update spectrum

@@ -1,4 +1,20 @@
 
+// RNG hash from https://gist.github.com/mpottinger/54d99732d4831d8137d178b4a6007d1a
+uint murmurHash11(uint src)
+{
+    const uint M = 0x5bd1e995u;
+    uint h = 1190494759u;
+    src *= M;
+    src ^= src >> 24u;
+    src *= M;
+    h *= M;
+    h ^= src;
+    h ^= h >> 13u;
+    h *= M;
+    h ^= h >> 15u;
+    return h;
+}
+
 // 1 input 1 output
 float hash11(float src)
 {
@@ -17,21 +33,6 @@ float rescale(float value, float min, float max)
     return min + value * (max - min);
 }
 
-// RNG hash from https://gist.github.com/mpottinger/54d99732d4831d8137d178b4a6007d1a
-uint murmurHash11(uint src)
-{
-    const uint M = 0x5bd1e995u;
-    uint h = 1190494759u;
-    src *= M;
-    src ^= src >> 24u;
-    src *= M;
-    h *= M;
-    h ^= src;
-    h ^= h >> 13u;
-    h *= M;
-    h ^= h >> 15u;
-    return h;
-}
 
 // Modified version of https://www.shadertoy.com/view/ttc3zr to work with hlsl
 uint2 murmurHash22(uint2 src)

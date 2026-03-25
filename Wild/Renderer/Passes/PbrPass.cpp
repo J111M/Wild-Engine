@@ -55,7 +55,7 @@ namespace Wild
         }
 
         m_pbrData.numOfPointLights = lightData.size();
-        if (!lightData.empty()) { m_pointLightsBuffer->Allocate(lightData.data()); }
+        if (!lightData.empty()) { m_pointLightsBuffer->Allocate(lightData.data(), lightData.size()); }
 
         Camera* camera = GetActiveCamera();
 

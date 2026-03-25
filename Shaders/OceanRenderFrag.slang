@@ -39,11 +39,12 @@ cbuffer OceanRenderData : register(b2) {
     float4 waterScatterColor;
     float4 airBubblesColor;
     float4 foamColor;
+    float4 sunIrradiance;
 
     float peakScatterStrength;
     float scatterStrength;
     float scatterShadowStrength;
-    float pad;
+    float depth;
 };
 
 Texture3D textures[4096] : register(t0, space0);
@@ -101,12 +102,13 @@ float4 main(PSInput input) : SV_TARGET0
     float NdotH = max(dot(N, H), 0.0001f);
     float NdotV = dot(N, V);
 
-    //float4 displacement1 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.x, 0));
-    //float4 displacement2 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.y, 1));
-    //float4 displacement3 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.z, 2));
-    //float4 displacement4 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.w, 3));
-    float foam = input.foam; //displacement4.w;// + displacement2.w + displacement3.w + displacement4.w;
-    float a = 0.1f + foam * 1.0f; // roughness
+    float4 displacement1 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.x, 0));
+    float4 displacement2 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.y, 1));
+    float4 displacement3 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.z, 2));
+    float4 displacement4 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.w, 3));
+    float4 displacement = displacement1 + displacement2 + displacement3 + displacement4;
+    float a = 0.2f + displacement.a * 0.8f; // roughness
+    float foam = displacement4.a;
 
     float viewShadowing = GeometricShadowingBeckmann(H, V, a);
     float lightShadowing = GeometricShadowingBeckmann(H, L, a);
@@ -126,7 +128,7 @@ float4 main(PSInput input) : SV_TARGET0
         irradiance = textureCubes[irradianceView].Sample(anisotropySampler, N).rgb;
     }
 
-    float3 specular = irradiance * F * G * BeckmannDistribution(NdotH, a);
+    float3 specular = sunIrradiance.rgb * F * G * BeckmannDistribution(NdotH, a);
     specular /= 4.0f * max(0.001f, max(dot(mN, L), 0.00001f));
     specular *= NdotL;
 
@@ -135,9 +137,9 @@ float4 main(PSInput input) : SV_TARGET0
     if (specularView > 0) {
         specularColor = textureCubes[specularView].Sample(anisotropySampler, reflect).rgb;
         specularColor *= reflectionScalar;
-    } 
+    }
 
-    float waveHeight = max(0.0f, input.waveHeight) * waveHeightScalar;
+    float waveHeight = max(0.0f, displacement.y) * waveHeightScalar;
 
     // k 1-4 are scalable values controlled by artists formula from
     // https://gpuopen.com/gdc-presentations/2019/gdc-2019-agtd6-interactive-water-simulation-in-atlas.pdf
@@ -147,13 +149,18 @@ float4 main(PSInput input) : SV_TARGET0
     float k3 = scatterShadowStrength * NdotL;                         // Lambert's cosine law
     float k4 = airBubbleDensity;                 // ambient light value
 
-    float3 scatter = (k1 + k2) * waterScatterColor.rgb * irradiance * rcp(1 + lightShadowing);
-    scatter += k3 * waterScatterColor.rgb * irradiance + k4 * airBubblesColor.rgb * irradiance;
+    float3 scatter = (k1 + k2) * waterScatterColor.rgb * sunIrradiance.rgb * rcp(1 + lightShadowing);
+    scatter += k3 * waterScatterColor.rgb * sunIrradiance.rgb + k4 * airBubblesColor.rgb * sunIrradiance.rgb;
+
+    //// Colors get absorpt differently depending on how deep the light travels into the water medium
+    //float3 absorptionCoefficient = float3(0.45, 0.065, 0.0145);
+    //float3 depthAttenuation = exp(-depth * absorptionCoefficient);
+    //scatter *= depthAttenuation;
 
     float3 sunSpecular = specular * float3(1.0f, 0.95f, 0.9f);
     float3 iblSpecular = F * specularColor;
 
-    float3 result = (1 - F) * scatter + sunSpecular + iblSpecular;
+    float3 result = (1 - F) * scatter + specular + iblSpecular;
 
     result = max(0.0f, result);
     result = lerp(result, foamColor.rgb, saturate(foam));
