@@ -334,9 +334,9 @@ namespace Wild
                     list.GetList()->IASetVertexBuffers(0, 1, &m_terrainVertices->GetVBView()->View());
                     list.GetList()->IASetIndexBuffer(&m_terrainIndices->GetIBView()->View());
                     list.GetList()->DrawIndexedInstanced(m_drawCount, 1, 0, 0, 0);
-
-                    list.EndRender();
                 }
+
+                list.EndRender();
             });
     }
 

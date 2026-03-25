@@ -450,6 +450,8 @@ namespace Wild
                 }
                 m_rc.bladeId = 0;
 
+                m_rc.terrainView = 0;
+
                 bool first = false;
                 for (auto [entity, chunk, transform] : ecs->GetRegistry().view<TerrainChunk, Transform>().each())
                 {
@@ -460,28 +462,31 @@ namespace Wild
                     }
                 }
 
-                list.SetRootConstant<GrassRC>(0, m_rc);
-                list.SetShaderResourceView(1, m_perBladeDataBuffer.get());
-                list.SetConstantBufferView(2, m_sceneData[gfxContext->GetBackBufferIndex()].get());
-
-                if (m_culledInstancesBuffer[frameIndex]->GetBuffer())
+                if (m_rc.terrainView > 0)
                 {
-                    list.SetShaderResourceView(3, m_culledInstancesBuffer[frameIndex].get());
+                    list.SetRootConstant<GrassRC>(0, m_rc);
+                    list.SetShaderResourceView(1, m_perBladeDataBuffer.get());
+                    list.SetConstantBufferView(2, m_sceneData[gfxContext->GetBackBufferIndex()].get());
+
+                    if (m_culledInstancesBuffer[frameIndex]->GetBuffer())
+                    {
+                        list.SetShaderResourceView(3, m_culledInstancesBuffer[frameIndex].get());
+                    }
+
+                    list.SetBindlessHeap(4);
+
+                    list.GetList()->IASetVertexBuffers(0, 1, &m_grassVertices->GetVBView()->View());
+                    list.GetList()->IASetIndexBuffer(&m_grassIndices->GetIBView()->View());
+
+                    // Indirect drawing to reduce cpu overhead and picking the correct LOD's. It executes a total of 3 draw
+                    // commands for all LOD's
+                    list.GetList()->ExecuteIndirect(m_commandSignature.Get(),
+                                                    m_lodAmount,
+                                                    m_drawCommandsBuffer[frameIndex]->GetBuffer(),
+                                                    0,
+                                                    m_instanceCountBuffer[frameIndex]->GetBuffer(),
+                                                    0);
                 }
-
-                list.SetBindlessHeap(4);
-
-                list.GetList()->IASetVertexBuffers(0, 1, &m_grassVertices->GetVBView()->View());
-                list.GetList()->IASetIndexBuffer(&m_grassIndices->GetIBView()->View());
-
-                // Indirect drawing to reduce cpu overhead and picking the correct LOD's. It executes a total of 3 draw
-                // commands for all LOD's
-                list.GetList()->ExecuteIndirect(m_commandSignature.Get(),
-                                                m_lodAmount,
-                                                m_drawCommandsBuffer[frameIndex]->GetBuffer(),
-                                                0,
-                                                m_instanceCountBuffer[frameIndex]->GetBuffer(),
-                                                0);
 
                 list.EndRender();
             });
