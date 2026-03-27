@@ -91,9 +91,35 @@ namespace Wild
         });
 
         engine.GetSceneManager()->LoadScene("Main Scene");
+
+        // Setup indirect rendering
+        D3D12_INDIRECT_ARGUMENT_DESC args[2] = {};
+        args[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+        args[0].Constant.RootParameterIndex = 0;
+        args[0].Constant.DestOffsetIn32BitValues = 0;
+        args[0].Constant.Num32BitValuesToSet = 1;
+        args[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+
+        D3D12_COMMAND_SIGNATURE_DESC signatureDesc = {};
+        signatureDesc.ByteStride = sizeof(IndirectCommand);
+        signatureDesc.NumArgumentDescs = 2;
+        signatureDesc.pArgumentDescs = args;
+
+        auto device = engine.GetGfxContext()->GetDevice();
+        device->CreateCommandSignature(&signatureDesc, nullptr, IID_PPV_ARGS(&m_commandSignature));
+
+        // Frustum constant buffer
+        for (int i = 0; i < BACK_BUFFER_COUNT; i++)
+        {
+            BufferDesc desc{};
+            desc.bufferSize = sizeof(IndirectFrustum);
+            m_frustumBuffer[i] = std::make_unique<Buffer>(desc, BufferType::constant);
+        }
     }
 
     void DeferredPass::Update(const float dt) {}
+
+    void DeferredPass::IndirectPreparePass(Renderer& renderer, RenderGraph& rg) {}
 
     void DeferredPass::Add(Renderer& renderer, RenderGraph& rg)
     {
@@ -160,8 +186,8 @@ namespace Wild
                                  DSClearOperation::Store,
                                  "Deferred pass");
 
-                auto meshes = ecs->GetRegistry().view<Transform, MeshComponent>();
-                for (auto&& [entity, trans, meshComponent] : meshes.each())
+                auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
+                for (auto&& [entity, trans, mesh] : meshes.each())
                 {
                     m_rc = RootConstant{};
 
@@ -171,10 +197,7 @@ namespace Wild
                         m_rc.invMatrix = glm::transpose(glm::inverse(glm::mat3(trans.GetWorldMatrix())));
                     }
 
-                    auto& mesh = meshComponent.mesh;
-                    if (!mesh) continue;
-
-                    auto material = mesh->GetMaterial();
+                    auto material = mesh.GetMaterial();
                     if (material.m_albedo) m_rc.albedoView = material.m_albedo->GetSrv()->BindlessView();
 
                     if (material.m_normal) m_rc.normalView = material.m_normal->GetSrv()->BindlessView();
@@ -188,16 +211,16 @@ namespace Wild
 
                     list.SetBindlessHeap(1);
 
-                    list.GetList()->IASetVertexBuffers(0, 1, &mesh->GetVertexBuffer()->GetVBView()->View());
+                    list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
 
-                    if (mesh->HasIndexBuffer())
+                    if (mesh.HasIndexBuffer())
                     {
-                        list.GetList()->IASetIndexBuffer(&mesh->GetIndexBuffer()->GetIBView()->View());
-                        list.GetList()->DrawIndexedInstanced(mesh->GetDrawCount(), 1, 0, 0, 0);
+                        list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
+                        list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
                     }
                     else
                     {
-                        list.GetList()->DrawInstanced(mesh->GetDrawCount(), 1, 0, 0);
+                        list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
                     }
                 }
 

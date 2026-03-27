@@ -46,9 +46,4 @@ namespace Wild
         bool m_hasIndexBuffer = false;
         uint32_t m_drawCount{};
     };
-
-    struct MeshComponent
-    {
-        std::shared_ptr<Mesh> mesh;
-    };
 } // namespace Wild

@@ -283,13 +283,13 @@ namespace Wild
             }
         }
 
-        if (ecs->HasComponent<MeshComponent>(m_selectedEntity))
+        if (ecs->HasComponent<Mesh>(m_selectedEntity))
         {
             if (ImGui::CollapsingHeader("Materials", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                auto& mesh = registry.get<MeshComponent>(m_selectedEntity).mesh;
+                auto& mesh = registry.get<Mesh>(m_selectedEntity);
 
-                auto& material = mesh->GetMaterial();
+                auto& material = mesh.GetMaterial();
 
                 DisplayTexture(material.m_albedo);
                 DisplayTexture(material.m_normal);

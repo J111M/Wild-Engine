@@ -5,6 +5,29 @@
 
 namespace Wild
 {
+    struct IndirectFrustum
+    {
+        // Normalized
+        glm::vec4 frustumPlanes[6];
+        uint32_t totalObjectCount;
+    };
+
+    struct InstanceData
+    {
+        uint32_t instanceIndex;
+        float lodBlend;
+    };
+
+    struct IndirectCommand
+    {
+        UINT drawID;
+        D3D12_DRAW_INDEXED_ARGUMENTS drawArgs;
+    };
+
+    struct IndirectRendering
+    {
+    };
+
     struct RootConstant
     {
         glm::mat4 matrix{};
@@ -32,7 +55,7 @@ namespace Wild
         virtual void Add(Renderer& renderer, RenderGraph& rg) override;
         virtual void Update(const float dt) override;
 
-        // void
+        void IndirectPreparePass(Renderer& renderer, RenderGraph& rg);
 
       private:
         RootConstant m_rc;
@@ -40,6 +63,7 @@ namespace Wild
 
         std::unique_ptr<Texture> m_texture;
 
+        // Indirect rendering resources
         // Store frustum data
         std::unique_ptr<Buffer> m_frustumBuffer[BACK_BUFFER_COUNT];
 

@@ -81,8 +81,8 @@ namespace Wild
                                      DSClearOperation::DepthClear,
                                      "Cascaded shadow pass");
 
-                    auto meshes = engine.GetECS()->GetRegistry().view<Transform, MeshComponent>();
-                    for (auto&& [entity, trans, meshComponent] : meshes.each())
+                    auto meshes = engine.GetECS()->GetRegistry().view<Transform, Mesh>();
+                    for (auto&& [entity, trans, mesh] : meshes.each())
                     {
                         m_rc.localModel = trans.GetWorldMatrix();
                         m_rc.projView = m_directLight.viewProj[i];
@@ -90,18 +90,16 @@ namespace Wild
 
                         list.SetRootConstant<CsmRC>(0, m_rc);
 
-                        auto& mesh = meshComponent.mesh;
+                        list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
 
-                        list.GetList()->IASetVertexBuffers(0, 1, &mesh->GetVertexBuffer()->GetVBView()->View());
-
-                        if (mesh->HasIndexBuffer())
+                        if (mesh.HasIndexBuffer())
                         {
-                            list.GetList()->IASetIndexBuffer(&mesh->GetIndexBuffer()->GetIBView()->View());
-                            list.GetList()->DrawIndexedInstanced(mesh->GetDrawCount(), 1, 0, 0, 0);
+                            list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
+                            list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
                         }
                         else
                         {
-                            list.GetList()->DrawInstanced(mesh->GetDrawCount(), 1, 0, 0);
+                            list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
                         }
                     }
 

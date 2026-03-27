@@ -87,24 +87,30 @@ namespace Wild
                 std::vector<Vertex> meshVertex{};
                 std::vector<uint32_t> meshIndices{};
 
-                auto& resourceSystem = engine.GetResourceSystems().m_meshResourceSystem;
-                if (resourceSystem->HasResource(node.name.c_str()))
-                {
-                    // If map contains resource create a meshcomponent with the coresponding resource
-                    auto& component =
-                        engine.GetECS()->AddComponent<MeshComponent>(nodeEntity, resourceSystem->GetResource(node.name.c_str()));
+                LoadMeshData(model, primitive, meshVertex, meshIndices);
 
-                    WD_INFO("Mesh found in map: {}", node.name.c_str());
-                }
-                else
-                {
-                    // If resource is not yet in the map load it and add it
-                    LoadMeshData(model, primitive, meshVertex, meshIndices);
+                auto& mesh = engine.GetECS()->AddComponent<Mesh>(nodeEntity, meshVertex, meshIndices);
+                mesh.SetMaterial(LoadMaterials(model, primitive));
 
-                    auto& meshModel = engine.GetECS()->AddComponent<MeshComponent>(
-                        nodeEntity, resourceSystem->GetOrCreateResource(node.name.c_str(), meshVertex, meshIndices));
-                    meshModel.mesh->SetMaterial(LoadMaterials(model, primitive));
-                }
+                // auto& resourceSystem = engine.GetResourceSystems().m_meshResourceSystem;
+                // if (resourceSystem->HasResource(node.name.c_str()))
+                //{
+                //     // If map contains resource create a meshcomponent with the coresponding resource
+                //     auto& component =
+                //         engine.GetECS()->AddComponent<MeshComponent>(nodeEntity,
+                //         resourceSystem->GetResource(node.name.c_str()));
+
+                //    WD_INFO("Mesh found in map: {}", node.name.c_str());
+                //}
+                // else
+                //{
+                //    // If resource is not yet in the map load it and add it
+                //    LoadMeshData(model, primitive, meshVertex, meshIndices);
+
+                //    auto& meshModel = engine.GetECS()->AddComponent<MeshComponent>(
+                //        nodeEntity, resourceSystem->GetOrCreateResource(node.name.c_str(), meshVertex, meshIndices));
+                //    meshModel.mesh->SetMaterial(LoadMaterials(model, primitive));
+                //}
 
                 meshVertex.clear();
                 meshIndices.clear();
@@ -129,9 +135,8 @@ namespace Wild
         // If resource is not yet in the map load it and add it
         LoadMeshData(model, primitive, meshVertex, meshIndices);
 
-        auto& meshModel =
-            engine.GetECS()->AddComponent<MeshComponent>(primitiveEntity, std::make_shared<Mesh>(meshVertex, meshIndices));
-        meshModel.mesh->SetMaterial(LoadMaterials(model, primitive));
+        auto& mesh = engine.GetECS()->AddComponent<Mesh>(primitiveEntity, meshVertex, meshIndices);
+        mesh.SetMaterial(LoadMaterials(model, primitive));
 
         // auto& resourceSystem = engine.GetResourceSystems().m_meshResourceSystem;
         // if (resourceSystem->HasResource(meshName))
