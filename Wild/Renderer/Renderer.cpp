@@ -32,7 +32,8 @@ namespace Wild
         m_renderFeatures.emplace_back(std::make_unique<DeferredPass>());
         m_renderFeatures.emplace_back(std::make_unique<PbrPass>());
         m_renderFeatures.emplace_back(std::make_unique<OceanPass>());
-        m_renderFeatures.emplace_back(std::make_unique<SkyPass>("Assets/Textures/Skybox/the_sky_is_on_fire_4k.hdr"));
+        m_renderFeatures.emplace_back(
+            std::make_unique<SkyPass>("Assets/Textures/Skybox/kloofendal_48d_partly_cloudy_puresky_4k.hdr"));
 
         m_renderFeatures.emplace_back(std::make_unique<PostProcessPass>());
         m_renderFeatures.emplace_back(std::make_unique<DebugLinePass>());

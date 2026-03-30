@@ -9,6 +9,8 @@ cbuffer RootConsant : register(b0)
     float foamDecayRate;
     float foamThreshold;
     float foamAdd;
+
+    float lambdaBias;
 }
 
 Texture3D<float4> textures[4096] : register(t0);
@@ -27,12 +29,12 @@ void main(uint3 id: SV_DispatchThreadID)
     if (id.x >= oceanSize || id.y >= oceanSize) return;
 
     for (int i = 0; i < 4; ++i) {
-        float4 displace = Permute(textures[fourierTextureView][uint3(id.xy, i * 2)], id.xy);
         float4 slope = Permute(textures[fourierTextureView][uint3(id.xy, i * 2 + 1)], id.xy);
+        float4 displace = Permute(textures[fourierTextureView][uint3(id.xy, i * 2)], id.xy);
 
-        float2 lambda = float2(1.0f, 1.0f);
+        float2 lambda = float2(lambdaBias, lambdaBias);
 
-        float jacobian = (1.0f + lambda.x * slope.b) * (1.0f + lambda.y * slope.a) - lambda.x * lambda.y * pow(slope.g, 2);
+        float jacobian = (1.0f + lambda.x * slope.b) * (1.0f + lambda.y * slope.a) - lambda.x * lambda.y * pow(displace.g, 2);
 
         float3 displacement = float3(lambda.x * displace.r, displace.b, lambda.y * displace.g);
 

@@ -112,6 +112,8 @@ namespace Wild
         float foamDecayRate = 2.5f;
         float foamThreshold = 0.68f; // Set between 50 - 55
         float foamAdd = 0.5f;
+
+        float lambdaBias = 0.28f;
     };
 
     /// <summary>
@@ -144,19 +146,19 @@ namespace Wild
     {
         float uvScalars[4] = {1.0f / 250.0f, 1.0f / 32.0f, 1.0f / 16.0f, 1.0f / 4.0f};
 
-        float normalScalar = 15.0f;
+        float normalScalar = 12.0f;
         float reflectionScalar = 0.89;
-        float waveHeightScalar = 2.4;
+        float waveHeightScalar = 0.6;
         float airBubbleDensity = 0.43;
 
-        glm::vec4 waterScatterColor = glm::vec4(0.0, 0.08, 0.13, 1);
-        glm::vec4 oceanColor = glm::vec4(0.004, 0.40, 0.36, 1);
+        glm::vec4 waterScatterColor = glm::vec4(0.004, 0.40, 0.36, 1);
+        glm::vec4 oceanColor = glm::vec4(0.004, 0.014, 0.10, 1);
         glm::vec4 foamColor = glm::vec4(1, 1, 1, 1);
         glm::vec4 sunIrradiance = glm::vec4(0.97, 0.77, 0.77, 1);
 
         float peakScatterStrength = 2.33;
-        float scatterStrength = 1.226;
-        float scatterShadowStrength = 2.02;
+        float scatterStrength = 3.226;
+        float scatterShadowStrength = 1.2;
         float depth{};
     };
 

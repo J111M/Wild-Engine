@@ -108,7 +108,7 @@ float4 main(PSInput input) : SV_TARGET0
     float4 displacement4 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.w, 3));
     float4 displacement = displacement1 + displacement2 + displacement3 + displacement4;
     float a = 0.2f + displacement.a * 0.8f; // roughness
-    float foam = displacement4.a;
+    float foam = displacement.a;
 
     float viewShadowing = GeometricShadowingBeckmann(H, V, a);
     float lightShadowing = GeometricShadowingBeckmann(H, L, a);
@@ -139,7 +139,7 @@ float4 main(PSInput input) : SV_TARGET0
         specularColor *= reflectionScalar;
     }
 
-    float waveHeight = max(0.0f, displacement.y) * waveHeightScalar;
+    float waveHeight = max(0.0f, input.waveHeight) * waveHeightScalar;
 
     // k 1-4 are scalable values controlled by artists formula from
     // https://gpuopen.com/gdc-presentations/2019/gdc-2019-agtd6-interactive-water-simulation-in-atlas.pdf
@@ -163,7 +163,7 @@ float4 main(PSInput input) : SV_TARGET0
     float3 result = (1 - F) * scatter + specular + iblSpecular;
 
     result = max(0.0f, result);
-    result = lerp(result, foamColor.rgb, saturate(foam));
+    result = lerp(result, float3(foam, foam, foam), saturate(foam));
 
     return float4(float3(result), 1.0f);
 }

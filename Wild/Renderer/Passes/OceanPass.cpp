@@ -104,6 +104,7 @@ namespace Wild
                 ImGui::SliderFloat("Foam Decay Rate", &m_assembleRC.foamDecayRate, 0.0f, 5.0f);
                 ImGui::SliderFloat("Foam Threshold", &m_assembleRC.foamThreshold, 0.0f, 1.0f);
                 ImGui::SliderFloat("Foam Add", &m_assembleRC.foamAdd, 0.0f, 2.0f);
+                ImGui::SliderFloat("Choppiness", &m_assembleRC.lambdaBias, 0.0f, 2.0f);
             }
 
             if (ImGui::CollapsingHeader("Water Settings"))
@@ -593,7 +594,7 @@ namespace Wild
 
                 list.SetUnorderedAccessView(0, passData.displacementTexture);
 
-                list.GetList()->Dispatch(OCEAN_SIZE / 8, OCEAN_SIZE / 8, 1);
+                // list.GetList()->Dispatch(OCEAN_SIZE / 8, OCEAN_SIZE / 8, 1);
 
                 list.EndRender();
 

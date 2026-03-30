@@ -74,7 +74,7 @@ VSOutput main(VSInput input)
 
     float3 displacedPosition = input.position + (displacement.xyz * HEIGHT_SCALE);
 
-    output.waveHeight = displacement.y;
+    output.waveHeight = displacedPosition.y;
     output.foam = displacement3.w;
     worldPos = mul(modelMatrix, float4(displacedPosition.xyz, 1.0f));
     output.worlPosition = worldPos.xyz;

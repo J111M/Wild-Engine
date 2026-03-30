@@ -45,7 +45,7 @@ namespace Wild
 
         ComPtr<ID3D12PipelineState> GetPso() { return m_pso; }
         ComPtr<ID3D12RootSignature> GetRootSignature() { return m_rootSignature; }
-        PipelineStateSettings& GetPipelineSettings() { return m_settings; }
+        const PipelineStateSettings& GetPipelineSettings() { return m_settings; }
 
         PipelineStateType GetPassType() const { return m_type; }
 
@@ -58,7 +58,7 @@ namespace Wild
         void CreateMeshPipelinePSO();
 
         PipelineStateType m_type;
-        PipelineStateSettings& m_settings;
+        const PipelineStateSettings& m_settings;
 
         ComPtr<ID3D12PipelineState> m_pso;
         ComPtr<ID3D12RootSignature> m_rootSignature;

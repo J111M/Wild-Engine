@@ -45,7 +45,8 @@ target_sources(Wild PRIVATE
 # Sub-directories
 add_subdirectory("Vendor")
 
-set_target_properties(Wild PROPERTIES CXX_CLANG_TIDY "clang-tidy;-checks=clang-diagnostic-*,clang-analyzer-*" )
+# Clang-Tidy flag
+#set_target_properties(Wild PROPERTIES CXX_CLANG_TIDY "clang-tidy;-checks=clang-diagnostic-*,clang-analyzer-*" )
 
 # Shader directories
 set(SHADER_SRC_DIR "${CMAKE_SOURCE_DIR}/Shaders")
