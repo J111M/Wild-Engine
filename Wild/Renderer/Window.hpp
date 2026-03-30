@@ -20,10 +20,10 @@ namespace Wild
 
         GLFWwindow* GetWindow() { return m_window; }
 
-        int GetWidth() { return m_width; }
-        int GetHeight() { return m_height; }
+        int GetWidth() const { return m_width; }
+        int GetHeight() const { return m_height; }
 
-        float AspectRatio()
+        float AspectRatio() const
         {
             if (m_width > 0 && m_height > 0) return static_cast<float>(m_width) / static_cast<float>(m_height);
 

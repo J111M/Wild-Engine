@@ -11,7 +11,9 @@ namespace Wild {
 		~Resource() {};
 
 		ComPtr<ID3D12Resource>& Handle() { return m_resource; }
-		void SetResource(ComPtr<ID3D12Resource> resource) { m_resource = resource; }
+
+		// Prevent copy by moving the data
+		void SetResource(ComPtr<ID3D12Resource> resource) { m_resource = std::move(resource); }
 
 		D3D12_GPU_VIRTUAL_ADDRESS GetGPUAddress() const { return m_resource->GetGPUVirtualAddress(); }
 

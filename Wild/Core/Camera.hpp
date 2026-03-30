@@ -28,11 +28,11 @@ namespace Wild
         void Input(Window& window, uint32_t width, uint32_t height, float dt);
 
         void SetRenderActivity(bool isActive) { m_currentRenderCamera = isActive; }
-        const bool IsRenderModeActive() const { return m_currentRenderCamera; }
+        bool IsRenderModeActive() const { return m_currentRenderCamera; }
 
         void SetMovementActivity(bool isActive) { m_movementIsActive = isActive; }
 
-        const uint32_t GetCameraIndex() const { return m_cameraIndex; }
+        uint32_t GetCameraIndex() const { return m_cameraIndex; }
 
         const glm::mat4& GetProjection() const { return m_projectionMatrix; }
         const glm::mat4& GetView() const { return m_viewMatrix; }
@@ -40,12 +40,12 @@ namespace Wild
         const glm::vec3& GetPosition() const { return m_position; }
 
         const glm::vec2& GetNearFar() const { return m_nearFar; }
-        const float GetFOV() const { return m_fov; }
-        const float GetAspect() const { return m_aspect; }
+        float GetFOV() const { return m_fov; }
+        float GetAspect() const { return m_aspect; }
 
         const glm::quat& GetCameraQuateurnion();
 
-        const BoundingFrustum GetFrustum() const;
+        BoundingFrustum GetFrustum() const;
 
       private:
         // Prevents the camera from teleporting

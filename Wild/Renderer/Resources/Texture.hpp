@@ -72,16 +72,16 @@ namespace Wild
 
         std::shared_ptr<RenderTargetView> GetRtv() const;
         std::shared_ptr<RenderTargetView> GetRtv(uint32_t index) const;
-        const bool UsesRtvArray() const { return m_rtvArrayAvailiable; };
+        bool UsesRtvArray() const { return m_rtvArrayAvailiable; };
 
         std::shared_ptr<UnorderedAccessView> GetUav() const;
         std::shared_ptr<UnorderedAccessView> GetUav(uint32_t index) const;
-        const bool UsesUavArray() const { return m_uavArrayAvailiable; };
+        bool UsesUavArray() const { return m_uavArrayAvailiable; };
 
         std::shared_ptr<DepthStencilView> GetDsv() const;
         std::shared_ptr<ShaderResourceView> GetSrv() const;
 
-        const bool IsLoaded() const { return m_loadedFromDisk; }
+        bool IsLoaded() const { return m_loadedFromDisk; }
 
       private:
         void CreateTexture(const std::string& filePath);

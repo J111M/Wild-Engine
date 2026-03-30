@@ -1,6 +1,8 @@
 ﻿#include "Tools/Log.hpp"
 
-int main(int argc, char* argv[])
+#include <filesystem>
+
+int main(int, char* argv[])
 {
     Wild::Log::Initialize();
 

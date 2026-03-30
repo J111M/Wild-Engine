@@ -9,10 +9,9 @@
 
 namespace Wild
 {
-    GfxContext::GfxContext(std::shared_ptr<Window> window)
+    // Prevent copy by using move
+    GfxContext::GfxContext(std::shared_ptr<Window> window) : m_window(std::move(window))
     {
-        m_window = window;
-
         m_clientWidth = m_window->GetWidth();
         m_clientHeight = m_window->GetHeight();
 
@@ -184,7 +183,7 @@ namespace Wild
     {
 #if defined(_DEBUG)
 
-        ID3D12Debug* dc;
+        ID3D12Debug* dc{};
         ThrowIfFailed(D3D12GetDebugInterface(IID_PPV_ARGS(&dc)));
         ThrowIfFailed(dc->QueryInterface(IID_PPV_ARGS(&m_debugController)));
         m_debugController->EnableDebugLayer();
@@ -257,7 +256,7 @@ namespace Wild
             swapchainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
             swapchainDesc.SampleDesc.Count = 1;
 
-            IDXGISwapChain1* new_swapchain;
+            IDXGISwapChain1* new_swapchain{};
 
             ThrowIfFailed(m_factory->CreateSwapChainForHwnd(GetCommandQueue(QueueType::Direct)->GetQueue().Get(),
                                                             m_window->GetHandle(),

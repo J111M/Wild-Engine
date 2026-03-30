@@ -5,7 +5,6 @@ bugprone-return-const-ref-from-parameter,\
 readability-non-const-parameter,\
 readability-const-return-type,\
 readability-make-member-function-const,\
-readability-avoid-const-params-in-decls,\
 performance-move-const-arg,\
 cppcoreguidelines-pro-type-const-cast,\
 cppcoreguidelines-avoid-const-or-ref-data-members,\
@@ -44,7 +43,6 @@ cppcoreguidelines-avoid-do-while,\
 cppcoreguidelines-avoid-goto,\
 cppcoreguidelines-init-variables,\
 cppcoreguidelines-virtual-class-destructor,\
-cppcoreguidelines-special-member-functions,\
 misc-unused-using-decls,\
 misc-unused-parameters,\
 misc-unconventional-assign-operator,\
@@ -55,8 +53,7 @@ misc-confusable-identifiers,\
 modernize-deprecated-headers,\
 bugprone-use-after-move,\
 "
-HeaderFilterRegex: '.*'
-ExcludeHeaderFilterRegex: '.*\/Vendor\/.*'
+HeaderFilterRegex: '.*[\\/]Wild[\\/].*'
 WarningsAsErrors: '*'
 FormatStyle: file
 SystemHeaders: false

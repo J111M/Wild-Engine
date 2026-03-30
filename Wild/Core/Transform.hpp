@@ -71,7 +71,7 @@ namespace Wild
 
         bool m_matrixUpdated = false;
 
-        Entity& m_entity;
+        Entity m_entity;
         Entity m_parent{entt::null};
         std::vector<Entity> m_children;
     };

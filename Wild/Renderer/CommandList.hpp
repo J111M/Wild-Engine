@@ -25,7 +25,7 @@ namespace Wild
         ComPtr<ID3D12GraphicsCommandList> GetList() { return m_commandList; }
         ComPtr<ID3D12CommandAllocator> GetAllocator() { return m_allocator; }
 
-        bool IsReady() { return m_commandListClosed; }
+        bool IsReady() const { return m_commandListClosed; }
 
         void ResetList();
         void Close();
@@ -57,6 +57,7 @@ namespace Wild
         void SetVertexBuffer() {};
         void SetIndexBuffer() {};
         void Draw(uint32_t size) {};
+
       private:
         void SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil,
                               std::optional<uint32_t> rtArrayIndex = std::nullopt);

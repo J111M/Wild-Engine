@@ -1,6 +1,6 @@
 #include "Core/Transform.hpp"
 
-#include <assert.h>
+#include <cassert>
 
 namespace Wild
 {
@@ -48,9 +48,22 @@ namespace Wild
         m_scale.y = glm::length(glm::vec3(matrix4[1][0], matrix4[1][1], matrix4[1][2]));
         m_scale.z = glm::length(glm::vec3(matrix4[2][0], matrix4[2][1], matrix4[2][2]));
 
-        glm::mat4 rotation(matrix4[0][0] / m_scale.x, matrix4[0][1] / m_scale.x, matrix4[0][2] / m_scale.z, 0,
-                           matrix4[1][0] / m_scale.y, matrix4[1][1] / m_scale.y, matrix4[1][2] / m_scale.z, 0,
-                           matrix4[2][0] / m_scale.z, matrix4[2][1] / m_scale.z, matrix4[2][2] / m_scale.z, 0, 0, 0, 0, 1);
+        glm::mat4 rotation(matrix4[0][0] / m_scale.x,
+                           matrix4[0][1] / m_scale.x,
+                           matrix4[0][2] / m_scale.z,
+                           0,
+                           matrix4[1][0] / m_scale.y,
+                           matrix4[1][1] / m_scale.y,
+                           matrix4[1][2] / m_scale.z,
+                           0,
+                           matrix4[2][0] / m_scale.z,
+                           matrix4[2][1] / m_scale.z,
+                           matrix4[2][2] / m_scale.z,
+                           0,
+                           0,
+                           0,
+                           0,
+                           1);
 
         m_rotation = glm::quat_cast(rotation);
 

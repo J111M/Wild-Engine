@@ -1,11 +1,19 @@
 #pragma once
 
+#include "Core/ECS.hpp"
+#include "Renderer/Renderer.hpp"
+#include "Renderer/Resources/Texture.hpp"
+#include "Renderer/Window.hpp"
+
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "backends/imgui_impl_dx12.h"
 #include "backends/imgui_impl_glfw.h"
 #include <ImGuizmo.h>
 #include <imgui.h>
 #include <implot/implot.h>
+
+#include <memory>
+#include <string>
 
 namespace Wild
 {

@@ -5,7 +5,7 @@
 #include <d3dcompiler.h>
 #include <slang.h>
 
-#include <map>
+#include <unordered_map>
 
 namespace Wild
 {

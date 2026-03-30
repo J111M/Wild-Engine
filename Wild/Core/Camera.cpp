@@ -67,7 +67,7 @@ namespace Wild
                 // glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
                 // Get current mouse position
-                double mouseX, mouseY;
+                double mouseX{}, mouseY{};
                 glfwGetCursorPos(glfwWindow, &mouseX, &mouseY);
 
                 if (firstClick)
@@ -78,8 +78,8 @@ namespace Wild
                 }
 
                 // Calculate offset (delta movement)
-                float deltaX = static_cast<float>(mouseX - m_lastMousePos.x);
-                float deltaY = static_cast<float>(mouseY - m_lastMousePos.y);
+                auto deltaX = static_cast<float>(mouseX - m_lastMousePos.x);
+                auto deltaY = static_cast<float>(mouseY - m_lastMousePos.y);
 
                 // Update last mouse position
                 m_lastMousePos.x = mouseX;
@@ -128,7 +128,7 @@ namespace Wild
     }
 
     // Extract frustum planes and return them
-    const BoundingFrustum Camera::GetFrustum() const
+    BoundingFrustum Camera::GetFrustum() const
     {
         BoundingFrustum frustum{};
 
@@ -138,7 +138,6 @@ namespace Wild
         frustum.planes[3] = glm::row(m_cameraMatrix, 3) - glm::row(m_cameraMatrix, 1);
         frustum.planes[4] = glm::row(m_cameraMatrix, 3) + glm::row(m_cameraMatrix, 2);
         frustum.planes[5] = glm::row(m_cameraMatrix, 3) - glm::row(m_cameraMatrix, 2);
-
 
         // Normalize frustum planes
         for (auto& plane : frustum.planes)
