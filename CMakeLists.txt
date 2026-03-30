@@ -3,6 +3,10 @@ project(Wild)
 
 # C++ standard version
 set(CMAKE_CXX_STANDARD 17 CACHE STRING "" FORCE)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+#set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=clang-diagnostic-*,clang-analyzer-*")
+
 
 # Program executable target
 add_executable(Wild)
@@ -40,6 +44,8 @@ target_sources(Wild PRIVATE
 
 # Sub-directories
 add_subdirectory("Vendor")
+
+#set_target_properties(Wild PROPERTIES CXX_CLANG_TIDY "clang-tidy;-checks=clang-diagnostic-*,clang-analyzer-*" )
 
 # Shader directories
 set(SHADER_SRC_DIR "${CMAKE_SOURCE_DIR}/Shaders")
