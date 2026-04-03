@@ -17,6 +17,12 @@ namespace Wild
         Texture* volumetricNoise; // Worley combined with perlin noise
     };
 
+    /// Froxel pass
+    struct FroxelPassData
+    {
+        Texture* scatteringExtinctionVolume;
+    };
+
     /// Volumetric ray march pass
     struct VolumetricPassData
     {
@@ -88,6 +94,7 @@ namespace Wild
 
       private:
         void VolumetricNoisePass(Renderer& renderer, RenderGraph& rg);
+        void FroxelVolumePass(Renderer& renderer, RenderGraph& rg);
         void VolumetricsPass(Renderer& renderer, RenderGraph& rg);
         void FinalPostProcessPass(Renderer& renderer, RenderGraph& rg);
 

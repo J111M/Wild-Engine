@@ -127,6 +127,28 @@ namespace Wild
             });
     }
 
+    void PostProcessPass::FroxelVolumePass(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<FroxelPassData>();
+
+        {
+            TextureDesc desc;
+            desc.width = 160;
+            desc.height = 90;
+            desc.depthOrArray = 128;
+            desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+            desc.name = "Scattered light froxel";
+            desc.usage = TextureDesc::gpuOnly;
+            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::shaderResource | TextureDesc::readWrite);
+            passData->scatteringExtinctionVolume = rg.CreateTransientTexture("Scattered light froxel", desc);
+        }
+
+        rg.AddPass<FroxelPassData>(
+            "Froxel pass", PassType::Compute, [&renderer, this](FroxelPassData& passData, CommandList& list) {
+
+            });
+    }
+
     void PostProcessPass::VolumetricsPass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<VolumetricPassData>();
