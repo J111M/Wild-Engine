@@ -151,9 +151,9 @@ namespace Wild
         float waveHeightScalar = 0.6;
         float airBubbleDensity = 0.43;
 
-        glm::vec4 waterScatterColor = glm::vec4(0.004, 0.40, 0.36, 1);
-        glm::vec4 oceanColor = glm::vec4(0.004, 0.014, 0.10, 1);
-        glm::vec4 foamColor = glm::vec4(1, 1, 1, 1);
+        glm::vec4 waterScatterColor = glm::vec4(0.0056f, 0.0194f, 0.0331f, 1);
+        glm::vec4 oceanColor = glm::vec4(0.004, 0.40, 0.36, 1);
+        glm::vec4 foamColor = glm::vec4(0.9f, 0.95f, 1.0f, 1);
         glm::vec4 sunIrradiance = glm::vec4(0.97, 0.77, 0.77, 1);
 
         float peakScatterStrength = 2.33;

@@ -82,10 +82,10 @@ float BeckmannDistribution(float NdotH, float roughness)
 [shader("fragment")]
 float4 main(PSInput input) : SV_TARGET0
 {
-    float4 slope0 = textures[slopeMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.x, 0));
-    float4 slope1 = textures[slopeMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.y, 1));
-    float4 slope2 = textures[slopeMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.z, 2));
-    float4 slope3 = textures[slopeMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.w, 3));
+    float4 slope0 = textures[slopeMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.x, 0.0f));
+    float4 slope1 = textures[slopeMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.y, 0.33));
+    float4 slope2 = textures[slopeMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.z, 0.66f));
+    float4 slope3 = textures[slopeMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.w, 1.0f));
     float4 slope = slope0 + slope1 + slope2 + slope3;
 
     slope = slope * normalScalar;
@@ -102,10 +102,10 @@ float4 main(PSInput input) : SV_TARGET0
     float NdotH = max(dot(N, H), 0.0001f);
     float NdotV = dot(N, V);
 
-    float4 displacement1 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.x, 0));
-    float4 displacement2 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.y, 1));
-    float4 displacement3 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.z, 2));
-    float4 displacement4 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.w, 3));
+    float4 displacement1 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.x, 0.0f));
+    float4 displacement2 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.y, 0.33f));
+    float4 displacement3 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.z, 0.66f));
+    float4 displacement4 = textures[displacementMapView].Sample(anisotropySampler, float3(input.worlPosition.xz / uvScalars.w, 1.0f));
     float4 displacement = displacement1 + displacement2 + displacement3 + displacement4;
     float a = 0.2f + displacement.a * 0.8f; // roughness
     float foam = displacement.a;
@@ -157,7 +157,7 @@ float4 main(PSInput input) : SV_TARGET0
     //float3 depthAttenuation = exp(-depth * absorptionCoefficient);
     //scatter *= depthAttenuation;
 
-    float3 sunSpecular = specular * float3(1.0f, 0.95f, 0.9f);
+    //float3 sunSpecular = specular * float3(1.2f, 1.2f, 1.2f);
     float3 iblSpecular = F * specularColor;
 
     float3 result = (1 - F) * scatter + specular + iblSpecular;

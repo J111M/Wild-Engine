@@ -20,17 +20,17 @@ namespace Wild
 
         // Load all terrain textures
         grassTexture = std::make_unique<Texture>("Assets/Textures/grass/Grass008_2K-JPG_Color.jpg");
-        grassNormalTexture = std::make_unique<Texture>("Assets/Textures/grass/Grass008_2K-JPG_NormalGL.jpg");
+        grassNormalTexture = std::make_unique<Texture>("Assets/Textures/grass/Grass008_2K-JPG_NormalDX.jpg");
         grassRoughTexture = std::make_unique<Texture>("Assets/Textures/grass/Grass008_2K-JPG_Roughness.jpg");
         grassAOTexture = std::make_unique<Texture>("Assets/Textures/grass/Grass008_2K-JPG_AmbientOcclusion.jpg");
 
         sandTexture = std::make_unique<Texture>("Assets/Textures/sand/Ground054_2K-JPG_Color.jpg");
-        sandNormalTexture = std::make_unique<Texture>("Assets/Textures/sand/Ground054_2K-JPG_NormalGL.jpg");
+        sandNormalTexture = std::make_unique<Texture>("Assets/Textures/sand/Ground054_2K-JPG_NormalDX.jpg");
         sandRoughTexture = std::make_unique<Texture>("Assets/Textures/sand/Ground054_2K-JPG_Roughness.jpg");
         sandAOTexture = std::make_unique<Texture>("Assets/Textures/sand/Ground054_2K-JPG_AmbientOcclusion.jpg");
 
         rockTexture = std::make_unique<Texture>("Assets/Textures/rock/Rock061_2K-JPG_Color.jpg");
-        rockNormalTexture = std::make_unique<Texture>("Assets/Textures/rock/Rock061_2K-JPG_NormalGL.jpg");
+        rockNormalTexture = std::make_unique<Texture>("Assets/Textures/rock/Rock061_2K-JPG_NormalDX.jpg");
         rockRoughTexture = std::make_unique<Texture>("Assets/Textures/rock/Rock061_2K-JPG_Roughness.jpg");
         rockAOTexture = std::make_unique<Texture>("Assets/Textures/rock/Rock061_2K-JPG_AmbientOcclusion.jpg");
 

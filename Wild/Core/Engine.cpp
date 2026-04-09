@@ -71,7 +71,7 @@ namespace Wild
                 {
                     auto& camera = m_ecs->GetComponent<Camera>(cameraEntity);
                     camera.Input(*m_window.get(), m_window->GetWidth(), m_window->GetHeight(), deltaTime);
-                    camera.UpdateMatrix(glm::radians(70.0f), m_window->AspectRatio(), 0.1f, 500.0f);
+                    camera.UpdateMatrix(glm::radians(70.0f), m_window->AspectRatio(), 0.1f, 5000.0f);
 
                     if (camera.GetCameraIndex() == 0u) { mainCamera = &camera; }
                 }
@@ -82,7 +82,7 @@ namespace Wild
 
             m_gfxContext->BeginFrame();
 
-#ifdef DEBUG
+#ifdef NDEBUG
             m_imguiCore->Prepare();
 
             // Debug variables
@@ -95,7 +95,7 @@ namespace Wild
             m_renderer->Update(deltaTime);
             m_renderer->Render(*m_gfxContext->GetCommandList().get(), deltaTime);
 
-#ifdef DEBUG
+#ifdef NDEBUG
             // Displays profiled data
             m_profiler->Display();
 

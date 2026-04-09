@@ -79,7 +79,7 @@ namespace Wild
             }
         });
 
-        engine.GetSceneManager()->AddScene("Sponza", []() {
+        engine.GetSceneManager()->AddScene("Bistro", []() {
             auto ecs = engine.GetECS();
             auto entity = ecs->CreateEntity();
             ecs->AddComponent<SceneObject>(entity);
@@ -87,7 +87,8 @@ namespace Wild
             ecs->AddComponent<Model>(entity, "Assets/Models/bistro/bistro/bistro.gltf", entity);
             transform.SetScale(glm::vec3(1, 1, 1));
             transform.SetPosition(glm::vec3(70, 1, 70));
-            transform.Name = "Sponza";
+            transform.SetRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
+            transform.Name = "Bistro";
         });
 
         engine.GetSceneManager()->LoadScene("Main Scene");
