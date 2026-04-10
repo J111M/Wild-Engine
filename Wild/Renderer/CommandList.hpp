@@ -58,6 +58,8 @@ namespace Wild
         void SetIndexBuffer() {};
         void Draw(uint32_t size) {};
 
+        void Dispatch(uint32_t x = 1u, uint32_t y = 1u, uint32_t z = 1u);
+
       private:
         void SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil,
                               std::optional<uint32_t> rtArrayIndex = std::nullopt);
@@ -67,6 +69,10 @@ namespace Wild
         uint32_t GetPassColor(std::string_view name);
 
         ComPtr<ID3D12GraphicsCommandList> m_commandList;
+
+        // For raytracing features
+        ComPtr<ID3D12GraphicsCommandList4> m_commandList4;
+
         ComPtr<ID3D12CommandAllocator> m_allocator;
 
         D3D12_COMMAND_LIST_TYPE m_type;

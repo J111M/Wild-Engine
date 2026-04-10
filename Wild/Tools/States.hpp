@@ -183,6 +183,13 @@ namespace Wild
         DepthStencilOp BackFace{};
     };
 
+    struct RaytracingState
+    {
+        size_t payloadSize{};
+        size_t attributeSize{};
+        uint32_t rayRecursionDepth{};
+    };
+
     struct ShaderState
     {
         std::vector<D3D12_INPUT_ELEMENT_DESC> InputLayout;
@@ -191,12 +198,15 @@ namespace Wild
         std::shared_ptr<Shader> FragShader;
         std::shared_ptr<Shader> MeshShader;
         std::shared_ptr<Shader> ComputeShader;
+
+        std::shared_ptr<Shader> rayTracingShader;
     };
 
     struct PipelineStateSettings
     {
         // Shader data and vertex layout
         ShaderState ShaderState{};
+        RaytracingState raytracingState{};
         RasterizerState RasterizerState{};
         DepthStencilState DepthStencilState{};
 

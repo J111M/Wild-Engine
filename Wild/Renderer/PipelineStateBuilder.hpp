@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Renderer/RaytracingPipeline.hpp"
+
 #include "Tools/Common3d12.hpp"
 #include "Tools/States.hpp"
 
@@ -34,7 +36,8 @@ namespace Wild
     {
         Graphics,
         Compute,
-        MeshPipeline
+        MeshPipeline,
+        Raytracing
     };
 
     class PipelineState
@@ -49,6 +52,8 @@ namespace Wild
 
         PipelineStateType GetPassType() const { return m_type; }
 
+        std::shared_ptr<RaytracingPipeline> GetRTPipeline() const;
+
         void SerializePSO();
 
       private:
@@ -56,6 +61,7 @@ namespace Wild
         void CreateGraphicsPSO();
         void CreateComputePSO();
         void CreateMeshPipelinePSO();
+        void CreateRaytracingPipeline();
 
         PipelineStateType m_type;
         const PipelineStateSettings& m_settings;
@@ -67,5 +73,8 @@ namespace Wild
 
         bool m_isComputePass = false;
         bool m_hasRootConstant = false;
+
+        // Raytrace state object
+        std::shared_ptr<RaytracingPipeline> m_rtPipeline{};
     };
 } // namespace Wild

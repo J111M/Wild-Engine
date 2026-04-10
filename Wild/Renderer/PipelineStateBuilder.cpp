@@ -41,12 +41,23 @@ namespace Wild
         case Wild::PipelineStateType::MeshPipeline:
             CreateGraphicsPSO();
             break;
+        case Wild::PipelineStateType::Raytracing:
+            CreateRaytracingPipeline();
+            break;
         default:
             break;
         }
     }
 
     PipelineState::~PipelineState() { SerializePSO(); }
+
+    std::shared_ptr<RaytracingPipeline> PipelineState::GetRTPipeline() const
+    {
+        if (m_rtPipeline)
+            return m_rtPipeline;
+        else
+            nullptr;
+    }
 
     void PipelineState::SerializePSO()
     {
@@ -306,7 +317,6 @@ namespace Wild
         }
     }
 
-    // Deprecated
     void PipelineState::CreateMeshPipelinePSO()
     {
         auto gfxContext = engine.GetGfxContext();
@@ -400,5 +410,10 @@ namespace Wild
         streamDesc.pPipelineStateSubobjectStream = &psoStream;
 
         ThrowIfFailed(gfxContext->GetDevice2()->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&m_pso)));
+    }
+
+    void PipelineState::CreateRaytracingPipeline()
+    {
+        m_rtPipeline = std::make_shared<RaytracingPipeline>(m_settings, m_rootSignature);
     }
 } // namespace Wild

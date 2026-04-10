@@ -26,6 +26,7 @@ namespace Wild
         default = 0,
         constant = 1 << 1,
         uav = 1 << 2,
+        shaderBindingTable = 1 << 3,
     };
 
     struct BufferDesc
@@ -46,6 +47,7 @@ namespace Wild
         std::string name = "default";
     };
 
+    // TODO rework buffer class so that the resource creation is done in the initializer
     class Buffer
     {
       public:
@@ -75,6 +77,7 @@ namespace Wild
 
         void CreateConstantBuffer();
         void CreateUAVBuffer();
+        void CreateSBTBuffer();
 
         std::unique_ptr<Resource> m_resource;
 
@@ -89,6 +92,7 @@ namespace Wild
         void* m_data = nullptr;
 
         uint32_t m_dataSize{};
+
       public:
         template <typename T> void CreateVertexBuffer(const std::vector<T>& vertices)
         {

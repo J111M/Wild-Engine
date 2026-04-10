@@ -26,6 +26,7 @@ namespace Wild
 
         ComPtr<ID3D12Device> GetDevice() { return m_device; }
         ComPtr<ID3D12Device2> GetDevice2() { return m_device2; }
+        ComPtr<ID3D12Device7> GetDevice7() { return m_device7; }
         ComPtr<IDXGIFactory4> GetFactory() { return m_factory; }
         ComPtr<ID3D12PipelineLibrary> GetPipelineLibrary() { return m_pipelineLibrary; }
         std::string GetAdapterName();
@@ -90,6 +91,7 @@ namespace Wild
         ComPtr<IDXGIAdapter1> m_adapter;
         ComPtr<ID3D12Device> m_device;
         ComPtr<ID3D12Device2> m_device2;
+        ComPtr<ID3D12Device7> m_device7;
         ComPtr<ID3D12DebugDevice> m_debugDevice;
 
         // Pipeline library for caching the PSO's

@@ -20,6 +20,9 @@ namespace Wild
         case BufferType::uav:
             CreateUAVBuffer();
             break;
+        case BufferType::shaderBindingTable:
+            CreateSBTBuffer();
+            break;
         default:
             break;
         }
@@ -92,6 +95,24 @@ namespace Wild
 
         m_uaView = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc);
         m_resource->Handle()->SetName(StringToWString(m_desc.name).c_str());
+    }
+
+    void Buffer::CreateSBTBuffer()
+    {
+        auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+        auto desc = CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize);
+
+        auto device7 = engine.GetGfxContext()->GetDevice7();
+
+        if (device7)
+        {
+            device7->CreateCommittedResource(&heapProps,
+                                             D3D12_HEAP_FLAG_NONE,
+                                             &desc,
+                                             D3D12_RESOURCE_STATE_GENERIC_READ,
+                                             nullptr,
+                                             IID_PPV_ARGS(&m_resource->Handle()));
+        }
     }
 
     void Buffer::CreateIndexBuffer(std::vector<uint32_t> indices)

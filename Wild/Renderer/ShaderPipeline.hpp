@@ -9,15 +9,31 @@
 
 namespace Wild
 {
+    struct RTEntryPoints
+    {
+        std::vector<std::wstring> rayGen;
+        std::vector<std::wstring> closestHit;
+        std::vector<std::wstring> anyHit;
+        std::vector<std::wstring> miss;
+        std::vector<std::wstring> intersection;
+    };
+
     class Shader
     {
       public:
-        Shader(std::string shaderPath);
+        Shader(const std::string& shaderPath);
         ~Shader() {};
 
         D3D12_SHADER_BYTECODE GetByteCode() { return m_shaderBytecode; }
 
+        std::shared_ptr<RTEntryPoints> GetRTEntryPoints() const;
+
       private:
+        void CreateRasterizeShaders(const std::string& shaderPath);
+        void CreateRaytracingShaders(const std::string& shaderPath);
+
+        std::shared_ptr<RTEntryPoints> m_rtEntry{};
+
         D3D12_SHADER_BYTECODE m_shaderBytecode = {};
 
         ComPtr<slang::IBlob> m_shaderBlob;

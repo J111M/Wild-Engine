@@ -233,6 +233,9 @@ namespace Wild
         // Create device 2 for it's features
         ThrowIfFailed(m_device->QueryInterface(IID_PPV_ARGS(&m_device2)));
 
+        // Create device 7 for it's features
+        ThrowIfFailed(m_device->QueryInterface(IID_PPV_ARGS(&m_device7)));
+
 #if defined(_DEBUG)
         ThrowIfFailed(m_device->QueryInterface(IID_PPV_ARGS(&m_debugDevice)));
 #endif

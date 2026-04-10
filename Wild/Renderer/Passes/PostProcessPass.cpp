@@ -145,6 +145,10 @@ namespace Wild
 
         rg.AddPass<FroxelPassData>(
             "Froxel pass", PassType::Compute, [&renderer, this](FroxelPassData& passData, CommandList& list) {
+                PipelineStateSettings settings{};
+                settings.ShaderState.ComputeShader =
+                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/PostProcess/FoxelFogPass.slang");
+
 
             });
     }

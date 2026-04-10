@@ -17,6 +17,12 @@ namespace Wild
         ThrowIfFailed(gfxContext->GetDevice()->CreateCommandAllocator(m_type, IID_PPV_ARGS(&m_allocator)));
         ThrowIfFailed(
             gfxContext->GetDevice()->CreateCommandList(0, m_type, m_allocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
+
+        // Query feature support of commandlist level 4
+        if (engine.GetGfxContext()->GetCapabilities().SupportsRayTracing())
+        {
+            ThrowIfFailed(m_commandList->QueryInterface(IID_PPV_ARGS(&m_commandList4)));
+        }
     }
 
     CommandList::~CommandList()
@@ -49,7 +55,10 @@ namespace Wild
         m_pipelineIsSet = true;
         m_pipelineState = pipeline;
 
-        m_commandList->SetPipelineState(m_pipelineState->GetPso().Get());
+        if (m_pipelineState->GetPassType() == PipelineStateType::Raytracing)
+            m_commandList4->SetPipelineState1(m_pipelineState->GetRTPipeline()->GetStateObject().Get());
+        else
+            m_commandList->SetPipelineState(m_pipelineState->GetPso().Get());
     }
 
     void CommandList::SetBindlessHeap(uint32_t rootIndex)
@@ -270,6 +279,28 @@ namespace Wild
     {
         renderTarget.Transition(*this, D3D12_RESOURCE_STATE_RENDER_TARGET);
         m_commandList->ClearRenderTargetView(renderTarget.GetRtv()->GetCpuHandle(), &color[0], 0, nullptr);
+    }
+
+    void CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z)
+    {
+        switch (m_pipelineState->GetPassType())
+        {
+        case PipelineStateType::Compute:
+            m_commandList->Dispatch(static_cast<UINT>(x), static_cast<UINT>(y), static_cast<UINT>(z));
+            break;
+        case PipelineStateType::Raytracing:
+            // Feature support is already checked before reaching this point
+
+            auto rtPipeline = m_pipelineState->GetRTPipeline();
+
+            auto& desc = rtPipeline->GetDispatchDesc();
+            desc.Width = static_cast<UINT>(x);
+            desc.Height = static_cast<UINT>(y);
+            desc.Depth = static_cast<UINT>(z);
+
+            m_commandList4->DispatchRays(&desc);
+            break;
+        }
     }
 
     void CommandList::SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil,

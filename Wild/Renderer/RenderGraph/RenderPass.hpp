@@ -19,7 +19,8 @@ namespace Wild
         Default,
         Graphics,
         Compute,
-        MeshShader
+        MeshShader,
+        Raytracing
     };
 
     class RenderPassBase
