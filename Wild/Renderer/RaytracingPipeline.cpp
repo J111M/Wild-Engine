@@ -27,6 +27,8 @@ namespace Wild
 
         auto entryPoints = shader->GetRTEntryPoints();
 
+        if (!entryPoints) WD_WARN("Raytrace pipeline doesn't have a valid shader");
+
         // Pair hit groups, 1 hit group per cHit shader
         std::vector<std::wstring> hitGroupNames;
         for (size_t i = 0; i < entryPoints->closestHit.size(); i++)

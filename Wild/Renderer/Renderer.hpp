@@ -55,11 +55,15 @@ namespace Wild
 
         Camera* GetActiveCamera();
 
+        // IBL textures
         Texture* irradianceMap{};
         Texture* specularMap{};
         Texture* brdfLut{};
+
         Texture* compositeTexture = nullptr;
         Texture* viewportTextures[MAX_CAMERAS]{};
+
+        // Raytracing acceleration structures
 
       private:
         Entity m_activeCamera{};

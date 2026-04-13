@@ -11,7 +11,7 @@ namespace Wild
       public:
         const D3D12_GPU_DESCRIPTOR_HANDLE& GetGpuHandle() const { return m_gpuHandle; }
         const D3D12_CPU_DESCRIPTOR_HANDLE& GetCpuHandle() const { return m_cpuHandle; }
-        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAdress() const { return m_resource->GetGPUVirtualAddress(); }
+        D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const { return m_resource->GetGPUVirtualAddress(); }
 
       protected:
         ViewBase(ComPtr<ID3D12Resource> resource);

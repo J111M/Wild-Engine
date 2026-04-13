@@ -37,7 +37,7 @@ namespace Wild
 
         GenerateOceanPlane(64);
 
-        m_oceanChunkSystem = std::make_unique<OceanChunkSystem>(63.94f, 17, -9);
+        m_oceanChunkSystem = std::make_unique<OceanChunkSystem>(63.80f, 17, -9);
 
         {
             BufferDesc desc{};
@@ -66,7 +66,7 @@ namespace Wild
                 if (m_oceanChunkSystem)
                     m_oceanChunkSystem.reset();
                 else
-                    m_oceanChunkSystem = std::make_unique<OceanChunkSystem>(64.0f, 8, -9);
+                    m_oceanChunkSystem = std::make_unique<OceanChunkSystem>(63.80f, 17, -9);
             }
 
             ImGui::Checkbox("Enable frustum culling ", &m_frustumCullingEnabled);

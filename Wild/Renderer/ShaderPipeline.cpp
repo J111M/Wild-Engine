@@ -182,35 +182,6 @@ namespace Wild
                 break;
             }
         }
-
-        // Move to pipeline object
-        CD3DX12_STATE_OBJECT_DESC pipelineDesc{D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE};
-
-        auto library = pipelineDesc.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
-        D3D12_SHADER_BYTECODE libCode{m_shaderBlob->getBufferPointer(), m_shaderBlob->getBufferSize()};
-        library->SetDXILLibrary(&libCode);
-
-        // Set hit groups one hit group per closest hit
-        std::vector<std::wstring> hitGroupNames;
-        for (size_t i = 0; i < closestHit.size(); i++)
-        {
-            std::wstring groupName = L"HitGroup_" + std::to_wstring(i);
-            hitGroupNames.push_back(groupName);
-
-            auto hitGroup = pipelineDesc.CreateSubobject<CD3DX12_HIT_GROUP_SUBOBJECT>();
-            hitGroup->SetClosestHitShaderImport(closestHit[i].c_str());
-            if (i < anyHit.size()) hitGroup->SetAnyHitShaderImport(anyHit[i].c_str());
-            if (i < intersection.size())
-            {
-                hitGroup->SetIntersectionShaderImport(intersection[i].c_str());
-                hitGroup->SetHitGroupType(D3D12_HIT_GROUP_TYPE_PROCEDURAL_PRIMITIVE);
-            }
-            else
-            {
-                hitGroup->SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
-            }
-            hitGroup->SetHitGroupExport(groupName.c_str());
-        }
     }
 
     ///

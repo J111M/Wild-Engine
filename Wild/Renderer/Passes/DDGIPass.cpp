@@ -30,7 +30,7 @@ namespace Wild
             list.SetRootConstant<DDGIRC>(0, DDGIRC{});
 
             // Modify to probe size
-            list.Dispatch(1920, 1080, 1);
+            // list.Dispatch(1920, 1080, 1);
 
             list.EndRender();
         });
