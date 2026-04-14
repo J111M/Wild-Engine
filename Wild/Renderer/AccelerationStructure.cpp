@@ -4,6 +4,8 @@ namespace Wild
 {
     AccelerationStructure::AccelerationStructure() {}
 
+    AccelerationStructureManager::AccelerationStructureManager() {}
+
     void AccelerationStructureManager::AddTopLevelAS(uint32_t blasIndex, const glm::mat4& transform, uint32_t instanceID,
                                                      uint32_t hitGroupIndex, uint8_t mask)
     {
@@ -32,20 +34,19 @@ namespace Wild
         // D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS buildFlags =
         //     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
         // D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS topLevelInputs = {};
-        // topLevelInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+        // topLevelInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ ARRAY;
         // topLevelInputs.Flags = buildFlags;
         // topLevelInputs.NumDescs = 1;
         // topLevelInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
 
         BLASEntry entry{};
 
-        // TODO 1 blas per mesh for now in the future group models together
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
         inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-        inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-        inputs.NumDescs = 1;
+        inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY; 
+        inputs.NumDescs = geomCount;
         inputs.pGeometryDescs = geomDescs;
-        inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+        inputs.Flags = flags;
 
         auto gfxContext = engine.GetGfxContext();
 

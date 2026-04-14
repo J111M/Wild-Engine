@@ -4,6 +4,7 @@
 #include "Renderer/Renderer.hpp"
 #include "Renderer/ShaderPipeline.hpp"
 #include "Renderer/Window.hpp"
+#include "Renderer/AccelerationStructure.hpp"
 
 #include "Core/Camera.hpp"
 #include "Core/ECS.hpp"
@@ -52,6 +53,7 @@ namespace Wild
         std::shared_ptr<ShaderTracker> GetShaderTracker() { return m_shaderTracker; }
         std::shared_ptr<Profiler> GetProfiler() { return m_profiler; }
         std::shared_ptr<SceneManager> GetSceneManager() { return m_sceneManager; }
+        std::shared_ptr<AccelerationStructureManager> GetAccelerationStructureManager() { return m_accelerationStructureManager; }
 
         ResourceSystems& GetResourceSystems() { return m_resourceSystems; }
 
@@ -68,6 +70,7 @@ namespace Wild
         std::shared_ptr<ShaderTracker> m_shaderTracker;
         std::shared_ptr<Profiler> m_profiler;
         std::shared_ptr<SceneManager> m_sceneManager;
+        std::shared_ptr<AccelerationStructureManager> m_accelerationStructureManager;
 
         ResourceSystems m_resourceSystems;
 

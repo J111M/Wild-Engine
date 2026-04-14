@@ -22,7 +22,9 @@ namespace Wild
 
         m_sceneManager = std::make_shared<SceneManager>();
 
-        m_renderer = std::make_shared<Renderer>();
+        m_accelerationStructureManager = std::make_shared<AccelerationStructureManager>();
+
+        m_renderer = std::make_shared<Renderer>();        
     }
 
     void Engine::Run()
@@ -124,6 +126,7 @@ namespace Wild
         m_gfxContext->Flush();
 
         // Explicitly deleting the smart pointers
+        m_accelerationStructureManager.reset();
         m_renderer.reset();
         m_sceneManager.reset();
         m_imguiCore.reset();
