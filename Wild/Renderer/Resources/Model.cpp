@@ -158,7 +158,7 @@ namespace Wild
             const uint32_t index = engine.GetAccelerationStructureManager()->AddBottomLevelAS(
                  &geometryDesc, 1, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE);
 
-            engine.GetAccelerationStructureManager()->AddTopLevelAS(index, transform.GetWorldMatrix())
+            engine.GetAccelerationStructureManager()->AddTopLevelAS(index, transform.GetWorldMatrix());
         }
        
 
