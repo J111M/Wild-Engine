@@ -49,12 +49,17 @@ namespace Wild
 
         void UpdateTLAS();
 
+        D3D12_GPU_VIRTUAL_ADDRESS GetTLASAddress() const
+        {
+            return m_tlasResult ? m_tlasResult->GetBuffer()->GetGPUVirtualAddress() : 0;
+        }
+
       private:
         bool m_markDirty = false;
         bool m_tlasIsBuild = false;
 
         std::vector<BLASEntry> m_blasEntries{};
-        std::vector<TLASInstance> m_tlasInstances{};
+        std::vector<TLASInstance> m_dynamicTlasInstances{};
 
         // TLAS buffer
         std::unique_ptr<Buffer> m_instanceDescsBuffer;

@@ -80,6 +80,8 @@ namespace Wild
                 feature->Update(deltaTime);
             }
 
+            if (gfxContext->GetCapabilities().SupportsRayTracing()) { engine.GetAccelerationStructureManager()->UpdateTLAS();}
+
             RenderGraph rg = RenderGraph(*m_resourceCache);
 
             for (auto& feature : m_renderFeatures)

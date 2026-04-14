@@ -155,8 +155,10 @@ namespace Wild
              geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
 
-            engine.GetAccelerationStructureManager()->AddBottomLevelAS(
+            const uint32_t index = engine.GetAccelerationStructureManager()->AddBottomLevelAS(
                  &geometryDesc, 1, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE);
+
+            engine.GetAccelerationStructureManager()->AddTopLevelAS(index, transform.GetWorldMatrix())
         }
        
 

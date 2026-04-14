@@ -23,6 +23,7 @@ namespace Wild
         ~CommandList();
 
         ComPtr<ID3D12GraphicsCommandList> GetList() { return m_commandList; }
+        ComPtr<ID3D12GraphicsCommandList4> GetList4() { return m_commandList4; }
         ComPtr<ID3D12CommandAllocator> GetAllocator() { return m_allocator; }
 
         bool IsReady() const { return m_commandListClosed; }

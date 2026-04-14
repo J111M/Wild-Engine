@@ -9,7 +9,7 @@ namespace Wild
     void AccelerationStructureManager::AddTopLevelAS(uint32_t blasIndex, const glm::mat4& transform, uint32_t instanceID,
                                                      uint32_t hitGroupIndex, uint8_t mask)
     {
-        m_tlasInstances.push_back({blasIndex, transform, instanceID, hitGroupIndex, mask});
+        m_dynamicTlasInstances.push_back({blasIndex, transform, instanceID, hitGroupIndex, mask});
         m_markDirty = true;
     }
 
@@ -89,31 +89,31 @@ namespace Wild
 
     void AccelerationStructureManager::UpdateTransform(uint32_t instanceIndex, const glm::mat4& transform)
     {
-        m_tlasInstances[instanceIndex].transform = transform;
+        m_dynamicTlasInstances[instanceIndex].transform = transform;
         m_markDirty = true;
     }
 
     void AccelerationStructureManager::RemoveInstance(uint32_t instanceIndex)
     {
-        m_tlasInstances.erase(m_tlasInstances.begin() + instanceIndex);
+        m_dynamicTlasInstances.erase(m_dynamicTlasInstances.begin() + instanceIndex);
         m_markDirty = true;
     }
 
     void AccelerationStructureManager::UpdateTLAS()
     {
         if (!m_markDirty && m_tlasResult) { return; }
-        if (m_tlasInstances.empty())
+        if (m_dynamicTlasInstances.empty())
         {
             WD_WARN("TLAS instances are empty can't update.");
             return;
         }
 
         // Instance description
-        std::vector<D3D12_RAYTRACING_INSTANCE_DESC> instanceDescs(m_tlasInstances.size());
+        std::vector<D3D12_RAYTRACING_INSTANCE_DESC> instanceDescs(m_dynamicTlasInstances.size());
 
-        for (size_t i = 0; i < m_tlasInstances.size(); i++)
+        for (size_t i = 0; i < m_dynamicTlasInstances.size(); i++)
         {
-            auto& inst = m_tlasInstances[i];
+            auto& inst = m_dynamicTlasInstances[i];
             auto& desc = instanceDescs[i];
             memset(&desc, 0, sizeof(desc));
 
@@ -126,12 +126,77 @@ namespace Wild
             desc.InstanceContributionToHitGroupIndex = inst.hitGroupIndex;
             desc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
             desc.AccelerationStructure = m_blasEntries[inst.blasIndex].result->GetBuffer()->GetGPUVirtualAddress();
-
-            // Upload instance descs
-            BufferDesc instanceBuffDesc{};
-            instanceBuffDesc.bufferSize = instanceDescs.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC);
-            // TODO upload buffer
-            m_instanceDescsBuffer = std::make_unique<Buffer>(instanceBuffDesc, BufferType::default);
         }
+
+        // Upload instance descs
+        BufferDesc instanceBuffDesc{};
+        instanceBuffDesc.bufferSize = sizeof(D3D12_RAYTRACING_INSTANCE_DESC);
+        instanceBuffDesc.numOfElements = instanceDescs.size();
+
+        // Upload buffer
+        m_instanceDescsBuffer = std::make_unique<Buffer>(instanceBuffDesc, BufferType::uav);
+        m_instanceDescsBuffer->UploadToGPU(instanceDescs.data());
+
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
+        inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+        inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+        inputs.NumDescs = static_cast<uint32_t>(m_dynamicTlasInstances.size());
+        inputs.InstanceDescs = m_instanceDescsBuffer->GetBuffer()->GetGPUVirtualAddress();
+        inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE |
+            D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
+
+        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild = {};
+        engine.GetGfxContext()->GetDevice7()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuild);
+
+        // Check if tlas has new entries and needs to be rebuild
+        bool needsFullRebuild = !m_tlasResult || m_tlasResultSize < prebuild.ResultDataMaxSizeInBytes;
+
+        if (needsFullRebuild)
+        {
+            m_tlasScratch.reset();
+            m_tlasResult.reset();
+            m_tlasUpdateScratch.reset();
+
+            BufferDesc scratchDesc{};
+            scratchDesc.bufferSize = prebuild.ScratchDataSizeInBytes;
+            scratchDesc.numOfElements = 1;
+            m_tlasScratch = std::make_unique<Buffer>(scratchDesc, BufferType::uav);
+
+            BufferDesc resultDesc{};
+            resultDesc.bufferSize = prebuild.ResultDataMaxSizeInBytes;
+            resultDesc.numOfElements = 1;
+            m_tlasResult = std::make_unique<Buffer>(resultDesc, BufferType::uav);
+            m_tlasResultSize = prebuild.ResultDataMaxSizeInBytes;
+
+            // Update scratch
+            BufferDesc updateScratchDesc{};
+            updateScratchDesc.bufferSize = prebuild.UpdateScratchDataSizeInBytes;
+            updateScratchDesc.numOfElements = 1;
+            m_tlasUpdateScratch = std::make_unique<Buffer>(updateScratchDesc, BufferType::uav);
+        }
+
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
+        buildDesc.Inputs = inputs;
+        buildDesc.DestAccelerationStructureData = m_tlasResult->GetBuffer()->GetGPUVirtualAddress();
+
+        if (!needsFullRebuild && m_tlasIsBuild)
+        {
+            buildDesc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
+            buildDesc.SourceAccelerationStructureData = m_tlasResult->GetBuffer()->GetGPUVirtualAddress();
+            buildDesc.ScratchAccelerationStructureData = m_tlasUpdateScratch->GetBuffer()->GetGPUVirtualAddress();
+        }
+        else { buildDesc.ScratchAccelerationStructureData = m_tlasScratch->GetBuffer()->GetGPUVirtualAddress(); }
+
+        auto cmd = engine.GetGfxContext()->GetCommandList();
+
+        cmd->GetList4()->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
+
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barrier.UAV.pResource = m_tlasResult->GetBuffer();
+        cmd->GetList()->ResourceBarrier(1, &barrier);
+
+        m_markDirty = false;
+        m_tlasIsBuild = true;
     }
 } // namespace Wild
