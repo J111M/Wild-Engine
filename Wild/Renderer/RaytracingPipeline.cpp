@@ -21,13 +21,17 @@ namespace Wild
 
         CD3DX12_STATE_OBJECT_DESC raytracingPipelineDesc{D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE};
 
-        auto library = raytracingPipelineDesc.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
-
-        library->SetDXILLibrary(&shader->GetByteCode());
-
         auto entryPoints = shader->GetRTEntryPoints();
-
         if (!entryPoints) WD_WARN("Raytrace pipeline doesn't have a valid shader");
+
+        for (auto& ep : entryPoints->shaderBlobs)
+        {
+            auto library = raytracingPipelineDesc.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
+            D3D12_SHADER_BYTECODE bytecode;
+            bytecode.pShaderBytecode = ep.blob->getBufferPointer();
+            bytecode.BytecodeLength = ep.blob->getBufferSize();
+            library->SetDXILLibrary(&bytecode);
+        }
 
         // Pair hit groups, 1 hit group per cHit shader
         std::vector<std::wstring> hitGroupNames;
@@ -50,9 +54,6 @@ namespace Wild
             }
             hitGroup->SetHitGroupExport(groupName.c_str());
         }
-
-        // TODO match to payload
-        // sizeof(float) * 4, sizeof(float) * 2
 
         auto shaderConfig = raytracingPipelineDesc.CreateSubobject<CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT>();
         shaderConfig->Config(settings.raytracingState.payloadSize, settings.raytracingState.attributeSize);

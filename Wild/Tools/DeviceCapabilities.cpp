@@ -25,6 +25,8 @@ namespace Wild
             return RayTracingSupport::Tier10;
         case D3D12_RAYTRACING_TIER_1_1:
             return RayTracingSupport::Tier11;
+        case D3D12_RAYTRACING_TIER_1_2:
+            return RayTracingSupport::Tier12;
         }
         return RayTracingSupport::TierNotSupported;
     }

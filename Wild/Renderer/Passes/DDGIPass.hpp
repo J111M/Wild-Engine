@@ -4,12 +4,13 @@ namespace Wild
 {
     struct DDGIRC
     {
-    
+        glm::mat4 inverseView{};
+        glm::mat4 inverseProj{};
     };
 
     struct DDGIPassData
     {
-        float foo;
+        Texture* finalTex;
     };
 
     class DDGIPass : public RenderFeature
@@ -22,5 +23,6 @@ namespace Wild
         virtual void Update(const float dt) override;
 
       private:
+        DDGIRC m_rc{};
     };
 } // namespace Wild

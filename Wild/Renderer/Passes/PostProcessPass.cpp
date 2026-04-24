@@ -148,8 +148,6 @@ namespace Wild
                 PipelineStateSettings settings{};
                 settings.ShaderState.ComputeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/PostProcess/FoxelFogPass.slang");
-
-
             });
     }
 

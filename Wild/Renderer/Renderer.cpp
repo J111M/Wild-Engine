@@ -4,6 +4,7 @@
 #include "Renderer/RenderGraph/TransientResourceCache.hpp"
 
 #include "Renderer/Passes/CascadedShadowPass.hpp"
+#include "Renderer/Passes/DDGIPass.hpp"
 #include "Renderer/Passes/DebugLinePass.hpp"
 #include "Renderer/Passes/DeferredPass.hpp"
 #include "Renderer/Passes/GrassPass.hpp"
@@ -36,6 +37,7 @@ namespace Wild
 
         m_renderFeatures.emplace_back(std::make_unique<PostProcessPass>());
         m_renderFeatures.emplace_back(std::make_unique<DebugLinePass>());
+        m_renderFeatures.emplace_back(std::make_unique<DDGIPass>());
 
         auto ecs = engine.GetECS();
 
@@ -80,7 +82,7 @@ namespace Wild
                 feature->Update(deltaTime);
             }
 
-            if (gfxContext->GetCapabilities().SupportsRayTracing()) { engine.GetAccelerationStructureManager()->UpdateTLAS();}
+            if (gfxContext->GetCapabilities().SupportsRayTracing()) { engine.GetAccelerationStructureManager()->UpdateTLAS(); }
 
             RenderGraph rg = RenderGraph(*m_resourceCache);
 

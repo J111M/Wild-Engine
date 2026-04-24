@@ -135,21 +135,23 @@ namespace Wild
                 WD_ERROR("Diagnostics: {}", (const char*)diagnostics->getBufferPointer());
         }
 
-        // Get compiled code
-        if (SLANG_FAILED(linkedProgram->getTargetCode(0, &m_shaderBlob, &diagnostics)))
-        {
-            WD_ERROR("Failed to get target code for shader: '{}'", shaderPath.c_str());
-            if (diagnostics && diagnostics->getBufferSize() > 0)
-                WD_ERROR("Diagnostics: {}", (const char*)diagnostics->getBufferPointer());
-        }
+        m_rtEntry = std::make_shared<RTEntryPoints>();
 
-        m_shaderBytecode.BytecodeLength = m_shaderBlob->getBufferSize();
-        m_shaderBytecode.pShaderBytecode = m_shaderBlob->getBufferPointer();
+        // Get compiled code
+        for (SlangInt i = 0; i < entryPointCount; i++)
+        {
+            EntryPointBlob ep;
+            if (SLANG_FAILED(linkedProgram->getEntryPointCode(i, 0, &ep.blob, &diagnostics)))
+            {
+                WD_ERROR("Failed to get entry point code {} for shader: '{}'", i, shaderPath.c_str());
+                return;
+            }
+            ep.name = entryPoints[i]->getFunctionReflection()->getName();
+            m_rtEntry->shaderBlobs.push_back(std::move(ep));
+        }
 
         // Shader reflection to get the correct shader stages for the sbt
         slang::ProgramLayout* layout = linkedProgram->getLayout();
-
-        m_rtEntry = std::make_shared<RTEntryPoints>();
 
         // Loop over all entry points
         for (SlangInt i = 0; i < entryPointCount; i++)

@@ -44,6 +44,8 @@ namespace Wild
         DXGI_FORMAT format;
         // D3D12_RESOURCE_FLAGS flags;
 
+        D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+
         std::string name = "default";
     };
 

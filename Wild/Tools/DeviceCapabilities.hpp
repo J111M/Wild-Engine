@@ -12,7 +12,8 @@ namespace Wild
     {
         TierNotSupported,
         Tier10,
-        Tier11
+        Tier11,
+        Tier12
     };
 
     enum class ShaderCacheSupport : uint8_t

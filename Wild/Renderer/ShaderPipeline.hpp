@@ -9,6 +9,12 @@
 
 namespace Wild
 {
+    struct EntryPointBlob
+    {
+        ComPtr<slang::IBlob> blob;
+        std::string name;
+    };
+
     struct RTEntryPoints
     {
         std::vector<std::wstring> rayGen;
@@ -16,6 +22,8 @@ namespace Wild
         std::vector<std::wstring> anyHit;
         std::vector<std::wstring> miss;
         std::vector<std::wstring> intersection;
+
+        std::vector<EntryPointBlob> shaderBlobs{};
     };
 
     class Shader

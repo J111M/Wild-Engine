@@ -43,7 +43,7 @@ namespace Wild
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
         inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-        inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY; 
+        inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
         inputs.NumDescs = geomCount;
         inputs.pGeometryDescs = geomDescs;
         inputs.Flags = flags;
@@ -56,11 +56,13 @@ namespace Wild
         BufferDesc scratchDesc{};
         scratchDesc.bufferSize = prebuild.ScratchDataSizeInBytes;
         scratchDesc.numOfElements = 1;
+        scratchDesc.state = D3D12_RESOURCE_STATE_COMMON;
         entry.scratch = std::make_unique<Buffer>(scratchDesc, BufferType::uav);
 
         BufferDesc resultDesc{};
         resultDesc.bufferSize = prebuild.ResultDataMaxSizeInBytes;
         resultDesc.numOfElements = 1;
+        resultDesc.state = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
         entry.result = std::make_unique<Buffer>(resultDesc, BufferType::uav);
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
@@ -160,11 +162,13 @@ namespace Wild
             BufferDesc scratchDesc{};
             scratchDesc.bufferSize = prebuild.ScratchDataSizeInBytes;
             scratchDesc.numOfElements = 1;
+            scratchDesc.state = D3D12_RESOURCE_STATE_COMMON;
             m_tlasScratch = std::make_unique<Buffer>(scratchDesc, BufferType::uav);
 
             BufferDesc resultDesc{};
             resultDesc.bufferSize = prebuild.ResultDataMaxSizeInBytes;
             resultDesc.numOfElements = 1;
+            resultDesc.state = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
             m_tlasResult = std::make_unique<Buffer>(resultDesc, BufferType::uav);
             m_tlasResultSize = prebuild.ResultDataMaxSizeInBytes;
 
@@ -172,6 +176,7 @@ namespace Wild
             BufferDesc updateScratchDesc{};
             updateScratchDesc.bufferSize = prebuild.UpdateScratchDataSizeInBytes;
             updateScratchDesc.numOfElements = 1;
+            updateScratchDesc.state = D3D12_RESOURCE_STATE_COMMON;
             m_tlasUpdateScratch = std::make_unique<Buffer>(updateScratchDesc, BufferType::uav);
         }
 
@@ -185,7 +190,10 @@ namespace Wild
             buildDesc.SourceAccelerationStructureData = m_tlasResult->GetBuffer()->GetGPUVirtualAddress();
             buildDesc.ScratchAccelerationStructureData = m_tlasUpdateScratch->GetBuffer()->GetGPUVirtualAddress();
         }
-        else { buildDesc.ScratchAccelerationStructureData = m_tlasScratch->GetBuffer()->GetGPUVirtualAddress(); }
+        else
+        {
+            buildDesc.ScratchAccelerationStructureData = m_tlasScratch->GetBuffer()->GetGPUVirtualAddress();
+        }
 
         auto cmd = engine.GetGfxContext()->GetCommandList();
 

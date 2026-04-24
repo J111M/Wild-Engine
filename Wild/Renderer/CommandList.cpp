@@ -23,6 +23,8 @@ namespace Wild
         {
             ThrowIfFailed(m_commandList->QueryInterface(IID_PPV_ARGS(&m_commandList4)));
         }
+        else
+            WD_INFO("Raytracing features are not supported by the driver");
     }
 
     CommandList::~CommandList()
@@ -218,9 +220,10 @@ namespace Wild
     {
         if (!CanPassExecute(passName)) return;
 
-        if (m_pipelineState->GetPassType() != PipelineStateType::Compute)
+        if (m_pipelineState->GetPassType() != PipelineStateType::Compute &&
+            m_pipelineState->GetPassType() != PipelineStateType::Raytracing)
         {
-            WD_WARN("Pass is not a compute pass please provide render targets.");
+            WD_WARN("Pass is not a compute or raytracing pass please provide render targets.");
             return;
         }
 

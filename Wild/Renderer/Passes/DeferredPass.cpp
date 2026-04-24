@@ -107,7 +107,7 @@ namespace Wild
         signatureDesc.pArgumentDescs = args;
 
         auto device = engine.GetGfxContext()->GetDevice();
-        device->CreateCommandSignature(&signatureDesc, nullptr, IID_PPV_ARGS(&m_commandSignature));
+        //device->CreateCommandSignature(&signatureDesc, nullptr, IID_PPV_ARGS(&m_commandSignature));
 
         // Frustum constant buffer
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)
