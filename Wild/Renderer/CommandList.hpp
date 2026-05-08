@@ -95,6 +95,7 @@ namespace Wild
             m_commandList->SetGraphicsRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
             break;
         case PipelineStateType::Compute:
+        case PipelineStateType::Raytracing:
             m_commandList->SetComputeRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
             break;
         case PipelineStateType::MeshPipeline:

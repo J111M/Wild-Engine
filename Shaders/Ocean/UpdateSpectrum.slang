@@ -12,7 +12,6 @@ cbuffer RootConsant : register(b0)
 Texture3D<float4> textures[4096] : register(t0);
 
 RWTexture3D<float4> spectrumTexture : register(u0);
-//RWTexture2D<float4> SlopeTexture : register(u1);
 
 // https://www.tutorialspoint.com/cplusplus-program-to-perform-complex-number-multiplication
 float2 ComplexMult(float2 a, float2 b) {

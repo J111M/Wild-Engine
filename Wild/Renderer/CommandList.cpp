@@ -74,6 +74,7 @@ namespace Wild
                 static_cast<UINT>(rootIndex), context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
             break;
         case PipelineStateType::Compute:
+        case PipelineStateType::Raytracing:
             m_commandList->SetComputeRootDescriptorTable(
                 static_cast<UINT>(rootIndex), context->GetCbvSrvUavAllocator()->GetHeap()->GetGPUDescriptorHandleForHeapStart());
             break;
@@ -90,6 +91,7 @@ namespace Wild
                                                              buffer->GetBuffer()->GetGPUVirtualAddress());
             break;
         case PipelineStateType::Compute:
+        case PipelineStateType::Raytracing:
             m_commandList->SetComputeRootConstantBufferView(static_cast<UINT>(rootIndex),
                                                             buffer->GetBuffer()->GetGPUVirtualAddress());
             break;
@@ -106,6 +108,7 @@ namespace Wild
                                                               buffer->GetBuffer()->GetGPUVirtualAddress());
             break;
         case PipelineStateType::Compute:
+        case PipelineStateType::Raytracing:
             m_commandList->SetComputeRootUnorderedAccessView(static_cast<UINT>(rootIndex),
                                                              buffer->GetBuffer()->GetGPUVirtualAddress());
             break;
@@ -130,6 +133,7 @@ namespace Wild
             m_commandList->SetGraphicsRootDescriptorTable(static_cast<UINT>(rootIndex), textureUav->GetGpuHandle());
             break;
         case PipelineStateType::Compute:
+        case PipelineStateType::Raytracing:
             m_commandList->SetComputeRootDescriptorTable(static_cast<UINT>(rootIndex), textureUav->GetGpuHandle());
             break;
         }
@@ -146,6 +150,7 @@ namespace Wild
                                                              buffer->GetBuffer()->GetGPUVirtualAddress());
             break;
         case PipelineStateType::Compute:
+        case PipelineStateType::Raytracing:
             m_commandList->SetComputeRootShaderResourceView(static_cast<UINT>(rootIndex),
                                                             buffer->GetBuffer()->GetGPUVirtualAddress());
             break;

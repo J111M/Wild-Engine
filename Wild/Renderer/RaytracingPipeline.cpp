@@ -1,5 +1,5 @@
 #include "Renderer/RaytracingPipeline.hpp"
-
+#include <cassert>
 namespace Wild
 {
     RaytracingPipeline::RaytracingPipeline(const PipelineStateSettings& settings, ComPtr<ID3D12RootSignature> rootSignature)
@@ -63,8 +63,8 @@ namespace Wild
 
         auto pipelineConfig = raytracingPipelineDesc.CreateSubobject<CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT>();
         pipelineConfig->Config(settings.raytracingState.rayRecursionDepth);
-
-        device->CreateStateObject(raytracingPipelineDesc, IID_PPV_ARGS(&m_stateObject));
+        
+        ThrowIfFailed(device->CreateStateObject(raytracingPipelineDesc, IID_PPV_ARGS(&m_stateObject)), "Failed to create raytracing state object.");
 
         // Setting up shader binding table
         ComPtr<ID3D12StateObjectProperties> props;
@@ -78,6 +78,9 @@ namespace Wild
 
         // Create ray gen sbt buffer
         void* rayGenId = props->GetShaderIdentifier(entryPoints->rayGen[0].c_str());
+
+        if (!rayGenId) { WD_FATAL("Raygen ID identifier not found: {}", WStringToString(entryPoints->rayGen[0])); }
+
         BufferDesc rayGenDesc{};
         rayGenDesc.bufferSize = sbtEntrySize;
         m_rayGenSBT = std::make_unique<Buffer>(rayGenDesc, BufferType::shaderBindingTable);
@@ -88,6 +91,13 @@ namespace Wild
         for (size_t i = 0; i < entryPoints->miss.size(); i++)
         {
             void* id = props->GetShaderIdentifier(entryPoints->miss[i].c_str());
+
+            if (!id)
+            {
+                WD_FATAL("miss ID identifier not found: {}", WStringToString(entryPoints->miss[i]));
+                continue;
+            }
+
             memcpy(missData.data() + i * sbtEntrySize, id, shaderIdSize);
         }
 
@@ -102,6 +112,13 @@ namespace Wild
         for (size_t i = 0; i < hitGroupNames.size(); i++)
         {
             void* id = props->GetShaderIdentifier(hitGroupNames[i].c_str());
+
+            if (!id)
+            {
+                WD_FATAL("Hit group ID identifier not found: {}", WStringToString(hitGroupNames[i]));
+                continue;
+            }
+
             memcpy(hitGroupData.data() + i * sbtEntrySize, id, shaderIdSize);
         }
 
@@ -109,6 +126,13 @@ namespace Wild
         hitGroupDesc.bufferSize = hitGroupData.size();
         m_hitGroupSBT = std::make_unique<Buffer>(hitGroupDesc, BufferType::shaderBindingTable);
         m_hitGroupSBT->WriteData(hitGroupData.data());
+
+        auto rayGenVA = m_rayGenSBT->GetBuffer()->GetGPUVirtualAddress();
+        auto missVA = m_missSBT->GetBuffer()->GetGPUVirtualAddress();
+        auto hitGroupVA = m_hitGroupSBT->GetBuffer()->GetGPUVirtualAddress();
+        assert(rayGenVA % D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT == 0);
+        assert(missVA % D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT == 0);
+        assert(hitGroupVA % D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT == 0);
 
         // Setup the dispatch description
         m_dispatchDesc.RayGenerationShaderRecord.StartAddress = m_rayGenSBT->GetBuffer()->GetGPUVirtualAddress();

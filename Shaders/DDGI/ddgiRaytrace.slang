@@ -34,9 +34,9 @@ void RayGen() {
     RayPayload payload;
     payload.color = float3(0, 0, 0);
 
-    TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
+    //TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
 
-    output[launchIndex] = float4(float3(1,0,1), 1.0);
+    output[launchIndex] = float4(float3(launchIndex,1), 1.0);
 }
 
 [shader("closesthit")]

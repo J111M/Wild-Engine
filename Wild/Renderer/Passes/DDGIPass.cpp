@@ -29,7 +29,7 @@ namespace Wild
                 settings.raytracingState.payloadSize = sizeof(float) * 3;
                 settings.raytracingState.attributeSize = sizeof(float) * 2;
 
-                settings.raytracingState.rayRecursionDepth = 1;
+                settings.raytracingState.rayRecursionDepth = 3;
 
                 std::vector<Uniform> uniforms;
 
@@ -46,7 +46,7 @@ namespace Wild
                 outputTexture.ranges.emplace_back(outputUAVRange);
                 uniforms.emplace_back(outputTexture);
 
-                auto& pipeline = renderer.GetOrCreatePipeline("DDGI Pass", PipelineStateType::Raytracing, settings, uniforms);
+                auto& pipeline = renderer.GetOrCreatePipeline("Dynamic Diffuse Global Illumination Pass", PipelineStateType::Raytracing, settings, uniforms);
                 list.SetPipelineState(pipeline);
                 list.BeginRender("Dynamic Diffuse Global Illumination pass");
 
@@ -59,7 +59,9 @@ namespace Wild
 
                 list.EndRender();
 
-                // renderer.compositeTexture = passData.finalTex;
+                passData.finalTex->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+                renderer.compositeTexture = passData.finalTex;
             });
     }
 

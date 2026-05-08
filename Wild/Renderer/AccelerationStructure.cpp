@@ -17,28 +17,6 @@ namespace Wild
     uint32_t AccelerationStructureManager::AddBottomLevelAS(D3D12_RAYTRACING_GEOMETRY_DESC* geomDescs, uint32_t geomCount,
                                                             D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS flags)
     {
-        /* D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc = {};
-         geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-         geometryDesc.Triangles.IndexBuffer = indexBuffer->GetIBView()->GetGPUVirtualAddress();
-         geometryDesc.Triangles.IndexCount = static_cast<UINT>(indexBuffer->GetBuffer()->GetDesc().Width) / sizeof(uint32_t);
-         geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
-         geometryDesc.Triangles.Transform3x4 = 0;
-         geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-         geometryDesc.Triangles.VertexCount = static_cast<UINT>(vertexBuffer->GetBuffer()->GetDesc().Width) / sizeof(Vertex);
-         geometryDesc.Triangles.VertexBuffer.StartAddress = vertexBuffer->GetVBView()->GetGPUVirtualAddress();
-         geometryDesc.Triangles.VertexBuffer.StrideInBytes = sizeof(Vertex);*/
-
-        // geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-
-        //// Get the required size for the acceleration structure
-        // D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS buildFlags =
-        //     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-        // D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS topLevelInputs = {};
-        // topLevelInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ ARRAY;
-        // topLevelInputs.Flags = buildFlags;
-        // topLevelInputs.NumDescs = 1;
-        // topLevelInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-
         BLASEntry entry{};
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
@@ -71,6 +49,8 @@ namespace Wild
         buildDesc.DestAccelerationStructureData = entry.result->GetBuffer()->GetGPUVirtualAddress();
 
         auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
+
+        list.GetList4()->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
 
         D3D12_RESOURCE_BARRIER barrier = {};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;

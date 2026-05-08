@@ -98,13 +98,11 @@ namespace Wild
                     D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc = {};
                     geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
                     geometryDesc.Triangles.IndexBuffer = mesh.GetIndexBuffer()->GetIBView()->GetGPUVirtualAddress();
-                    geometryDesc.Triangles.IndexCount =
-                        static_cast<UINT>(mesh.GetIndexBuffer()->GetBuffer()->GetDesc().Width) / sizeof(uint32_t);
+                    geometryDesc.Triangles.IndexCount = static_cast<UINT>(meshIndices.size());
                     geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
                     geometryDesc.Triangles.Transform3x4 = 0;
                     geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-                    geometryDesc.Triangles.VertexCount =
-                        static_cast<UINT>(mesh.GetVertexBuffer()->GetBuffer()->GetDesc().Width) / sizeof(Vertex);
+                    geometryDesc.Triangles.VertexCount = meshVertex.size();
                     geometryDesc.Triangles.VertexBuffer.StartAddress =
                         mesh.GetVertexBuffer()->GetVBView()->GetGPUVirtualAddress();
                     geometryDesc.Triangles.VertexBuffer.StrideInBytes = sizeof(Vertex);
