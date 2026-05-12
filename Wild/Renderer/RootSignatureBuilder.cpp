@@ -74,14 +74,14 @@ namespace Wild
         return *this;
     }
 
-    ComPtr<ID3D12RootSignature> RootSignatureBuilder::Build(ID3D12Device* device)
+    ComPtr<ID3D12RootSignature> RootSignatureBuilder::Build(ID3D12Device* device, D3D12_ROOT_SIGNATURE_FLAGS rootFlag)
     {
         D3D12_ROOT_SIGNATURE_DESC desc = {};
         desc.NumParameters = static_cast<UINT>(m_params.size());
         desc.pParameters = m_params.data();
         desc.NumStaticSamplers = static_cast<UINT>(m_staticSamplers.size());
         desc.pStaticSamplers = m_staticSamplers.data();
-        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+        desc.Flags = rootFlag;
 
         ComPtr<ID3DBlob> signature, error;
         D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);

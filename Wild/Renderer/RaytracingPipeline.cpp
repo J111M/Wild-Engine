@@ -3,9 +3,7 @@
 namespace Wild
 {
     RaytracingPipeline::RaytracingPipeline(const PipelineStateSettings& settings, ComPtr<ID3D12RootSignature> rootSignature)
-    {
-        InitializeSBT(settings, rootSignature);
-    }
+    { InitializeSBT(settings, rootSignature); }
 
     void RaytracingPipeline::InitializeSBT(const PipelineStateSettings& settings, ComPtr<ID3D12RootSignature> rootSignature)
     {
@@ -63,17 +61,19 @@ namespace Wild
 
         auto pipelineConfig = raytracingPipelineDesc.CreateSubobject<CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT>();
         pipelineConfig->Config(settings.raytracingState.rayRecursionDepth);
-        
-        ThrowIfFailed(device->CreateStateObject(raytracingPipelineDesc, IID_PPV_ARGS(&m_stateObject)), "Failed to create raytracing state object.");
+
+        ThrowIfFailed(device->CreateStateObject(raytracingPipelineDesc, IID_PPV_ARGS(&m_stateObject)),
+                      "Failed to create raytracing state object.");
 
         // Setting up shader binding table
         ComPtr<ID3D12StateObjectProperties> props;
 
         // Querry for property interface
-        m_stateObject.As(&props);
+        ThrowIfFailed(m_stateObject.As(&props), "Failed to querry rt properties.");
 
         constexpr UINT shaderIdSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
         constexpr UINT sbtAlignment = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
+        constexpr UINT tblAlignment = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
         constexpr UINT sbtEntrySize = (shaderIdSize + sbtAlignment - 1) & ~(sbtAlignment - 1);
 
         // Create ray gen sbt buffer
@@ -84,7 +84,11 @@ namespace Wild
         BufferDesc rayGenDesc{};
         rayGenDesc.bufferSize = sbtEntrySize;
         m_rayGenSBT = std::make_unique<Buffer>(rayGenDesc, BufferType::shaderBindingTable);
-        m_rayGenSBT->WriteData(rayGenId);
+        ID3D12Resource* rgenRes = m_rayGenSBT->GetBuffer();
+        void* mapped = nullptr;
+        rgenRes->Map(0, nullptr, &mapped);
+        memcpy(mapped, rayGenId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+        rgenRes->Unmap(0, nullptr);
 
         // Miss table
         std::vector<uint8_t> missData(sbtEntrySize * entryPoints->miss.size());
@@ -127,20 +131,17 @@ namespace Wild
         m_hitGroupSBT = std::make_unique<Buffer>(hitGroupDesc, BufferType::shaderBindingTable);
         m_hitGroupSBT->WriteData(hitGroupData.data());
 
-        auto rayGenVA = m_rayGenSBT->GetBuffer()->GetGPUVirtualAddress();
-        auto missVA = m_missSBT->GetBuffer()->GetGPUVirtualAddress();
-        auto hitGroupVA = m_hitGroupSBT->GetBuffer()->GetGPUVirtualAddress();
-        assert(rayGenVA % D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT == 0);
-        assert(missVA % D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT == 0);
-        assert(hitGroupVA % D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT == 0);
-
         // Setup the dispatch description
         m_dispatchDesc.RayGenerationShaderRecord.StartAddress = m_rayGenSBT->GetBuffer()->GetGPUVirtualAddress();
         m_dispatchDesc.RayGenerationShaderRecord.SizeInBytes = sbtEntrySize;
 
-        m_dispatchDesc.MissShaderTable.StartAddress = m_missSBT->GetBuffer()->GetGPUVirtualAddress();
-        m_dispatchDesc.MissShaderTable.SizeInBytes = sbtEntrySize * static_cast<UINT>(entryPoints->miss.size());
-        m_dispatchDesc.MissShaderTable.StrideInBytes = sbtEntrySize;
+        if (entryPoints->miss.empty()) { m_dispatchDesc.MissShaderTable = {}; }
+        else
+        {
+            m_dispatchDesc.MissShaderTable.StartAddress = m_missSBT->GetBuffer()->GetGPUVirtualAddress();
+            m_dispatchDesc.MissShaderTable.SizeInBytes = sbtEntrySize * static_cast<UINT>(entryPoints->miss.size());
+            m_dispatchDesc.MissShaderTable.StrideInBytes = sbtEntrySize;
+        }
 
         m_dispatchDesc.HitGroupTable.StartAddress = m_hitGroupSBT->GetBuffer()->GetGPUVirtualAddress();
         m_dispatchDesc.HitGroupTable.SizeInBytes = sbtEntrySize * (UINT)hitGroupNames.size();

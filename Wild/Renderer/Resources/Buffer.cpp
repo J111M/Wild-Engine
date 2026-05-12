@@ -108,12 +108,13 @@ namespace Wild
 
         if (device7)
         {
-            device7->CreateCommittedResource(&heapProps,
-                                             D3D12_HEAP_FLAG_NONE,
-                                             &desc,
-                                             D3D12_RESOURCE_STATE_GENERIC_READ,
-                                             nullptr,
-                                             IID_PPV_ARGS(&m_resource->Handle()));
+            ThrowIfFailed(device7->CreateCommittedResource(&heapProps,
+                                                           D3D12_HEAP_FLAG_NONE,
+                                                           &desc,
+                                                           D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                           nullptr,
+                                                           IID_PPV_ARGS(&m_resource->Handle())),
+                          "Failed to create shader binding table buffer.");
         }
     }
 

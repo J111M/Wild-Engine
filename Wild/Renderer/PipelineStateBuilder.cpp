@@ -118,7 +118,12 @@ namespace Wild
             }
         }
 
-        m_rootSignature = builder.Build(gfxContext->GetDevice().Get());
+        // If the pipeline is using raytracing use default flag for every other pipeline use the input assembler
+        if (m_type == PipelineStateType::Raytracing)
+            m_rootSignature = builder.Build(gfxContext->GetDevice().Get(), D3D12_ROOT_SIGNATURE_FLAG_NONE);
+        else
+            m_rootSignature =
+                builder.Build(gfxContext->GetDevice().Get(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
     }
 
     void PipelineState::CreateGraphicsPSO()
@@ -413,7 +418,5 @@ namespace Wild
     }
 
     void PipelineState::CreateRaytracingPipeline()
-    {
-        m_rtPipeline = std::make_shared<RaytracingPipeline>(m_settings, m_rootSignature);
-    }
+    { m_rtPipeline = std::make_shared<RaytracingPipeline>(m_settings, m_rootSignature); }
 } // namespace Wild

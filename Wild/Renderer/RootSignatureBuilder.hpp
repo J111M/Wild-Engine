@@ -25,7 +25,7 @@ namespace Wild
         RootSignatureBuilder& AddStaticSampler(uint32_t shaderRegister, const SamplerState& samplerState, uint32_t space = 0,
                                                D3D12_SHADER_VISIBILITY visibility = D3D12_SHADER_VISIBILITY_PIXEL);
 
-        ComPtr<ID3D12RootSignature> Build(ID3D12Device* device);
+        ComPtr<ID3D12RootSignature> Build(ID3D12Device* device, D3D12_ROOT_SIGNATURE_FLAGS rootFlag);
 
       private:
         std::vector<D3D12_ROOT_PARAMETER> m_params;
