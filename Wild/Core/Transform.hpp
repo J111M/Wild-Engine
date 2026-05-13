@@ -8,6 +8,7 @@
 
 #include <entt/entt.hpp>
 
+#include <optional>
 #include <string>
 
 namespace Wild
@@ -60,6 +61,8 @@ namespace Wild
 
         void MarkDirty();
 
+        void SetTlasIndex(uint32_t index) { m_tlasIndex = index; }
+
         std::string Name{};
 
       private:
@@ -70,6 +73,9 @@ namespace Wild
         glm::mat4 m_matrix = {1.0f};
 
         bool m_matrixUpdated = false;
+
+        // Optional index for raytraced objects
+        std::optional<uint32_t> m_tlasIndex;
 
         Entity m_entity;
         Entity m_parent{entt::null};

@@ -109,10 +109,14 @@ namespace Wild
 
                     geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
-                    const uint32_t index = engine.GetAccelerationStructureManager()->AddBottomLevelAS(
+                    const uint32_t blasIndex = engine.GetAccelerationStructureManager()->AddBottomLevelAS(
                         &geometryDesc, 1, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE);
 
-                    engine.GetAccelerationStructureManager()->AddTopLevelAS(index, transform.GetWorldMatrix());
+                    const uint32_t tlasIndex =
+                        engine.GetAccelerationStructureManager()->AddTopLevelAS(blasIndex, transform.GetWorldMatrix());
+
+                    // Bind tlas index to the transform component
+                    transform.SetTlasIndex(tlasIndex);
                 }
 
                 // auto& resourceSystem = engine.GetResourceSystems().m_meshResourceSystem;
@@ -179,10 +183,13 @@ namespace Wild
 
             geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
-            const uint32_t index = engine.GetAccelerationStructureManager()->AddBottomLevelAS(
+            const uint32_t blasIndex = engine.GetAccelerationStructureManager()->AddBottomLevelAS(
                 &geometryDesc, 1, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE);
 
-            engine.GetAccelerationStructureManager()->AddTopLevelAS(index, transform.GetWorldMatrix());
+            const uint32_t tlasIndex =
+                engine.GetAccelerationStructureManager()->AddTopLevelAS(blasIndex, transform.GetWorldMatrix());
+
+            transform.SetTlasIndex(tlasIndex);
         }
 
         // auto& resourceSystem = engine.GetResourceSystems().m_meshResourceSystem;

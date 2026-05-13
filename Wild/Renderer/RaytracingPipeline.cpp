@@ -84,11 +84,10 @@ namespace Wild
         BufferDesc rayGenDesc{};
         rayGenDesc.bufferSize = sbtEntrySize;
         m_rayGenSBT = std::make_unique<Buffer>(rayGenDesc, BufferType::shaderBindingTable);
-        ID3D12Resource* rgenRes = m_rayGenSBT->GetBuffer();
-        void* mapped = nullptr;
-        rgenRes->Map(0, nullptr, &mapped);
-        memcpy(mapped, rayGenId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-        rgenRes->Unmap(0, nullptr);
+
+        m_rayGenSBT->Map();
+        m_rayGenSBT->WriteData(rayGenId);
+        m_rayGenSBT->Unmap();
 
         // Miss table
         std::vector<uint8_t> missData(sbtEntrySize * entryPoints->miss.size());
@@ -109,7 +108,10 @@ namespace Wild
         BufferDesc missDesc{};
         missDesc.bufferSize = missData.size();
         m_missSBT = std::make_unique<Buffer>(missDesc, BufferType::shaderBindingTable);
+
+        m_missSBT->Map();
         m_missSBT->WriteData(missData.data());
+        m_missSBT->Unmap();
 
         // Combined hit group table
         std::vector<uint8_t> hitGroupData(sbtEntrySize * hitGroupNames.size());
@@ -129,7 +131,10 @@ namespace Wild
         BufferDesc hitGroupDesc{};
         hitGroupDesc.bufferSize = hitGroupData.size();
         m_hitGroupSBT = std::make_unique<Buffer>(hitGroupDesc, BufferType::shaderBindingTable);
+
+        m_hitGroupSBT->Map();
         m_hitGroupSBT->WriteData(hitGroupData.data());
+        m_hitGroupSBT->Unmap();
 
         // Setup the dispatch description
         m_dispatchDesc.RayGenerationShaderRecord.StartAddress = m_rayGenSBT->GetBuffer()->GetGPUVirtualAddress();

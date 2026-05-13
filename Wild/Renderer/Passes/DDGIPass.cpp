@@ -46,7 +46,8 @@ namespace Wild
                 outputTexture.ranges.emplace_back(outputUAVRange);
                 uniforms.emplace_back(outputTexture);
 
-                auto& pipeline = renderer.GetOrCreatePipeline("Dynamic Diffuse Global Illumination Pass", PipelineStateType::Raytracing, settings, uniforms);
+                auto& pipeline = renderer.GetOrCreatePipeline(
+                    "Dynamic Diffuse Global Illumination Pass", PipelineStateType::Raytracing, settings, uniforms);
                 list.SetPipelineState(pipeline);
                 list.BeginRender("Dynamic Diffuse Global Illumination pass");
 

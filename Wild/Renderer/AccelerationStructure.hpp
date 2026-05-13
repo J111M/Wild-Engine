@@ -21,24 +21,14 @@ namespace Wild
         uint8_t mask;
     };
 
-    class AccelerationStructure
-    {
-      public:
-        AccelerationStructure();
-        ~AccelerationStructure() {};
-
-      private:
-        BLASEntry m_accelerationStructure{};
-    };
-
     class AccelerationStructureManager : public NonCopyable
     {
       public:
         AccelerationStructureManager();
         ~AccelerationStructureManager() {};
 
-        void AddTopLevelAS(uint32_t blasIndex, const glm::mat4& transform, uint32_t instanceID = 0, uint32_t hitGroupIndex = 0,
-                           uint8_t mask = 0xFF);
+        uint32_t AddTopLevelAS(uint32_t blasIndex, const glm::mat4& transform, uint32_t instanceID = 0,
+                               uint32_t hitGroupIndex = 0, uint8_t mask = 0xFF);
 
         uint32_t AddBottomLevelAS(D3D12_RAYTRACING_GEOMETRY_DESC* geomDescs, uint32_t geomCount,
                                   D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS flags =
@@ -50,9 +40,7 @@ namespace Wild
         void UpdateTLAS();
 
         D3D12_GPU_VIRTUAL_ADDRESS GetTLASAddress() const
-        {
-            return m_tlasResult ? m_tlasResult->GetBuffer()->GetGPUVirtualAddress() : 0;
-        }
+        { return m_tlasResult ? m_tlasResult->GetBuffer()->GetGPUVirtualAddress() : 0; }
 
       private:
         bool m_markDirty = false;
@@ -67,5 +55,7 @@ namespace Wild
         std::unique_ptr<Buffer> m_tlasUpdateScratch;
         std::unique_ptr<Buffer> m_tlasResult;
         UINT64 m_tlasResultSize = 0;
+
+        bool m_raytracingSupported = false;
     };
 } // namespace Wild

@@ -32,6 +32,12 @@ namespace Wild
                 m_matrix = parent.GetWorldMatrix() * localMatrix;
             }
 
+            // If raytraced object is transformed update the acceleration structure
+            if (m_tlasIndex.has_value())
+            {
+                engine.GetAccelerationStructureManager()->UpdateTransform(m_tlasIndex.value(), m_matrix);
+            }
+
             m_matrixUpdated = false;
         }
 
@@ -94,9 +100,7 @@ namespace Wild
     }
 
     void Transform::RemoveChild(Entity child)
-    {
-        m_children.erase(std::remove(m_children.begin(), m_children.end(), child), m_children.end());
-    }
+    { m_children.erase(std::remove(m_children.begin(), m_children.end(), child), m_children.end()); }
 
     void Transform::MarkDirty()
     {
