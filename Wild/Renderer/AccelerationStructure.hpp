@@ -14,11 +14,27 @@ namespace Wild
 
     struct TLASInstance
     {
-        uint32_t blasIndex;
-        glm::mat4 transform;
-        uint32_t instanceID;
-        uint32_t hitGroupIndex;
-        uint8_t mask;
+        uint32_t blasIndex{};
+        glm::mat4 transform{};
+        uint32_t instanceID{};
+        uint32_t hitGroupIndex{};
+        uint8_t mask{};
+    };
+
+    struct MeshInstanceInfo
+    {
+        uint32_t vbHandle{};
+        uint32_t ibHandle{};
+
+        uint32_t albedoView{};
+        uint32_t normalView{};
+        uint32_t roughnessMetallicView{};
+        uint32_t emissiveView{};
+
+        uint32_t ambientOclussionView{};
+        float roughness{};
+        float metallic{};
+        float emissiveStrenght{};
     };
 
     class AccelerationStructureManager : public NonCopyable
@@ -27,8 +43,15 @@ namespace Wild
         AccelerationStructureManager();
         ~AccelerationStructureManager() {};
 
-        uint32_t AddTopLevelAS(uint32_t blasIndex, const glm::mat4& transform, uint32_t instanceID = 0,
-                               uint32_t hitGroupIndex = 0, uint8_t mask = 0xFF);
+        /// <summary>
+        /// Adds mesh info into the mesh info buffer
+        /// </summary>
+        /// <param name="infoDesc">Mesh description contain srv's to the vertex index and material buffer</param>
+        /// <returns>Instance ID of the mesh</returns>
+        uint32_t AddMeshInfo(const MeshInstanceInfo& infoDesc);
+
+        uint32_t AddTopLevelAS(uint32_t blasIndex, const glm::mat4& transform, uint32_t instanceID, uint32_t hitGroupIndex = 0,
+                               uint8_t mask = 0xFF);
 
         uint32_t AddBottomLevelAS(D3D12_RAYTRACING_GEOMETRY_DESC* geomDescs, uint32_t geomCount,
                                   D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS flags =
@@ -42,7 +65,14 @@ namespace Wild
         D3D12_GPU_VIRTUAL_ADDRESS GetTLASAddress() const
         { return m_tlasResult ? m_tlasResult->GetBuffer()->GetGPUVirtualAddress() : 0; }
 
+        std::shared_ptr<Buffer> GetMeshIdBuffer() const { return m_meshIdBuffer; }
+
       private:
+        // Update capacity of the mesh id buffer
+        // void Grow(uint32_t newCapacity);
+
+        static constexpr uint32_t m_initialCapacity = 1024;
+
         bool m_markDirty = false;
         bool m_tlasIsBuild = false;
 
@@ -55,6 +85,9 @@ namespace Wild
         std::unique_ptr<Buffer> m_tlasUpdateScratch;
         std::unique_ptr<Buffer> m_tlasResult;
         UINT64 m_tlasResultSize = 0;
+
+        std::vector<MeshInstanceInfo> m_tlasMeshData;
+        std::shared_ptr<Buffer> m_meshIdBuffer;
 
         bool m_raytracingSupported = false;
     };

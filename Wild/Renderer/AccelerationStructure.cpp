@@ -7,6 +7,16 @@ namespace Wild
         if (engine.GetGfxContext()->GetCapabilities().SupportsRayTracing()) { m_raytracingSupported = true; }
     }
 
+    uint32_t AccelerationStructureManager::AddMeshInfo(const MeshInstanceInfo& infoDesc)
+    {
+        if (m_raytracingSupported)
+        {
+            m_tlasMeshData.emplace_back(infoDesc);
+
+            return static_cast<uint32_t>(m_tlasMeshData.size() - 1);
+        }
+    }
+
     uint32_t AccelerationStructureManager::AddTopLevelAS(uint32_t blasIndex, const glm::mat4& transform, uint32_t instanceID,
                                                          uint32_t hitGroupIndex, uint8_t mask)
     {
@@ -174,6 +184,13 @@ namespace Wild
                 updateScratchDesc.numOfElements = 1;
                 updateScratchDesc.state = D3D12_RESOURCE_STATE_COMMON;
                 m_tlasUpdateScratch = std::make_unique<Buffer>(updateScratchDesc, BufferType::uav);
+
+                // Update mesh instance buffer
+                BufferDesc desc{};
+                desc.bufferSize = sizeof(MeshInstanceInfo);
+                desc.numOfElements = m_initialCapacity;
+                m_meshIdBuffer = std::make_unique<Buffer>(desc, uav);
+                m_meshIdBuffer->UploadToGPU(m_tlasMeshData.data(), m_tlasMeshData.size() * sizeof(MeshInstanceInfo));
             }
 
             D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};

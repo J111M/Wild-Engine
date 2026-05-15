@@ -32,6 +32,7 @@ namespace Wild
 
         bool HasIndexBuffer() const { return m_hasIndexBuffer; }
 
+        uint32_t GetVertexCount() const { return m_vertexCount; }
         uint32_t GetDrawCount() const { return m_drawCount; }
 
         const Material& GetMaterial() const { return m_material; }
@@ -44,6 +45,7 @@ namespace Wild
         Material m_material{};
 
         bool m_hasIndexBuffer = false;
+        uint32_t m_vertexCount{};
         uint32_t m_drawCount{};
     };
 } // namespace Wild

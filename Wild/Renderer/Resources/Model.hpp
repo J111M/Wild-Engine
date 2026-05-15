@@ -28,6 +28,8 @@ namespace Wild
                           std::vector<uint32_t>& indicesData);
         Material LoadMaterials(fastgltf::Asset& model, fastgltf::Primitive& primitive);
 
+        void AddMeshToTlas(const Mesh& mesh, Transform& transform);
+
         std::vector<Mesh> m_childMeshes{};
 
         std::string m_filePath;

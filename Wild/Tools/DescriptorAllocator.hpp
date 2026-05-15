@@ -58,5 +58,6 @@ namespace Wild
         uint32_t CreateCBV(uint32_t numBytes, const ComPtr<ID3D12Resource> resource);
         uint32_t CreateSRV(const ComPtr<ID3D12Resource> resource, const D3D12_SHADER_RESOURCE_VIEW_DESC* desc);
         uint32_t CreateUAV(const ComPtr<ID3D12Resource> resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* desc);
+        uint32_t CreateMesh(const ComPtr<ID3D12Resource> resource, uint32_t sizeInBytes);
     };
 } // namespace Wild

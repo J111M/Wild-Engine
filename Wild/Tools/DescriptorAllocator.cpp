@@ -57,7 +57,7 @@ namespace Wild
     {
     }
 
-    uint32_t DescriptorAllocatorRtv::CreateRtv(const ComPtr<ID3D12Resource> resource, const D3D12_RENDER_TARGET_VIEW_DESC *desc)
+    uint32_t DescriptorAllocatorRtv::CreateRtv(const ComPtr<ID3D12Resource> resource, const D3D12_RENDER_TARGET_VIEW_DESC* desc)
     {
         if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors)) WD_FATAL("Rtv heap has overflown.");
 
@@ -80,7 +80,7 @@ namespace Wild
     {
     }
 
-    uint32_t DescriptorAllocatorDsv::CreateDsv(const ComPtr<ID3D12Resource> resource, const D3D12_DEPTH_STENCIL_VIEW_DESC *desc)
+    uint32_t DescriptorAllocatorDsv::CreateDsv(const ComPtr<ID3D12Resource> resource, const D3D12_DEPTH_STENCIL_VIEW_DESC* desc)
     {
         if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors)) WD_FATAL("Rtv heap has overflown.");
 
@@ -123,7 +123,7 @@ namespace Wild
     }
 
     uint32_t DescriptorAllocatorCbvSrvUav::CreateSRV(const ComPtr<ID3D12Resource> resource,
-                                                     const D3D12_SHADER_RESOURCE_VIEW_DESC *desc)
+                                                     const D3D12_SHADER_RESOURCE_VIEW_DESC* desc)
     {
         if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors)) WD_FATAL("Heap has overflown.");
 
@@ -137,7 +137,7 @@ namespace Wild
     }
 
     uint32_t DescriptorAllocatorCbvSrvUav::CreateUAV(const ComPtr<ID3D12Resource> resource,
-                                                     const D3D12_UNORDERED_ACCESS_VIEW_DESC *desc)
+                                                     const D3D12_UNORDERED_ACCESS_VIEW_DESC* desc)
     {
         if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors)) WD_FATAL("Heap has overflown.");
 
@@ -150,4 +150,21 @@ namespace Wild
         return nextFreeHandle;
     }
 
+    uint32_t DescriptorAllocatorCbvSrvUav::CreateMesh(const ComPtr<ID3D12Resource> resource, uint32_t sizeInBytes)
+    {
+        if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors)) WD_FATAL("Heap has overflown.");
+
+        const uint32_t nextFreeHandle = NextFreeHandle();
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+        srv.Format = DXGI_FORMAT_R32_TYPELESS;
+        srv.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+        srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srv.Buffer.NumElements = sizeInBytes / 4;
+        srv.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+
+        engine.GetGfxContext()->GetDevice()->CreateShaderResourceView(resource.Get(), &srv, CpuHandle(nextFreeHandle));
+
+        return nextFreeHandle;
+    }
 } // namespace Wild

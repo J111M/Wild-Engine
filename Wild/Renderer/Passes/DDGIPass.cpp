@@ -26,7 +26,7 @@ namespace Wild
                 settings.ShaderState.rayTracingShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/DDGI/ddgiRaytrace.slang");
 
-                settings.raytracingState.payloadSize = sizeof(float) * 3;
+                settings.raytracingState.payloadSize = 44;
                 settings.raytracingState.attributeSize = sizeof(float) * 2;
 
                 settings.raytracingState.rayRecursionDepth = 3;
@@ -46,6 +46,18 @@ namespace Wild
                 outputTexture.ranges.emplace_back(outputUAVRange);
                 uniforms.emplace_back(outputTexture);
 
+                Uniform meshInfoBuffer{1, 0, RootParams::RootResourceType::ShaderResourceView};
+                uniforms.emplace_back(meshInfoBuffer);
+
+                Uniform bindlessSRVs{0, 1, RootParams::RootResourceType::DescriptorTable};
+                CD3DX12_DESCRIPTOR_RANGE range{};
+                range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+                bindlessSRVs.ranges.emplace_back(range);
+                uniforms.emplace_back(bindlessSRVs);
+
+                Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
+                uniforms.emplace_back(staticSampler);
+
                 auto& pipeline = renderer.GetOrCreatePipeline(
                     "Dynamic Diffuse Global Illumination Pass", PipelineStateType::Raytracing, settings, uniforms);
                 list.SetPipelineState(pipeline);
@@ -54,6 +66,8 @@ namespace Wild
                 list.SetRootConstant<DDGIRC>(0, m_rc);
                 list.GetList()->SetComputeRootShaderResourceView(1, engine.GetAccelerationStructureManager()->GetTLASAddress());
                 list.SetUnorderedAccessView(2, passData.finalTex);
+                list.SetShaderResourceView(3, engine.GetAccelerationStructureManager()->GetMeshIdBuffer().get());
+                list.SetBindlessHeap(4);
 
                 // Modify to probe size
                 list.Dispatch(desc.width, desc.height, 1);

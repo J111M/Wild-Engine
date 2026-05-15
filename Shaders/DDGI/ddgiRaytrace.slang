@@ -1,5 +1,8 @@
 struct RayPayload {
     float3 color;
+    float3 hitPos;
+    float3 normal;
+    float2 uv;
 };
 
 cbuffer CameraConstants : register(b0) {
@@ -11,6 +14,34 @@ RaytracingAccelerationStructure tlas : register(t0);
 
 RWTexture2D<float4> output : register(u0);
 
+struct MeshInstanceInfo {
+    uint vbHandle;
+    uint ibHandle;
+
+    uint albedoView;
+    uint normalView;
+    uint roughnessMetallicView;
+    uint emissiveView;
+
+    uint ambientOclussionView;
+    float roughness;
+    float metallic;
+    float emissiveStrenght;
+};
+
+StructuredBuffer<MeshInstanceInfo> meshTable : register(t1, space0);
+
+ByteAddressBuffer meshBuffers[] : register(t0, space1);
+Texture2D textures[] : register(t0, space1);
+
+SamplerState linearSampler : register(s0, space0);
+
+static const uint VERTEX_STRIDE = 80;
+static const uint VOFS_POSITION = 0;
+static const uint VOFS_COLOR = 16;
+static const uint VOFS_NORMAL = 32;
+static const uint VOFS_UV = 48;
+static const uint VOFS_TANGENT = 64;
 
 [shader("raygeneration")]
 void RayGen() {
@@ -42,7 +73,42 @@ void RayGen() {
 
 [shader("closesthit")]
 void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes attribs) {
-    payload.color = float3(0.0, 1.0, 0.0);
+    MeshInstanceInfo mesh = meshTable[InstanceID()];
+
+    ByteAddressBuffer vb = meshBuffers[mesh.vbHandle];
+    ByteAddressBuffer ib = meshBuffers[mesh.ibHandle];
+
+    uint3 tri = ib.Load3(PrimitiveIndex() * 12);
+
+    uint v0 = tri.x * VERTEX_STRIDE;
+    uint v1 = tri.y * VERTEX_STRIDE;
+    uint v2 = tri.z * VERTEX_STRIDE;
+
+    // Barycentrics
+    float3 b = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y,
+                      attribs.barycentrics.x,
+                      attribs.barycentrics.y);
+
+    float3 n0 = asfloat(vb.Load3(v0 + VOFS_NORMAL));
+    float3 n1 = asfloat(vb.Load3(v1 + VOFS_NORMAL));
+    float3 n2 = asfloat(vb.Load3(v2 + VOFS_NORMAL));
+
+    float2 uv0 = asfloat(vb.Load2(v0 + VOFS_UV));
+    float2 uv1 = asfloat(vb.Load2(v1 + VOFS_UV));
+    float2 uv2 = asfloat(vb.Load2(v2 + VOFS_UV));
+
+    float3 normalOS = n0 * b.x + n1 * b.y + n2 * b.z;
+    float2 uv = uv0 * b.x + uv1 * b.y + uv2 * b.z;
+
+    float3 normalWS = normalize(mul(normalOS, (float3x3)WorldToObject4x3()));
+
+
+    // Hit position in world space
+    payload.hitPos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+    
+    payload.uv = attribs.barycentrics;
+
+    payload.color = normalWS * 0.5 + 0.5;
 }
 
 [shader("miss")]

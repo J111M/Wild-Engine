@@ -6,6 +6,7 @@
 #include "Tools/Common3d12.hpp"
 #include "Tools/View3d12.hpp"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -44,6 +45,8 @@ namespace Wild
         DXGI_FORMAT format;
         // D3D12_RESOURCE_FLAGS flags;
 
+        bool useBindless = false;
+
         D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 
         std::string name = "default";
@@ -53,7 +56,7 @@ namespace Wild
     class Buffer
     {
       public:
-        Buffer(BufferDesc desc, BufferType type = BufferType::default);
+        Buffer(const BufferDesc& desc, BufferType type = BufferType::default);
         ~Buffer();
 
         void CreateIndexBuffer(std::vector<uint32_t> indices);
@@ -73,6 +76,7 @@ namespace Wild
         std::shared_ptr<IndexBufferView> GetIBView() const;
         std::shared_ptr<ConstantBufferView> GetCBView() const;
         std::shared_ptr<UnorderedAccessView> GetUAView() const;
+        std::shared_ptr<ShaderResourceView> GetSRView() const;
 
       private:
         BufferDesc m_desc;
@@ -90,6 +94,9 @@ namespace Wild
         std::shared_ptr<IndexBufferView> m_ibView;
         std::shared_ptr<ConstantBufferView> m_cbView;
         std::shared_ptr<UnorderedAccessView> m_uaView;
+
+        // Srv for bindless raytracing heap
+        std::shared_ptr<ShaderResourceView> m_srView;
 
         void* m_data = nullptr;
 

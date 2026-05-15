@@ -5,10 +5,10 @@
 
 namespace Wild
 {
-    Buffer::Buffer(BufferDesc desc, BufferType type)
+    Buffer::Buffer(const BufferDesc& desc, BufferType type)
     {
-        desc.type = type;
         m_desc = desc;
+        m_desc.type = type;
 
         m_dataSize = m_desc.bufferSize;
 
@@ -161,6 +161,19 @@ namespace Wild
         gfxContext->GetCommandQueue(QueueType::Direct)->WaitForFence();
 
         m_ibView = std::make_shared<IndexBufferView>(m_resource->Handle(), m_desc.bufferSize, DXGI_FORMAT_R32_UINT);
+
+        if (m_desc.useBindless)
+        {
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+            srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.Buffer.FirstElement = 0;
+            srvDesc.Buffer.NumElements = static_cast<UINT>(m_desc.bufferSize / 4); // R32 raw
+            srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+
+            m_srView = std::make_shared<ShaderResourceView>(m_resource->Handle(), srvDesc);
+        }
     }
 
     // Allocate data
@@ -264,6 +277,14 @@ namespace Wild
         if (m_uaView) { return m_uaView; }
 
         WD_WARN("Trying to access invalid unordered access buffer view.");
+        return nullptr;
+    }
+
+    std::shared_ptr<ShaderResourceView> Buffer::GetSRView() const
+    {
+        if (m_srView) { return m_srView; }
+
+        WD_WARN("Trying to access invalid shader resource view.");
         return nullptr;
     }
 } // namespace Wild
