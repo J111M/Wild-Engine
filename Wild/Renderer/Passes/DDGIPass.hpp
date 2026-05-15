@@ -6,6 +6,8 @@ namespace Wild
     {
         glm::mat4 inverseView{};
         glm::mat4 inverseProj{};
+
+        uint32_t environmentView{};
     };
 
     struct DDGIPassData

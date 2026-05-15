@@ -31,10 +31,10 @@ namespace Wild
         uint32_t roughnessMetallicView{};
         uint32_t emissiveView{};
 
-        uint32_t ambientOclussionView{};
+        uint32_t ambientOcclussionView{};
         float roughness{};
         float metallic{};
-        float emissiveStrenght{};
+        float emissiveStrength{};
     };
 
     class AccelerationStructureManager : public NonCopyable

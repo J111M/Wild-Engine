@@ -60,10 +60,10 @@ namespace Wild
         Texture* specularMap{};
         Texture* brdfLut{};
 
+        Texture* environmentMap{};
+
         Texture* compositeTexture = nullptr;
         Texture* viewportTextures[MAX_CAMERAS]{};
-
-        // Raytracing acceleration structures
 
       private:
         Entity m_activeCamera{};

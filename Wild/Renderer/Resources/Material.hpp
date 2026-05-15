@@ -17,7 +17,7 @@ namespace Wild {
 
 		float roughness{};
 		float metallic{};
-		float emissiveStrenght{};
+		float emissiveStrength{};
 
 		glm::vec3 albedo{};
 		std::string name{};

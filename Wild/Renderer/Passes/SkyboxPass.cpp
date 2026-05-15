@@ -18,6 +18,7 @@ namespace Wild
             m_cameraProjection[i] = std::make_unique<Buffer>(bufferDesc, BufferType::constant);
         }
 
+        // TODO remvoe skybox texture because it is wasted data
         // Initial equirectangular texture map used as skybox
         m_skyboxTexture = std::make_unique<Texture>(filePath, TextureType::SKYBOX, 0, DXGI_FORMAT_R32G32B32A32_FLOAT);
 
@@ -523,6 +524,7 @@ namespace Wild
                     renderer.irradianceMap = passData.irradianceTexture;
                     renderer.specularMap = m_specularMap.get();
                     renderer.brdfLut = m_brdfLut.get();
+                    renderer.environmentMap = passData.environmentCubeTexture;
                     ShouldGenerateNewIBL = false;
                 }
             });

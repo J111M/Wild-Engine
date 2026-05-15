@@ -8,6 +8,8 @@ struct RayPayload {
 cbuffer CameraConstants : register(b0) {
     column_major float4x4 viewInverse;
     column_major float4x4 projInverse;
+
+    uint environmentView;
 };
 
 RaytracingAccelerationStructure tlas : register(t0);
@@ -23,16 +25,17 @@ struct MeshInstanceInfo {
     uint roughnessMetallicView;
     uint emissiveView;
 
-    uint ambientOclussionView;
+    uint ambientOcclussionView;
     float roughness;
     float metallic;
-    float emissiveStrenght;
+    float emissiveStrength;
 };
 
 StructuredBuffer<MeshInstanceInfo> meshTable : register(t1, space0);
 
 ByteAddressBuffer meshBuffers[] : register(t0, space1);
-Texture2D textures[] : register(t0, space1);
+Texture2D textures[] : register(t0, space2);
+TextureCube cubeTextures[] : register(t0, space3);
 
 SamplerState linearSampler : register(s0, space0);
 
@@ -102,16 +105,37 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
 
     float3 normalWS = normalize(mul(normalOS, (float3x3)WorldToObject4x3()));
 
+    float3 albedo = (mesh.albedoView != 0)
+        ? textures[NonUniformResourceIndex(mesh.albedoView)].SampleLevel(linearSampler, uv, 0).rgb
+    : float3(1, 1, 1);
+
+    float2 rm = (mesh.roughnessMetallicView != 0)
+        ? textures[NonUniformResourceIndex(mesh.roughnessMetallicView)].SampleLevel(linearSampler, uv, 0).gb
+                                                  : float2(mesh.roughness, mesh.metallic);
+
+    float3 emissive = (mesh.emissiveView != 0)
+        ? textures[NonUniformResourceIndex(mesh.emissiveView)].SampleLevel(linearSampler, uv, 0).rgb
+    : float3(0, 0, 0);
+
+    float ao = (mesh.ambientOcclussionView != 0)
+        ? textures[NonUniformResourceIndex(mesh.ambientOcclussionView)].SampleLevel(linearSampler, uv, 0).r
+    : 1.0;
+
+    float roughness = rm.x;
+    float metallic = rm.y;
+    emissive *= mesh.emissiveStrength;
 
     // Hit position in world space
     payload.hitPos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     
     payload.uv = attribs.barycentrics;
 
-    payload.color = normalWS * 0.5 + 0.5;
+    payload.color = albedo;
 }
 
 [shader("miss")]
 void Miss(inout RayPayload payload) {
-    payload.color = float3(1.0, 0.0, 0.0);
+    float3 dir = WorldRayDirection();
+    dir.y = -dir.y;
+    payload.color = (environmentView != 0) ? cubeTextures[NonUniformResourceIndex(environmentView)].SampleLevel(linearSampler, dir, 0).rgb : float3(0, 0, 0);
 }

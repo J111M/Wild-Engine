@@ -10,20 +10,22 @@ namespace Wild
 {
     struct SkyPassData
     {
-        Texture *finalTexture;
-        Texture *depthTexture;
+        Texture* finalTexture;
+        Texture* depthTexture;
+
+        uint32_t skyView{};
     };
 
     struct IBLPassData
     {
-        Texture *environmentCubeTexture;
-        Texture *irradianceTexture;
+        Texture* environmentCubeTexture;
+        Texture* irradianceTexture;
     };
 
     struct IrradiancePassData
     {
-        Texture *environmentCubeTexture;
-        Texture *irradianceTexture;
+        Texture* environmentCubeTexture;
+        Texture* irradianceTexture;
     };
 
     struct CameraProjection

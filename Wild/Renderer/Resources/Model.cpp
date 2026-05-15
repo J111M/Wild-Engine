@@ -292,7 +292,7 @@ namespace Wild
 
         materials.roughness = material.pbrData.roughnessFactor;
         materials.metallic = material.pbrData.metallicFactor;
-        materials.emissiveStrenght = material.emissiveStrength;
+        materials.emissiveStrength = material.emissiveStrength;
 
         if (material.pbrData.baseColorTexture.has_value())
         {
@@ -402,9 +402,9 @@ namespace Wild
 
         if (material.m_emissive) infoDesc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
 
-        if (material.m_occlusion) infoDesc.ambientOclussionView = material.m_occlusion->GetSrv()->BindlessView();
+        if (material.m_occlusion) infoDesc.ambientOcclussionView = material.m_occlusion->GetSrv()->BindlessView();
 
-        infoDesc.emissiveStrenght = material.emissiveStrenght;
+        infoDesc.emissiveStrength = material.emissiveStrength;
         infoDesc.metallic = material.metallic;
         infoDesc.roughness = material.roughness;
 
