@@ -11,6 +11,8 @@ namespace Wild
         assert(counts.x > 0 && counts.y > 0 && counts.z > 0);
         assert(spacing.x > 0.0f && spacing.y > 0.0f && spacing.z > 0.0f);
         Generate();
+
+        AllocateProbes();
     }
 
     void ProbeSystem::SetOrigin(const glm::vec3& origin)
@@ -20,7 +22,14 @@ namespace Wild
     }
 
     void ProbeSystem::AllocateProbes() {
+        m_probeStructure.reset();
 
+        // Create structured probe buffer
+        BufferDesc desc{};
+        desc.bufferSize = sizeof(Probe);
+        desc.numOfElements = m_probes.size();
+        m_probeStructure = std::make_shared<Buffer>(desc, uav);
+        m_probeStructure->UploadToGPU(m_probes.data(), m_probes.size() * sizeof(Probe));
     }
 
     void ProbeSystem::Generate()
@@ -32,7 +41,7 @@ namespace Wild
                 for (int x = 0; x < m_counts.x; ++x)
                 {
                     Probe p{};
-                    p.position = m_origin + glm::vec3(x, y, z) * m_spacing;
+                    p.position = glm::vec4(m_origin, 1.0f) + glm::vec4(x, y, z, 1.0f) * glm::vec4(m_spacing, 1.0f);
                     m_probes.push_back(p);
                 }
     }

@@ -33,6 +33,7 @@ namespace Wild
                     settings.ShaderState.rayTracingShader =
                         engine.GetShaderTracker()->GetOrCreateShader("Shaders/DDGI/ddgiRaytrace.slang");
 
+                    // TODO reflect with shader struct
                     settings.raytracingState.payloadSize = 44;
                     settings.raytracingState.attributeSize = sizeof(float) * 2;
 

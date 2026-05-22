@@ -10,8 +10,7 @@ namespace Wild
       public:
         struct Probe
         {
-            glm::vec3 position;
-            uint32_t _pad;
+            glm::vec4 position;
         };
 
         ProbeSystem(const glm::vec3& origin, const glm::vec3& spacing, const glm::ivec3& counts);
@@ -23,6 +22,7 @@ namespace Wild
         uint32_t GetProbeCount() const noexcept { return static_cast<uint32_t>(m_counts.x * m_counts.y * m_counts.z); }
 
         const std::vector<Probe>& GetProbes() const noexcept { return m_probes; }
+        std::shared_ptr<Buffer> GetProbeBuffer() { return m_probeStructure; }
 
         size_t GetByteSize() const noexcept { return m_probes.size() * sizeof(Probe); }
 
@@ -34,6 +34,8 @@ namespace Wild
         void Generate();
 
         //bool m_markDirty = false;
+
+        std::shared_ptr<Buffer> m_probeStructure{};
 
         glm::vec3 m_origin;
         glm::vec3 m_spacing;
