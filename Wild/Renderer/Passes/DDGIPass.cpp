@@ -22,7 +22,7 @@ namespace Wild
         rg.AddPass<DDGIPassData>(
             "DDGI pass", PassType::Raytracing, [&renderer, desc, this](DDGIPassData& passData, CommandList& list) {
                 // TODO remove temporary bool
-                static bool s_rtEnabled = true;
+                static bool s_rtEnabled = false;
 
                 if (ImGui::IsKeyPressed(ImGuiKey_O, false)) { s_rtEnabled = !s_rtEnabled; }
 
