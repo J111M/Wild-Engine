@@ -45,6 +45,13 @@ target_sources(Wild PRIVATE
 # Sub-directories
 add_subdirectory("Vendor")
 
+add_custom_command(TARGET Wild POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_SOURCE_DIR}/ImGuiSettings.ini
+            $<TARGET_FILE_DIR:Wild>/ImGuiSettings.ini
+    COMMENT "Copying ImGui layout to output directory"
+)
+
 # Clang-Tidy flag
 #set_target_properties(Wild PROPERTIES CXX_CLANG_TIDY "clang-tidy;-checks=clang-diagnostic-*,clang-analyzer-*" )
 

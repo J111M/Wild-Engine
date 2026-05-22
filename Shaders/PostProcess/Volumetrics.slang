@@ -236,6 +236,7 @@ void main(uint3 id: SV_DispatchThreadID)
 
             // Shadow sample
             float visibility = ShadowCalculation(marchPosition);
+            visibility = lerp(0.3, 1.0, visibility);
 
             float3 lightIn = BeersLaw(sigmaA, stepSize) * sunIntensity * visibility;
 

@@ -28,8 +28,12 @@ namespace Wild
 
         void SetOrigin(const glm::vec3& origin);
 
+        // Allocate probes for 1 time for now until a cascade system is implemented
+        void AllocateProbes();
       private:
         void Generate();
+
+        //bool m_markDirty = false;
 
         glm::vec3 m_origin;
         glm::vec3 m_spacing;

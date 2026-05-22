@@ -19,6 +19,10 @@ namespace Wild
         Generate();
     }
 
+    void ProbeSystem::AllocateProbes() {
+
+    }
+
     void ProbeSystem::Generate()
     {
         m_probes.clear();

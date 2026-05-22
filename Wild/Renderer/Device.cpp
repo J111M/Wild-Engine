@@ -73,7 +73,7 @@ namespace Wild
 
         m_descriptorAllocatorsRtv = std::make_shared<DescriptorAllocatorRtv>(m_device, 64);
         m_descriptorAllocatorsDsv = std::make_shared<DescriptorAllocatorDsv>(m_device, 64);
-        m_desciptorAllocatorCbvSrvUav = std::make_shared<DescriptorAllocatorCbvSrvUav>(m_device, 8192);
+        m_desciptorAllocatorCbvSrvUav = std::make_shared<DescriptorAllocatorCbvSrvUav>(m_device, 32768);
 
         m_commandQueue[static_cast<uint32_t>(QueueType::Direct)] =
             std::make_shared<CommandQueue>(m_device, D3D12_COMMAND_LIST_TYPE_DIRECT, "Direct queue");
