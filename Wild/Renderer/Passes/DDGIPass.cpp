@@ -3,7 +3,9 @@
 
 namespace Wild
 {
-    DDGIPass::DDGIPass() {}
+    DDGIPass::DDGIPass() {
+
+    }
 
     void DDGIPass::Add(Renderer& renderer, RenderGraph& rg)
     {

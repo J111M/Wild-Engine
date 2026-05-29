@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Systems/ProbeSystem.hpp"
+
 namespace Wild
 {
     struct DDGIRC
@@ -25,6 +27,8 @@ namespace Wild
         virtual void Update(const float dt) override;
 
       private:
+        std::unique_ptr<ProbeSystem> m_probeSystem;
+
         DDGIRC m_rc{};
     };
 } // namespace Wild
