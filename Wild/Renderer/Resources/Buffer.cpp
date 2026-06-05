@@ -23,6 +23,9 @@ namespace Wild
         case BufferType::shaderBindingTable:
             CreateSBTBuffer();
             break;
+        case BufferType::structured:
+            CreateStructuredBuffer();
+            break;
         default:
             break;
         }
@@ -118,6 +121,50 @@ namespace Wild
         }
     }
 
+    void Buffer::CreateStructuredBuffer()
+    {
+        auto gfxContext = engine.GetGfxContext();
+
+        if (m_desc.bufferSize <= 0 || m_desc.numOfElements <= 0)
+        {
+            WD_ERROR("Structured buffer invalid data size or elements not specified.");
+            return;
+        }
+
+        D3D12_RESOURCE_DESC desc = {};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        desc.Width = static_cast<UINT64>(m_desc.bufferSize) * m_desc.numOfElements;
+        desc.Height = m_desc.height;
+        desc.DepthOrArraySize = m_desc.depth;
+        desc.MipLevels = m_desc.mipLevels;
+        desc.SampleDesc.Count = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+        m_resource = std::make_unique<Resource>(m_desc.state);
+
+        ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+                                                                       D3D12_HEAP_FLAG_NONE,
+                                                                       &desc,
+                                                                       m_desc.state,
+                                                                       nullptr,
+                                                                       IID_PPV_ARGS(&m_resource->Handle())),
+                      "Failed to create structured buffer.");
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+        srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Buffer.FirstElement = 0;
+        srvDesc.Buffer.NumElements = m_desc.numOfElements;
+        srvDesc.Buffer.StructureByteStride = m_desc.bufferSize;
+        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+
+        m_srView = std::make_shared<ShaderResourceView>(m_resource->Handle(), srvDesc);
+
+        if (!m_desc.name.empty()) m_resource->Handle()->SetName(StringToWString(m_desc.name).c_str());
+    }
+
     void Buffer::CreateIndexBuffer(std::vector<uint32_t> indices)
     {
         auto gfxContext = engine.GetGfxContext();
@@ -209,11 +256,13 @@ namespace Wild
 
         auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
+        auto oldState = m_resource->GetCurrentState();
+
         m_resource->Transition(list, D3D12_RESOURCE_STATE_COPY_DEST);
 
         list.GetList()->CopyBufferRegion(m_resource->Handle().Get(), 0, uploadBuffer.Get(), 0, uploadSize);
 
-        m_resource->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        m_resource->Transition(list, oldState);
 
         list.Close();
         gfxContext->GetCommandQueue(QueueType::Direct)->ExecuteList(list);

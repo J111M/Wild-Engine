@@ -3,11 +3,27 @@
 
 namespace Wild
 {
-    DDGIPass::DDGIPass() {
-
-    }
+    DDGIPass::DDGIPass()
+    { m_probeSystem = std::make_unique<ProbeSystem>(glm::vec3(-20.0f, 0.0f, -20.0f), glm::vec3(2.0f), glm::ivec3(16, 8, 16)); }
 
     void DDGIPass::Add(Renderer& renderer, RenderGraph& rg)
+    {
+        AddProbeTracePass(renderer, rg);
+        AddDebugProbePass(renderer, rg);
+    }
+
+    void DDGIPass::Update(const float dt)
+    {
+        Camera* camera = GetActiveCamera();
+
+        if (camera)
+        {
+            m_rc.inverseView = glm::inverse(camera->GetView());
+            m_rc.inverseProj = glm::inverse(camera->GetProjection());
+        }
+    }
+
+    void DDGIPass::AddProbeTracePass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<DDGIPassData>();
         auto* linePass = rg.GetPassData<DDGIPassData, DebugLinePassData>();
@@ -104,14 +120,5 @@ namespace Wild
             });
     }
 
-    void DDGIPass::Update(const float dt)
-    {
-        Camera* camera = GetActiveCamera();
-
-        if (camera)
-        {
-            m_rc.inverseView = glm::inverse(camera->GetView());
-            m_rc.inverseProj = glm::inverse(camera->GetProjection());
-        }
-    }
+    void DDGIPass::AddDebugProbePass(Renderer& renderer, RenderGraph& rg) {}
 } // namespace Wild

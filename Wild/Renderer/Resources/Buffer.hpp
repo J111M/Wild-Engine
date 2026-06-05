@@ -28,6 +28,7 @@ namespace Wild
         constant = 1 << 1,
         uav = 1 << 2,
         shaderBindingTable = 1 << 3,
+        structured = 1 << 4,
     };
 
     struct BufferDesc
@@ -84,6 +85,7 @@ namespace Wild
         void CreateConstantBuffer();
         void CreateUAVBuffer();
         void CreateSBTBuffer();
+        void CreateStructuredBuffer();
 
         std::unique_ptr<Resource> m_resource;
 

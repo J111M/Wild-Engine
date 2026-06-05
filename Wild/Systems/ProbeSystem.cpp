@@ -1,7 +1,7 @@
 #include "Systems/ProbeSystem.hpp"
 
-#include <cstdint>
 #include <cassert>
+#include <cstdint>
 
 namespace Wild
 {
@@ -21,14 +21,15 @@ namespace Wild
         Generate();
     }
 
-    void ProbeSystem::AllocateProbes() {
+    void ProbeSystem::AllocateProbes()
+    {
         m_probeStructure.reset();
 
         // Create structured probe buffer
         BufferDesc desc{};
         desc.bufferSize = sizeof(Probe);
         desc.numOfElements = m_probes.size();
-        m_probeStructure = std::make_shared<Buffer>(desc, uav);
+        m_probeStructure = std::make_shared<Buffer>(desc, structured);
         m_probeStructure->UploadToGPU(m_probes.data(), m_probes.size() * sizeof(Probe));
     }
 
