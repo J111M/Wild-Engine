@@ -91,7 +91,19 @@ namespace Wild
             transform.Name = "Bistro";
         });
 
-        engine.GetSceneManager()->LoadScene("Main Scene");
+        engine.GetSceneManager()->AddScene("Sponza", []() {
+            auto ecs = engine.GetECS();
+            auto entity = ecs->CreateEntity();
+            ecs->AddComponent<SceneObject>(entity);
+            auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+            ecs->AddComponent<Model>(entity, "Assets/Models/Sponza/glTF/Sponza.gltf", entity);
+            transform.SetScale(glm::vec3(1, 1, 1));
+            transform.SetPosition(glm::vec3(70, 1, 70));
+            transform.SetRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
+            transform.Name = "Sponza";
+        });
+
+        engine.GetSceneManager()->LoadScene("Sponza");
 
         // Setup indirect rendering
         D3D12_INDIRECT_ARGUMENT_DESC args[2] = {};
