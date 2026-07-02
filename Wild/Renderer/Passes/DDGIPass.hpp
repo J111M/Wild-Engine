@@ -4,7 +4,7 @@
 
 namespace Wild
 {
-    struct DDGIRC
+    struct DDGIRootConstants
     {
         glm::mat4 inverseView{};
         glm::mat4 inverseProj{};
@@ -37,6 +37,6 @@ namespace Wild
       private:
         std::unique_ptr<ProbeSystem> m_probeSystem;
 
-        DDGIRC m_rc{};
+        DDGIRootConstants m_rc{};
     };
 } // namespace Wild

@@ -6,7 +6,7 @@
 namespace Wild
 {
     /// Pre computed volumetric noise pass
-    struct VolumetricNoiseRC
+    struct VolumetricNoiseRootConstants
     {
         float textureSize;
         float cellCount = 4;
@@ -30,7 +30,7 @@ namespace Wild
         Texture* depthTexture;
     };
 
-    struct VolumetricRC
+    struct VolumetricRootConstants
     {
         glm::vec2 textureSize{};
         glm::vec2 nearFar{};
@@ -67,7 +67,7 @@ namespace Wild
         Texture* finalTexture;
     };
 
-    struct PostProcessRC
+    struct PostProcessRootConstants
     {
         glm::vec2 textureSize{};
         uint32_t srcTextureView{};
@@ -99,11 +99,11 @@ namespace Wild
         void FinalPostProcessPass(Renderer& renderer, RenderGraph& rg);
 
         // Volumetric noise
-        VolumetricNoiseRC m_noiseRC{};
+        VolumetricNoiseRootConstants m_noiseRC{};
         bool m_recomputeVolumetricNoise = true;
 
         // Volumetric data
-        VolumetricRC m_volumetricRC{};
+        VolumetricRootConstants m_volumetricRC{};
         SceneBuffer m_sceneData{};
         std::unique_ptr<Buffer> m_sceneDataBuffer[BACK_BUFFER_COUNT];
 
@@ -113,6 +113,6 @@ namespace Wild
         float m_windSpeed = 0.5f;
 
         // Post process data
-        PostProcessRC m_postProcessRC{};
+        PostProcessRootConstants m_postProcessRC{};
     };
 } // namespace Wild

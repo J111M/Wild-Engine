@@ -65,7 +65,7 @@ namespace Wild
                     InputElement("TANGENT", DXGI_FORMAT_R32G32B32A32_FLOAT, sizeof(glm::vec3) * 3 + sizeof(glm::vec2)));
 
                 std::vector<Uniform> uniforms;
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(CsmRC)};
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(CsmRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
                 auto& pipeline =
@@ -88,7 +88,7 @@ namespace Wild
                         m_rc.projView = m_directLight.viewProj[i];
                         m_rc.cascadeIndex = i;
 
-                        list.SetRootConstant<CsmRC>(0, m_rc);
+                        list.SetRootConstant<CsmRootConstants>(0, m_rc);
 
                         list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
 

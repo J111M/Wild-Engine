@@ -23,7 +23,7 @@ namespace Wild
         float height{};
     };
 
-    struct PerBladeComputeRootConstant
+    struct PerBladeComputeRootConstants
     {
         glm::mat4 modelMatrix{};
         glm::vec2 chunkPosition{};
@@ -106,7 +106,7 @@ namespace Wild
         float pad1;
     };
 
-    struct GrassRC
+    struct GrassRootConstants
     {
         glm::mat4 matrix{};
         glm::mat4 invMatrix{};
@@ -138,7 +138,7 @@ namespace Wild
         void CreateGrassMeshes();
 
         // PerBladeCompute data
-        PerBladeComputeRootConstant m_pbcrc{};
+        PerBladeComputeRootConstants m_pbcrc{};
         std::unique_ptr<Buffer> m_perBladeDataBuffer;
         bool m_recomputeGrassBlades = true;
 
@@ -158,7 +158,7 @@ namespace Wild
         ComPtr<ID3D12CommandSignature> m_commandSignature;
 
         // Data for grass render pass
-        GrassRC m_rc{};
+        GrassRootConstants m_rc{};
         Entity m_chunkEntity;
         float m_accumulatedTime{};
         std::shared_ptr<Buffer> m_sceneData[BACK_BUFFER_COUNT];

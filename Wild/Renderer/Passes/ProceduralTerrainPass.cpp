@@ -150,7 +150,7 @@ namespace Wild
 
                     std::vector<Uniform> uniforms;
 
-                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(GenerateTerrainRootConstant)};
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(GenerateTerrainRootConstants)};
                     uniforms.emplace_back(rootConstant);
 
                     // UAV uniform for specular cube map
@@ -265,7 +265,7 @@ namespace Wild
                     InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
 
                 std::vector<Uniform> uniforms;
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DrawTerrainRootConstant)};
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DrawTerrainRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
                 Uniform TextureViewBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
@@ -326,7 +326,7 @@ namespace Wild
 
                     m_drc.heightMapView = chunk.heightMap->GetSrv()->BindlessView();
 
-                    list.SetRootConstant<DrawTerrainRootConstant>(0, m_drc);
+                    list.SetRootConstant<DrawTerrainRootConstants>(0, m_drc);
                     list.SetConstantBufferView(1, m_terrainTexturesCbv.get());
                     list.SetConstantBufferView(2, m_cameraCbv.get());
                     list.SetBindlessHeap(3);

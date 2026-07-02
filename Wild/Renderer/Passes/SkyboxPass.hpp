@@ -34,7 +34,7 @@ namespace Wild
         glm::mat4 proj{};
     };
 
-    struct SkyRootConstant
+    struct SkyRootConstants
     {
         uint32_t view{};
         uint32_t viewCube{};
@@ -44,13 +44,13 @@ namespace Wild
         glm::vec4 lightDirectionIntensity{};
     };
 
-    struct IBLRootConstant
+    struct IBLRootConstants
     {
         glm::mat4 projView{};
         uint32_t view;
     };
 
-    struct SpecularMapRootConstant
+    struct SpecularMapRootConstants
     {
         uint32_t environmentView{};
         int mipSize{};
@@ -89,6 +89,6 @@ namespace Wild
         std::shared_ptr<Texture> m_specularMap;
         uint32_t m_specularMips = 5;
 
-        SkyRootConstant m_skyRC{};
+        SkyRootConstants m_skyRC{};
     };
 } // namespace Wild

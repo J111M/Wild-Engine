@@ -11,7 +11,7 @@ namespace Wild
         glm::vec3 color;
     };
 
-    struct DebugRootConstant
+    struct DebugRootConstants
     {
         glm::mat4 projView{};
     };
@@ -37,7 +37,7 @@ namespace Wild
         virtual void Update(const float dt) override;
 
       private:
-        DebugRootConstant m_rc;
+        DebugRootConstants m_rc;
         std::vector<DebugVertex> m_lines;
 
         std::unique_ptr<Buffer> m_lineVertexBuffer;

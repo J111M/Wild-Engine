@@ -198,7 +198,7 @@ namespace Wild
 
                     std::vector<Uniform> uniforms;
 
-                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(InitialSpectrumRC)};
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(InitialSpectrumRootConstants)};
                     uniforms.emplace_back(rootConstant);
 
                     Uniform gaussianNumbers{0, 0, RootParams::RootResourceType::ShaderResourceView};
@@ -235,7 +235,7 @@ namespace Wild
                     list.SetPipelineState(pipeline);
                     list.BeginRender("Initial spectrum ocean pass");
 
-                    list.SetRootConstant<InitialSpectrumRC>(0, m_initialSpectrumRC);
+                    list.SetRootConstant<InitialSpectrumRootConstants>(0, m_initialSpectrumRC);
                     list.SetShaderResourceView(1, m_gaussianDistribution.get());
                     list.SetUnorderedAccessView(2, passData.initialSpectrumTexture);
 
@@ -271,7 +271,7 @@ namespace Wild
 
                     std::vector<Uniform> uniforms;
 
-                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(InitialSpectrumRC)};
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(InitialSpectrumRootConstants)};
                     uniforms.emplace_back(rootConstant);
 
                     Uniform conjugateSpectrumUAV{0, 0, RootParams::RootResourceType::DescriptorTable};
@@ -285,7 +285,7 @@ namespace Wild
                     list.SetPipelineState(pipeline);
                     list.BeginRender("Conjugate spectrum ocean pass");
 
-                    list.SetRootConstant<InitialSpectrumRC>(0, m_initialSpectrumRC);
+                    list.SetRootConstant<InitialSpectrumRootConstants>(0, m_initialSpectrumRC);
                     list.SetUnorderedAccessView(1, passData.conjugatedTexture);
 
                     list.GetList()->Dispatch(OCEAN_SIZE / 8, OCEAN_SIZE / 8, 1);
@@ -328,7 +328,7 @@ namespace Wild
 
                 std::vector<Uniform> uniforms;
 
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(UpdateSpectrumRC)};
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(UpdateSpectrumRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
                 {
@@ -364,7 +364,7 @@ namespace Wild
                     m_updateSpectrumRC.lengthScale[i] = m_lenghtScales[i];
                 }
 
-                list.SetRootConstant<UpdateSpectrumRC>(0, m_updateSpectrumRC);
+                list.SetRootConstant<UpdateSpectrumRootConstants>(0, m_updateSpectrumRC);
                 list.SetBindlessHeap(1);
                 list.SetUnorderedAccessView(2, passData.spectrumTexture);
 
@@ -397,7 +397,7 @@ namespace Wild
 
                 std::vector<Uniform> uniforms;
 
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(IFFTRC)};
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(IFFTRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
                 {
@@ -430,7 +430,7 @@ namespace Wild
                 list.SetPipelineState(pipeline);
                 list.BeginRender("Horizontal inverse FFT ocean pass");
 
-                list.SetRootConstant<IFFTRC>(0, m_ifftRC);
+                list.SetRootConstant<IFFTRootConstants>(0, m_ifftRC);
                 list.SetBindlessHeap(1);
                 list.SetUnorderedAccessView(2, passData.fourierTarget);
 
@@ -450,7 +450,7 @@ namespace Wild
                 list.SetPipelineState(pipeline);
                 list.BeginRender("Vertical inverse FFT ocean pass");
 
-                list.SetRootConstant<IFFTRC>(0, m_ifftRC);
+                list.SetRootConstant<IFFTRootConstants>(0, m_ifftRC);
                 list.SetBindlessHeap(1);
                 list.SetUnorderedAccessView(2, passData.fourierTarget);
 
@@ -504,7 +504,7 @@ namespace Wild
 
                 std::vector<Uniform> uniforms;
 
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(AssembleOceanRC)};
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(AssembleOceanRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
                 {
@@ -543,7 +543,7 @@ namespace Wild
                 list.SetPipelineState(pipeline);
                 list.BeginRender("Assemble ocean pass");
 
-                list.SetRootConstant<AssembleOceanRC>(0, m_assembleRC);
+                list.SetRootConstant<AssembleOceanRootConstants>(0, m_assembleRC);
                 list.SetBindlessHeap(1);
                 list.SetUnorderedAccessView(2, passData.displacementTexture);
                 list.SetUnorderedAccessView(3, passData.slopeTexture);
@@ -632,7 +632,7 @@ namespace Wild
 
                 std::vector<Uniform> uniforms;
 
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(OceanRenderRC)};
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(OceanRenderRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
                 Uniform cameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
@@ -713,7 +713,7 @@ namespace Wild
 
                         m_oceanRC.modelMatrix = ecs->GetComponent<Transform>(chunk.entity).GetWorldMatrix();
 
-                        list.SetRootConstant<OceanRenderRC>(0, m_oceanRC);
+                        list.SetRootConstant<OceanRenderRootConstants>(0, m_oceanRC);
                         list.SetConstantBufferView(1, m_cameraBuffer.get());
                         list.SetConstantBufferView(2, m_oceanRenderDataBuffer.get());
                         list.SetBindlessHeap(3);

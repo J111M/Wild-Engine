@@ -59,7 +59,7 @@ namespace Wild
 
                     std::vector<Uniform> uniforms;
 
-                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DDGIRC)};
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DDGIRootConstants)};
                     uniforms.emplace_back(rootConstant);
 
                     Uniform accelerationStructure{0, 0, RootParams::RootResourceType::ShaderResourceView};
@@ -101,7 +101,7 @@ namespace Wild
 
                     if (renderer.environmentMap) m_rc.environmentView = renderer.environmentMap->GetSrv()->BindlessView();
 
-                    list.SetRootConstant<DDGIRC>(0, m_rc);
+                    list.SetRootConstant<DDGIRootConstants>(0, m_rc);
                     list.GetList()->SetComputeRootShaderResourceView(1,
                                                                      engine.GetAccelerationStructureManager()->GetTLASAddress());
                     list.SetUnorderedAccessView(2, passData.finalTex);

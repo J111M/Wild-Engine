@@ -65,7 +65,7 @@ namespace Wild
                 settings.renderTargetsFormat.push_back(passData.debugTexture->GetDesc().format);
 
                 std::vector<Uniform> uniforms;
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DebugRootConstant)};
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DebugRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
                 auto& pipeline = renderer.GetOrCreatePipeline("Debug line pass", PipelineStateType::Graphics, settings, uniforms);
@@ -81,7 +81,7 @@ namespace Wild
 
                 list.GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 
-                list.SetRootConstant<DebugRootConstant>(0, m_rc);
+                list.SetRootConstant<DebugRootConstants>(0, m_rc);
                 if (m_lineVertexBuffer)
                 {
                     list.GetList()->IASetVertexBuffers(0, 1, &m_lineVertexBuffer->GetVBView()->View());

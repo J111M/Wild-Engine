@@ -20,7 +20,7 @@ namespace Wild
         glm::vec3 CameraPosition{};
     };
 
-    struct GrassRC {
+    struct GrassRootConstants {
         glm::mat4 matrix{};
         uint32_t bladeId{};
         float time;
@@ -51,7 +51,7 @@ namespace Wild
 
         float m_accumulatedTime{};
 
-        GrassRC m_rc{};
+        GrassRootConstants m_rc{};
         Entity m_chunkEntity;
     };*/
 

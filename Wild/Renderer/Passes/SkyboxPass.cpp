@@ -127,7 +127,7 @@ namespace Wild
                 // Uniforms
                 std::vector<Uniform> uniforms;
 
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(SkyRootConstant)};
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(SkyRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
                 Uniform cameraBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
@@ -190,7 +190,7 @@ namespace Wild
                     break;
                 }
 
-                list.SetRootConstant<SkyRootConstant>(0, m_skyRC);
+                list.SetRootConstant<SkyRootConstants>(0, m_skyRC);
 
                 list.SetConstantBufferView(1, m_cameraProjection[frameIndex].get());
 
@@ -288,7 +288,7 @@ namespace Wild
                         // Uniforms
                         std::vector<Uniform> uniforms;
 
-                        Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(IBLRootConstant)};
+                        Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(IBLRootConstants)};
                         uniforms.emplace_back(rootConstant);
 
                         Uniform bindless{0, 0, RootParams::RootResourceType::DescriptorTable};
@@ -322,11 +322,11 @@ namespace Wild
                             auto context = engine.GetGfxContext();
                             int frameIndex = context->GetBackBufferIndex();
 
-                            IBLRootConstant rc{};
+                            IBLRootConstants rc{};
                             rc.projView = captureProjection * glm::mat4(glm::mat3(captureViews[face]));
                             rc.view = m_skyboxTexture->GetSrv()->BindlessView();
 
-                            list.SetRootConstant<IBLRootConstant>(0, rc);
+                            list.SetRootConstant<IBLRootConstants>(0, rc);
 
                             list.SetBindlessHeap(1);
 
@@ -356,7 +356,7 @@ namespace Wild
                         // Uniforms
                         std::vector<Uniform> uniforms;
 
-                        Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(IBLRootConstant)};
+                        Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(IBLRootConstants)};
                         uniforms.emplace_back(rootConstant);
 
                         // Uniform for setting up the bindless heap
@@ -392,13 +392,13 @@ namespace Wild
                             auto context = engine.GetGfxContext();
                             int frameIndex = context->GetBackBufferIndex();
 
-                            IBLRootConstant rc{};
+                            IBLRootConstants rc{};
                             rc.projView = captureProjection * glm::mat4(glm::mat3(captureViews[face]));
 
                             passData.environmentCubeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                             rc.view = passData.environmentCubeTexture->GetSrv()->BindlessView();
 
-                            list.SetRootConstant<IBLRootConstant>(0, rc);
+                            list.SetRootConstant<IBLRootConstants>(0, rc);
                             list.SetBindlessHeap(1);
 
                             list.GetList()->IASetVertexBuffers(0, 1, &m_cubeVertexBuffer->GetVBView()->View());
@@ -452,7 +452,7 @@ namespace Wild
 
                         std::vector<Uniform> uniforms;
 
-                        Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(SpecularMapRootConstant)};
+                        Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(SpecularMapRootConstants)};
                         uniforms.emplace_back(rootConstant);
 
                         // UAV uniform for specular cube map
@@ -483,7 +483,7 @@ namespace Wild
                         list.SetPipelineState(pipeline);
                         list.BeginRender();
 
-                        SpecularMapRootConstant rc{};
+                        SpecularMapRootConstants rc{};
 
                         if (passData.environmentCubeTexture)
                         {

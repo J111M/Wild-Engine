@@ -39,7 +39,7 @@ namespace Wild
         float shortWavesFade{0.0f};
     };
 
-    struct InitialSpectrumRC
+    struct InitialSpectrumRootConstants
     {
         SpectrumSettings m_spectrumSettings[2];
 
@@ -68,7 +68,7 @@ namespace Wild
         Texture* spectrumTexture;
     };
 
-    struct UpdateSpectrumRC
+    struct UpdateSpectrumRootConstants
     {
         float lengthScale[4] = {250, 32, 16, 4};
 
@@ -86,7 +86,7 @@ namespace Wild
         Texture* fourierTarget;
     };
 
-    struct IFFTRC
+    struct IFFTRootConstants
     {
         uint32_t oceanSize = OCEAN_SIZE;
         uint32_t axisFlag{};
@@ -103,7 +103,7 @@ namespace Wild
         Texture* slopeTexture;
     };
 
-    struct AssembleOceanRC
+    struct AssembleOceanRootConstants
     {
         uint32_t oceanSize = OCEAN_SIZE;
         uint32_t fourierTextureView{};
@@ -162,7 +162,7 @@ namespace Wild
         float depth{};
     };
 
-    struct OceanRenderRC
+    struct OceanRenderRootConstants
     {
         glm::mat4 modelMatrix{};
         glm::vec4 cameraPosition{};
@@ -204,23 +204,23 @@ namespace Wild
         /// Initial spectrum
         bool m_recomputeInitialSpectrum = true;
         std::unique_ptr<Buffer> m_gaussianDistribution{};
-        InitialSpectrumRC m_initialSpectrumRC{};
+        InitialSpectrumRootConstants m_initialSpectrumRC{};
 
         float m_fetch[2] = {1400, 100000.0f};
         float m_windSpeed[2] = {9.5f, 8.0f};
         float m_lenghtScales[4] = {810.6f, 597.2f, 378.5f, 236.2f};
 
         /// Update spectrum
-        UpdateSpectrumRC m_updateSpectrumRC{};
+        UpdateSpectrumRootConstants m_updateSpectrumRC{};
 
         /// FFT
-        IFFTRC m_ifftRC;
+        IFFTRootConstants m_ifftRC;
 
         ///  Texture assemble data
-        AssembleOceanRC m_assembleRC{};
+        AssembleOceanRootConstants m_assembleRC{};
 
         ///  Draw ocean
-        OceanRenderRC m_oceanRC{};
+        OceanRenderRootConstants m_oceanRC{};
 
         Entity m_chunkEntity;
 

@@ -124,7 +124,7 @@ namespace Wild
 
                 std::vector<Uniform> uniforms;
 
-                Uniform rootConstantUni{0, 0, RootParams::RootResourceType::Constants, sizeof(PbrRootConstant)};
+                Uniform rootConstantUni{0, 0, RootParams::RootResourceType::Constants, sizeof(PbrRootConstants)};
                 rootConstantUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
                 uniforms.emplace_back(rootConstantUni);
 
@@ -218,7 +218,7 @@ namespace Wild
                     m_rc.shadowMapView[cascade] = shadowMapData->shadowMap[cascade]->GetSrv()->BindlessView();
                 }
 
-                list.SetRootConstant<PbrRootConstant>(0, m_rc);
+                list.SetRootConstant<PbrRootConstants>(0, m_rc);
 
                 auto context = engine.GetGfxContext();
                 int frameIndex = context->GetBackBufferIndex();

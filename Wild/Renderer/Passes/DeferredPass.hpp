@@ -28,7 +28,7 @@ namespace Wild
     {
     };
 
-    struct RootConstant
+    struct DeferredRootConstants
     {
         glm::mat4 matrix{};
         glm::mat4 invMatrix{};
@@ -58,7 +58,7 @@ namespace Wild
         void IndirectPreparePass(Renderer& renderer, RenderGraph& rg);
 
       private:
-        RootConstant m_rc;
+        DeferredRootConstants m_rc;
         std::shared_ptr<PipelineState> m_pipeline{};
 
         std::unique_ptr<Texture> m_texture;

@@ -152,7 +152,7 @@ namespace Wild
                         0, 0, RootParams::RootResourceType::UnorderedAccessView, sizeof(GrassBladeData) * MAXGRASSBLADES};
                     uniforms.emplace_back(perBladeBuffer);
 
-                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(PerBladeComputeRootConstant)};
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(PerBladeComputeRootConstants)};
                     uniforms.emplace_back(rootConstant);
 
                     Uniform bindlessUni{0, 0, RootParams::RootResourceType::DescriptorTable};
@@ -189,7 +189,7 @@ namespace Wild
                         m_pbcrc.chunkId = chunk.id;
                         m_pbcrc.terrainHeightView = chunk.heightMap->GetSrv()->BindlessView();
                         list.SetUnorderedAccessView(0, m_perBladeDataBuffer.get());
-                        list.SetRootConstant<PerBladeComputeRootConstant>(1, m_pbcrc);
+                        list.SetRootConstant<PerBladeComputeRootConstants>(1, m_pbcrc);
                         list.SetBindlessHeap(2);
 
                         list.GetList()->Dispatch(MAXBLADESPERCHUNK / 64, 1, 1);
@@ -397,7 +397,7 @@ namespace Wild
 
                 std::vector<Uniform> uniforms;
 
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(GrassRC)};
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(GrassRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
                 Uniform grassBladeData{0, 0, RootParams::RootResourceType::ShaderResourceView, 0, D3D12_SHADER_VISIBILITY_VERTEX};
@@ -464,7 +464,7 @@ namespace Wild
 
                 if (m_rc.terrainView > 0)
                 {
-                    list.SetRootConstant<GrassRC>(0, m_rc);
+                    list.SetRootConstant<GrassRootConstants>(0, m_rc);
                     list.SetShaderResourceView(1, m_perBladeDataBuffer.get());
                     list.SetConstantBufferView(2, m_sceneData[gfxContext->GetBackBufferIndex()].get());
 

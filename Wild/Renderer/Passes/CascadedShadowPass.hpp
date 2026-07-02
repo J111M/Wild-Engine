@@ -13,7 +13,7 @@ namespace Wild
         float biasValue;
     };
 
-    struct CsmRC
+    struct CsmRootConstants
     {
         glm::mat4 localModel{};
         glm::mat4 projView{};
@@ -45,7 +45,7 @@ namespace Wild
                                    uint32_t cascadeIndex);
 
         DirectLightBuffer m_directLight;
-        CsmRC m_rc{};
+        CsmRootConstants m_rc{};
         std::shared_ptr<Buffer> m_directionalLightBuffer{};
 
         bool m_lightChanged = true;

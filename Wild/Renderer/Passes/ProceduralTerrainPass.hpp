@@ -18,7 +18,7 @@ namespace Wild
         float foo;
     };
 
-    struct GenerateTerrainRootConstant
+    struct GenerateTerrainRootConstants
     {
         glm::vec2 textureSize;
         glm::vec2 chunkPosition;
@@ -48,7 +48,7 @@ namespace Wild
         Texture* depthTexture;
     };
 
-    struct DrawTerrainRootConstant
+    struct DrawTerrainRootConstants
     {
         glm::mat4 worldMatix{};
         glm::mat4 invModel{};
@@ -107,13 +107,13 @@ namespace Wild
         // TODO remove temp value
         int tempChunkID = 0;
 
-        GenerateTerrainRootConstant m_grc{};
+        GenerateTerrainRootConstants m_grc{};
 
         // TODO use better data structure for this
         std::vector<Entity> m_terrainChunks;
 
         Entity m_chunkEntity;
-        DrawTerrainRootConstant m_drc{};
+        DrawTerrainRootConstants m_drc{};
 
         std::unique_ptr<Texture> m_albedoTerrainTexture;
         std::unique_ptr<Texture> m_aoTerrainTexture;

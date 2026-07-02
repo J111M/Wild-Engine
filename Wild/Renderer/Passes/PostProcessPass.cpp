@@ -98,7 +98,7 @@ namespace Wild
 
                     std::vector<Uniform> uniforms;
 
-                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(VolumetricNoiseRC)};
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(VolumetricNoiseRootConstants)};
                     uniforms.emplace_back(rootConstant);
 
                     Uniform volumetricNoiseTexture{0, 0, RootParams::RootResourceType::DescriptorTable};
@@ -112,7 +112,7 @@ namespace Wild
                     list.SetPipelineState(pipeline);
                     list.BeginRender("Precompute volumetric noise pass");
 
-                    list.SetRootConstant<VolumetricNoiseRC>(0, m_noiseRC);
+                    list.SetRootConstant<VolumetricNoiseRootConstants>(0, m_noiseRC);
                     list.SetUnorderedAccessView(1, passData.volumetricNoise);
 
                     // Use 3D texture dimension
@@ -195,7 +195,7 @@ namespace Wild
                     std::vector<Uniform> uniforms;
                     uniforms.reserve(6);
 
-                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(VolumetricRC)};
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(VolumetricRootConstants)};
                     uniforms.emplace_back(rootConstant);
 
                     Uniform cameraBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
@@ -272,7 +272,7 @@ namespace Wild
                     m_volumetricRC.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
                     m_volumetricRC.biasValue = shadowData->biasValue;
 
-                    list.SetRootConstant<VolumetricRC>(0u, m_volumetricRC);
+                    list.SetRootConstant<VolumetricRootConstants>(0u, m_volumetricRC);
                     list.SetConstantBufferView(1u, m_sceneDataBuffer[frameIndex].get());
                     list.SetConstantBufferView(2u, pbrData->pointlights.get());
                     list.SetConstantBufferView(3u, shadowData->directLightBuffer.get());
@@ -324,7 +324,7 @@ namespace Wild
 
                 std::vector<Uniform> uniforms;
 
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(PostProcessRC)};
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(PostProcessRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
                 // Output render target
@@ -360,7 +360,7 @@ namespace Wild
                 m_postProcessRC.textureSize = glm::vec2(passData.finalTexture->Width(), passData.finalTexture->Height());
                 m_postProcessRC.srcTextureView = volumetricData->finalTexture->GetSrv()->BindlessView();
 
-                list.SetRootConstant<PostProcessRC>(0u, m_postProcessRC);
+                list.SetRootConstant<PostProcessRootConstants>(0u, m_postProcessRC);
                 list.SetUnorderedAccessView(1u, passData.finalTexture);
                 list.SetBindlessHeap(2u);
 

@@ -167,7 +167,7 @@ namespace Wild
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Emissive
 
                 std::vector<Uniform> uniforms;
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(RootConstant)};
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DeferredRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
                 Uniform bindlessUni{0, 0, RootParams::RootResourceType::DescriptorTable};
@@ -202,7 +202,7 @@ namespace Wild
                 auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
                 for (auto&& [entity, trans, mesh] : meshes.each())
                 {
-                    m_rc = RootConstant{};
+                    m_rc = DeferredRootConstants{};
 
                     if (camera)
                     {
@@ -220,7 +220,7 @@ namespace Wild
 
                     if (material.m_emissive) m_rc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
 
-                    list.SetRootConstant<RootConstant>(0, m_rc);
+                    list.SetRootConstant<DeferredRootConstants>(0, m_rc);
 
                     list.SetBindlessHeap(1);
 

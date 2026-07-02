@@ -42,7 +42,7 @@ namespace Wild
         uint32_t brdfView{};
     };
 
-    struct PbrRootConstant
+    struct PbrRootConstants
     {
         uint32_t emissiveView{};
         uint32_t albedoView{};
@@ -62,7 +62,7 @@ namespace Wild
         virtual void Update(const float dt) override;
 
       private:
-        PbrRootConstant m_rc{};
+        PbrRootConstants m_rc{};
         PBRData m_pbrData{};
 
         CameraBuffer m_camData{};
