@@ -154,7 +154,7 @@ namespace Wild
     void PostProcessPass::VolumetricsPass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<VolumetricPassData>();
-        auto* skyboxData = rg.GetPassData<VolumetricPassData, SkyPassData>();
+        auto* skyboxData = rg.GetPassData<VolumetricPassData, SkyboxPassData>();
         auto* pbrData = rg.GetPassData<VolumetricPassData, PbrPassData>();
         auto* shadowData = rg.GetPassData<VolumetricPassData, CsmPassData>();
         auto* volumetricNoise = rg.GetPassData<VolumetricPassData, VolumetricNoisePassData>();

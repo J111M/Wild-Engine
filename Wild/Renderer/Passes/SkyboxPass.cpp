@@ -4,7 +4,7 @@
 
 namespace Wild
 {
-    SkyPass::SkyPass(std::string filePath)
+    SkyboxPass::SkyboxPass(std::string filePath)
     {
         m_cube = CreateCube();
         BufferDesc desc;
@@ -51,7 +51,7 @@ namespace Wild
         }
     }
 
-    void SkyPass::Update(const float dt)
+    void SkyboxPass::Update(const float dt)
     {
         auto context = engine.GetGfxContext();
         auto ecs = engine.GetECS();
@@ -84,7 +84,7 @@ namespace Wild
         }
     }
 
-    void SkyPass::Add(Renderer& renderer, RenderGraph& rg)
+    void SkyboxPass::Add(Renderer& renderer, RenderGraph& rg)
     {
         AddSkyboxPass(renderer, rg);
         AddIBLPass(renderer, rg);
@@ -95,16 +95,16 @@ namespace Wild
     /// with black pixels I didn't want my hdr skybox stored in a low color range so I just output it as the last pass.
     /// </summary>
     /// <param name="rg">Render Graph</param>
-    void SkyPass::AddSkyboxPass(Renderer& renderer, RenderGraph& rg)
+    void SkyboxPass::AddSkyboxPass(Renderer& renderer, RenderGraph& rg)
     {
-        auto* passData = rg.AllocatePassData<SkyPassData>();
-        auto* oceanPassData = rg.GetPassData<SkyPassData, OceanPassData>();
+        auto* passData = rg.AllocatePassData<SkyboxPassData>();
+        auto* oceanPassData = rg.GetPassData<SkyboxPassData, OceanPassData>();
 
         passData->finalTexture = oceanPassData->finalTexture;
         passData->depthTexture = oceanPassData->depthTexture;
 
-        rg.AddPass<SkyPassData>(
-            "Skybox pass", PassType::Graphics, [&renderer, this](const SkyPassData& passData, CommandList& list) {
+        rg.AddPass<SkyboxPassData>(
+            "Skybox pass", PassType::Graphics, [&renderer, this](const SkyboxPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
                 settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/SkyboxVert.slang");
                 settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/SkyboxFrag.slang");
@@ -210,7 +210,7 @@ namespace Wild
     /// Resources are linked at the end of the pass and are currently only generated at the start of the pass.
     /// </summary>
     /// <param name="rg">Render Graph</param>
-    void SkyPass::AddIBLPass(Renderer& renderer, RenderGraph& rg)
+    void SkyboxPass::AddIBLPass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<IBLPassData>();
 
@@ -530,7 +530,7 @@ namespace Wild
             });
     }
 
-    std::vector<Vertex> Wild::SkyPass::CreateCube()
+    std::vector<Vertex> Wild::SkyboxPass::CreateCube()
     {
         return {// Front face
                 {{-0.5f, -0.5f, 0.5f}, {1, 0, 0}, {0, 0, 1}, {0, 0}},

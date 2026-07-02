@@ -1,14 +1,14 @@
 #pragma once
 
-#include "Tools/Common3d12.hpp"
+#include "Tools/D3D12Common.hpp"
 
 namespace Wild {
-	class Resource
+	class D3D12Resource
 	{
 	public:
 
-		Resource(D3D12_RESOURCE_STATES initialState);
-		~Resource() {};
+		D3D12Resource(D3D12_RESOURCE_STATES initialState);
+		~D3D12Resource() {};
 
 		ComPtr<ID3D12Resource>& Handle() { return m_resource; }
 

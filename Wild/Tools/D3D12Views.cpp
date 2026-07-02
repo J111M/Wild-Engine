@@ -1,4 +1,4 @@
-#include "Tools/View3d12.hpp"
+#include "Tools/D3D12Views.hpp"
 
 namespace Wild
 {

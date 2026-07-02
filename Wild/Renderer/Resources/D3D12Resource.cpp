@@ -1,11 +1,11 @@
-#include "Renderer/Resources/Resource3d12.hpp"
+#include "Renderer/Resources/D3D12Resource.hpp"
 
 #include "Renderer/CommandList.hpp"
 
 namespace Wild {
-	Resource::Resource(D3D12_RESOURCE_STATES initialState) : m_currentState(initialState) {}
+	D3D12Resource::D3D12Resource(D3D12_RESOURCE_STATES initialState) : m_currentState(initialState) {}
 
-	void Resource::Transition(CommandList& list, D3D12_RESOURCE_STATES newState)
+	void D3D12Resource::Transition(CommandList& list, D3D12_RESOURCE_STATES newState)
 	{
 		if (m_currentState == newState)
 			return;

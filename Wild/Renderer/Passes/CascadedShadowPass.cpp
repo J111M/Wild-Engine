@@ -7,14 +7,14 @@
 
 namespace Wild
 {
-    CascadedShadowMaps::CascadedShadowMaps()
+    CascadedShadowPass::CascadedShadowPass()
     {
         BufferDesc desc{};
         desc.bufferSize = sizeof(DirectLightBuffer);
         m_directionalLightBuffer = std::make_shared<Buffer>(desc, BufferType::constant);
     }
 
-    void CascadedShadowMaps::Add(Renderer& renderer, RenderGraph& rg)
+    void CascadedShadowPass::Add(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<CsmPassData>();
 
@@ -181,7 +181,7 @@ namespace Wild
             });
     }
 
-    void CascadedShadowMaps::Update(const float dt)
+    void CascadedShadowPass::Update(const float dt)
     {
         engine.GetImGui()->AddPanel("Shadowmap settings", [this]() {
             ImGui::SliderFloat("Bias value", &m_shadowBias, 0.001, 20.0f);
@@ -267,7 +267,7 @@ namespace Wild
     }
 
     // Function taken from https://learnopengl.com/Guest-Articles/2021/CSM and modified to work in my case
-    std::vector<glm::vec3> CascadedShadowMaps::GetFrustumCornersWorldSpace(const glm::mat4& proj, const glm::mat4& view)
+    std::vector<glm::vec3> CascadedShadowPass::GetFrustumCornersWorldSpace(const glm::mat4& proj, const glm::mat4& view)
     {
         glm::mat4 inv = glm::inverse(proj * view);
 
@@ -284,7 +284,7 @@ namespace Wild
         return frustumCorners;
     }
 
-    glm::mat4 CascadedShadowMaps::GetCascadeMatrix(const glm::vec3& lightDir, const glm::mat4& cameraView,
+    glm::mat4 CascadedShadowPass::GetCascadeMatrix(const glm::vec3& lightDir, const glm::mat4& cameraView,
                                                    const glm::mat4& cascadeProj, uint32_t cascadeIndex)
     {
         const auto cornersWS = GetFrustumCornersWorldSpace(cascadeProj, cameraView);

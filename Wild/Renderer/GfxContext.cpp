@@ -1,4 +1,4 @@
-#include "Renderer/Device.hpp"
+#include "Renderer/GfxContext.hpp"
 
 #include <codecvt>
 #include <fstream>

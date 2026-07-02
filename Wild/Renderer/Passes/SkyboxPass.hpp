@@ -8,7 +8,7 @@
 
 namespace Wild
 {
-    struct SkyPassData
+    struct SkyboxPassData
     {
         Texture* finalTexture;
         Texture* depthTexture;
@@ -60,11 +60,11 @@ namespace Wild
 
     class CommandList;
 
-    class SkyPass : public RenderFeature
+    class SkyboxPass : public RenderFeature
     {
       public:
-        SkyPass(std::string filePath);
-        ~SkyPass() {};
+        SkyboxPass(std::string filePath);
+        ~SkyboxPass() {};
 
         virtual void Update(const float dt) override;
         virtual void Add(Renderer& renderer, RenderGraph& rg) override;
@@ -83,7 +83,7 @@ namespace Wild
 
         uint32_t m_debugSkyboxMode = 0;
         bool ShouldGenerateNewIBL = true;
-        // std::function<void(const SkyPassData&, CommandList&)> m_skyboxLambda;
+        // std::function<void(const SkyboxPassData&, CommandList&)> m_skyboxLambda;
 
         std::shared_ptr<Texture> m_brdfLut;
         std::shared_ptr<Texture> m_specularMap;

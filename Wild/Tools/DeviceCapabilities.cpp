@@ -1,5 +1,5 @@
 #include "Tools/DeviceCapabilities.hpp"
-#include "Tools/Common3d12.hpp"
+#include "Tools/D3D12Common.hpp"
 
 namespace Wild
 {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Renderer/AccelerationStructure.hpp"
-#include "Renderer/Device.hpp"
+#include "Renderer/GfxContext.hpp"
 #include "Renderer/Renderer.hpp"
 #include "Renderer/ShaderPipeline.hpp"
 #include "Renderer/Window.hpp"

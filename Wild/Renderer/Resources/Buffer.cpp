@@ -47,7 +47,7 @@ namespace Wild
 
         m_desc.bufferSize = (m_desc.bufferSize + 255) & ~255;
 
-        m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_GENERIC_READ);
+        m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_GENERIC_READ);
 
         ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
                                                                        D3D12_HEAP_FLAG_NONE,
@@ -80,7 +80,7 @@ namespace Wild
         desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        m_resource = std::make_unique<Resource>(m_desc.state);
+        m_resource = std::make_unique<D3D12Resource>(m_desc.state);
 
         gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
                                                          D3D12_HEAP_FLAG_NONE,
@@ -107,7 +107,7 @@ namespace Wild
 
         auto device7 = engine.GetGfxContext()->GetDevice7();
 
-        m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_COMMON);
+        m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_COMMON);
 
         if (device7)
         {
@@ -141,7 +141,7 @@ namespace Wild
         desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
         desc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-        m_resource = std::make_unique<Resource>(m_desc.state);
+        m_resource = std::make_unique<D3D12Resource>(m_desc.state);
 
         ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
                                                                        D3D12_HEAP_FLAG_NONE,
@@ -173,7 +173,7 @@ namespace Wild
 
         WriteData((void*)indices.data(), m_desc.bufferSize);
 
-        m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
+        m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
 
         gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
                                                          D3D12_HEAP_FLAG_NONE,

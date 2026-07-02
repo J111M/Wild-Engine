@@ -82,7 +82,7 @@ namespace Wild
             clearValue.Color[3] = 1.0f;
 
             // Create resource with initial state
-            m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_RENDER_TARGET);
+            m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_RENDER_TARGET);
 
             ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
                                                                            D3D12_HEAP_FLAG_NONE,
@@ -167,7 +167,7 @@ namespace Wild
             clearValue.DepthStencil = {1.0f, 0};
 
             // Create resource with initial state
-            m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_DEPTH_WRITE);
+            m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
             gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
                                                              D3D12_HEAP_FLAG_NONE,
@@ -217,7 +217,7 @@ namespace Wild
             if (!m_resource)
             {
                 // Create resource with initial state
-                m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                 gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
                                                                  D3D12_HEAP_FLAG_NONE,
@@ -315,7 +315,7 @@ namespace Wild
     Texture::Texture(const TextureDesc& desc, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES initialState)
     {
         m_desc = desc;
-        m_resource = std::make_unique<Resource>(initialState);
+        m_resource = std::make_unique<D3D12Resource>(initialState);
         m_resource->SetResource(resource);
 
         if (desc.flag & TextureDesc::renderTarget)
@@ -623,7 +623,7 @@ namespace Wild
                                                    static_cast<UINT16>(m_desc.mips));
 
         // Create resource with copy dest since update subresource will transition it to that
-        m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
+        m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
 
         ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
                                                                        D3D12_HEAP_FLAG_NONE,
@@ -696,7 +696,7 @@ namespace Wild
                                                    static_cast<UINT16>(m_desc.mips));
 
         // Create resource with copy dest since update subresource will transition it to that
-        m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
+        m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
 
         ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
                                                                        D3D12_HEAP_FLAG_NONE,

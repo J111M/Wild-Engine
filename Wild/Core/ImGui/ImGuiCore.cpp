@@ -4,7 +4,7 @@
 
 #include <imgui_internal.h>
 
-#include "Tools/Common3d12.hpp"
+#include "Tools/D3D12Common.hpp"
 
 #include <pix3.h>
 

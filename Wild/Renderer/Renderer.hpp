@@ -10,7 +10,7 @@
 #include "Core/Camera.hpp"
 #include "Core/Transform.hpp"
 
-#include "Tools/Common3d12.hpp"
+#include "Tools/D3D12Common.hpp"
 #include "Tools/States.hpp"
 
 #define MAX_CAMERAS 2

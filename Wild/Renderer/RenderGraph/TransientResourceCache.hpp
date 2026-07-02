@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Device.hpp"
+#include "Renderer/GfxContext.hpp"
 
 #include "Renderer/RenderGraph/Blackboard.hpp"
 #include "Renderer/Resources/Texture.hpp"

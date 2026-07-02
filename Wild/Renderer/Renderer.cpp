@@ -27,13 +27,13 @@ namespace Wild
 
         m_resourceCache = std::make_shared<TransientResourceCache>();
 
-        m_renderFeatures.emplace_back(std::make_unique<CascadedShadowMaps>());
+        m_renderFeatures.emplace_back(std::make_unique<CascadedShadowPass>());
         m_renderFeatures.emplace_back(std::make_unique<ProceduralTerrainPass>());
         m_renderFeatures.emplace_back(std::make_unique<GrassPass>());
         m_renderFeatures.emplace_back(std::make_unique<DeferredPass>());
         m_renderFeatures.emplace_back(std::make_unique<PbrPass>());
         m_renderFeatures.emplace_back(std::make_unique<OceanPass>());
-        m_renderFeatures.emplace_back(std::make_unique<SkyPass>("Assets/Textures/Skybox/the_sky_is_on_fire_4k.hdr"));
+        m_renderFeatures.emplace_back(std::make_unique<SkyboxPass>("Assets/Textures/Skybox/the_sky_is_on_fire_4k.hdr"));
 
         m_renderFeatures.emplace_back(std::make_unique<PostProcessPass>());
         m_renderFeatures.emplace_back(std::make_unique<DebugLinePass>());

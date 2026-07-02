@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Renderer/ShaderPipeline.hpp"
-#include "Tools/Common3d12.hpp"
+#include "Tools/D3D12Common.hpp"
 
 #include <glm/glm.hpp>
 #include <memory>

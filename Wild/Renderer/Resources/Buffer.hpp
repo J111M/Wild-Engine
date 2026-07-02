@@ -1,10 +1,10 @@
 #pragma once
 
 #include "Renderer/CommandList.hpp"
-#include "Renderer/Resources/Resource3d12.hpp"
+#include "Renderer/Resources/D3D12Resource.hpp"
 
-#include "Tools/Common3d12.hpp"
-#include "Tools/View3d12.hpp"
+#include "Tools/D3D12Common.hpp"
+#include "Tools/D3D12Views.hpp"
 
 #include <optional>
 #include <string>
@@ -87,7 +87,7 @@ namespace Wild
         void CreateSBTBuffer();
         void CreateStructuredBuffer();
 
-        std::unique_ptr<Resource> m_resource;
+        std::unique_ptr<D3D12Resource> m_resource;
 
         bool m_dataIsMapped = false;
 
@@ -124,7 +124,7 @@ namespace Wild
 
             auto gfxContext = engine.GetGfxContext();
 
-            m_resource = std::make_unique<Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
+            m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
 
             gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
                                                              D3D12_HEAP_FLAG_NONE,

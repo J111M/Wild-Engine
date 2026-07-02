@@ -28,11 +28,11 @@ namespace Wild
         float cascadeSplitDepthRange[SHADOWMAP_CASCADES];
     };
 
-    class CascadedShadowMaps : public RenderFeature
+    class CascadedShadowPass : public RenderFeature
     {
       public:
-        CascadedShadowMaps();
-        ~CascadedShadowMaps() {};
+        CascadedShadowPass();
+        ~CascadedShadowPass() {};
 
         virtual void Add(Renderer& renderer, RenderGraph& rg) override;
         virtual void Update(const float dt) override;

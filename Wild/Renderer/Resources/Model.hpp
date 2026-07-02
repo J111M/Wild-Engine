@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/Device.hpp"
+#include "Renderer/GfxContext.hpp"
 #include "Renderer/Resources/Material.hpp"
 #include "Renderer/Resources/Mesh.hpp"
 

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Renderer/Resources/Resource3d12.hpp"
+#include "Renderer/Resources/D3D12Resource.hpp"
 
-#include "Tools/Common3d12.hpp"
+#include "Tools/D3D12Common.hpp"
 #include "Tools/States.hpp"
-#include "Tools/View3d12.hpp"
+#include "Tools/D3D12Views.hpp"
 
 #include <filesystem>
 #include <string>
@@ -92,7 +92,7 @@ namespace Wild
         float f16Tof32(uint16_t h);
         uint16_t f32Tof16(float f);
 
-        std::unique_ptr<Resource> m_resource;
+        std::unique_ptr<D3D12Resource> m_resource;
 
         std::shared_ptr<RenderTargetView> m_rtv;
 
