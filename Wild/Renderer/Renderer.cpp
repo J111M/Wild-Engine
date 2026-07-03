@@ -31,6 +31,7 @@ namespace Wild
 
         m_systemManager.AddSystem<ProbeSystem>(glm::vec3(-21.0f, 0.0f, -21.0f), glm::vec3(6.0f), glm::ivec3(8, 4, 8));
 
+        m_renderFeatures.emplace_back(std::make_unique<DDGIPass>());
         m_renderFeatures.emplace_back(std::make_unique<CascadedShadowPass>());
         m_renderFeatures.emplace_back(std::make_unique<ProceduralTerrainPass>());
         m_renderFeatures.emplace_back(std::make_unique<GrassPass>());
@@ -42,7 +43,6 @@ namespace Wild
         m_renderFeatures.emplace_back(std::make_unique<PostProcessPass>());
         m_renderFeatures.emplace_back(std::make_unique<DebugLinePass>());
         m_renderFeatures.emplace_back(std::make_unique<ProbeDebugPass>());
-        m_renderFeatures.emplace_back(std::make_unique<DDGIPass>());
 
         auto ecs = engine.GetECS();
 
@@ -104,6 +104,12 @@ namespace Wild
             // viewportTextures[cameraIndex] = ;
 
             cameraIndex++;
+        }
+
+        if (compositeOverride)
+        {
+            compositeTexture = compositeOverride;
+            compositeOverride = nullptr;
         }
 
         // Copy final image over

@@ -1,10 +1,7 @@
 #include "Renderer/Passes/DDGIPass.hpp"
-#include "Renderer/Passes/DebugLinePass.hpp"
 
 namespace Wild
 {
-    // The probe system this pass traces lives on the renderer's SystemManager,
-    // fetch it with renderer.GetSystems().GetSystem<ProbeSystem>()
     DDGIPass::DDGIPass() {}
 
     void DDGIPass::Add(Renderer& renderer, RenderGraph& rg) { AddProbeTracePass(renderer, rg); }
@@ -23,7 +20,6 @@ namespace Wild
     void DDGIPass::AddProbeTracePass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<DDGIPassData>();
-        auto* linePass = rg.GetPassData<DDGIPassData, DebugLinePassData>();
 
         TextureDesc desc;
         desc.width = engine.GetGfxContext()->GetWidth();
@@ -111,7 +107,7 @@ namespace Wild
 
                     passData.finalTex->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-                    renderer.compositeTexture = passData.finalTex;
+                    renderer.compositeOverride = passData.finalTex;
                 }
             });
     }

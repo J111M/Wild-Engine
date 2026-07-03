@@ -42,7 +42,6 @@ namespace Wild
 
         template <typename T> T* GetRenderFeature();
 
-        // Systems shared between render passes (probes, etc.) live here
         SystemManager& GetSystems() { return m_systemManager; }
 
         bool HasPipelineInCache(const std::string& key);
@@ -68,6 +67,9 @@ namespace Wild
         Texture* environmentMap{};
 
         Texture* compositeTexture = nullptr;
+
+        // Output is overwritten if set regardless of pass order
+        Texture* compositeOverride = nullptr;
         Texture* viewportTextures[MAX_CAMERAS]{};
 
       private:
