@@ -13,6 +13,10 @@ namespace Wild
         void FreeHandle(uint32_t handle);
         ComPtr<ID3D12DescriptorHeap> GetHeap() const { return m_heap; }
 
+        // Reserves a raw slot without creating a view, the caller writes the
+        // descriptor itself (the ImGui DX12 backend uses this for its font atlas)
+        uint32_t AllocateHandle() { return NextFreeHandle(); }
+
         D3D12_GPU_DESCRIPTOR_HANDLE GpuHandle(uint32_t handle) const;
         D3D12_CPU_DESCRIPTOR_HANDLE CpuHandle(uint32_t handle) const;
 

@@ -5,6 +5,7 @@
 #include "Renderer/Resources/Material.hpp"
 
 #include <glm/glm.hpp>
+#include <cstdint>
 #include <memory>
 
 class Buffer;
@@ -38,6 +39,17 @@ namespace Wild
         const Material& GetMaterial() const { return m_material; }
         void SetMaterial(Material& material) { m_material = material; }
 
+        // Ray tracing data is built once per mesh; model copies reuse the
+        // BLAS and mesh info and only add their own TLAS instance
+        bool HasAccelerationData() const { return m_blasIndex != UINT32_MAX; }
+        void SetAccelerationData(uint32_t blasIndex, uint32_t meshInfoIndex)
+        {
+            m_blasIndex = blasIndex;
+            m_meshInfoIndex = meshInfoIndex;
+        }
+        uint32_t GetBlasIndex() const { return m_blasIndex; }
+        uint32_t GetMeshInfoIndex() const { return m_meshInfoIndex; }
+
       private:
         std::shared_ptr<Buffer> m_vertexBuffer;
         std::shared_ptr<Buffer> m_indexBuffer;
@@ -47,5 +59,16 @@ namespace Wild
         bool m_hasIndexBuffer = false;
         uint32_t m_vertexCount{};
         uint32_t m_drawCount{};
+
+        uint32_t m_blasIndex = UINT32_MAX;
+        uint32_t m_meshInfoIndex = UINT32_MAX;
+    };
+
+    // ECS component pointing at a shared Mesh resource. Loading the same model
+    // twice hands out the same Mesh (GPU buffers + material) through the mesh
+    // ResourceSystem; only the Transform differs per copy.
+    struct MeshComponent
+    {
+        std::shared_ptr<Mesh> mesh;
     };
 } // namespace Wild

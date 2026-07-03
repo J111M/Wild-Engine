@@ -99,7 +99,7 @@ namespace Wild
             ecs->AddComponent<Model>(entity, "Assets/Models/Sponza/glTF/Sponza.gltf", entity);
             transform.SetScale(glm::vec3(1, 1, 1));
             transform.SetPosition(glm::vec3(70, 1, 70));
-            transform.SetRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
+            //transform.SetRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
             transform.Name = "Sponza";
         });
 
@@ -199,9 +199,12 @@ namespace Wild
                                  DSClearOperation::Store,
                                  "Deferred pass");
 
-                auto meshes = ecs->GetRegistry().view<Transform, Mesh>();
-                for (auto&& [entity, trans, mesh] : meshes.each())
+                auto meshes = ecs->GetRegistry().view<Transform, MeshComponent>();
+                for (auto&& [entity, trans, meshComponent] : meshes.each())
                 {
+                    if (!meshComponent.mesh) continue;
+                    auto& mesh = *meshComponent.mesh;
+
                     m_rc = DeferredRootConstants{};
 
                     if (camera)

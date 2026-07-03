@@ -23,6 +23,7 @@ namespace Wild
     Model::Model(std::filesystem::path filePath, Entity parent)
     {
         m_filePath = filePath.parent_path().string() + "/";
+        m_sourcePath = filePath.string();
 
         fastgltf::Parser parser{};
 
@@ -80,51 +81,27 @@ namespace Wild
 
         auto& mesh = model.meshes[node.meshIndex.value()];
 
+        uint32_t primitiveIndex = 0;
         for (auto& primitive : mesh.primitives)
         {
+            // Identifies this exact piece of geometry across model loads
+            std::string cacheKey =
+                m_sourcePath + "#" + std::to_string(node.meshIndex.value()) + "/" + std::to_string(primitiveIndex++);
+
             if (mesh.primitives.size() == 1)
             {
-                std::vector<Vertex> meshVertex{};
-                std::vector<uint32_t> meshIndices{};
+                auto meshResource = GetOrLoadMesh(model, primitive, cacheKey);
+                engine.GetECS()->AddComponent<MeshComponent>(nodeEntity, meshResource);
 
-                LoadMeshData(model, primitive, meshVertex, meshIndices);
-
-                auto& mesh = engine.GetECS()->AddComponent<Mesh>(nodeEntity, meshVertex, meshIndices);
-                mesh.SetMaterial(LoadMaterials(model, primitive));
-
-                // Add mesh to bottom level acceleation structure
-                if (engine.GetGfxContext()->GetCapabilities().SupportsRayTracing()) { AddMeshToTlas(mesh, transform); }
-
-                // auto& resourceSystem = engine.GetResourceSystems().m_meshResourceSystem;
-                // if (resourceSystem->HasResource(node.name.c_str()))
-                //{
-                //     // If map contains resource create a meshcomponent with the coresponding resource
-                //     auto& component =
-                //         engine.GetECS()->AddComponent<MeshComponent>(nodeEntity,
-                //         resourceSystem->GetResource(node.name.c_str()));
-
-                //    WD_INFO("Mesh found in map: {}", node.name.c_str());
-                //}
-                // else
-                //{
-                //    // If resource is not yet in the map load it and add it
-                //    LoadMeshData(model, primitive, meshVertex, meshIndices);
-
-                //    auto& meshModel = engine.GetECS()->AddComponent<MeshComponent>(
-                //        nodeEntity, resourceSystem->GetOrCreateResource(node.name.c_str(), meshVertex, meshIndices));
-                //    meshModel.mesh->SetMaterial(LoadMaterials(model, primitive));
-                //}
-
-                meshVertex.clear();
-                meshIndices.clear();
+                // Every copy gets its own TLAS instance, the BLAS is shared
+                if (engine.GetGfxContext()->GetCapabilities().SupportsRayTracing()) { AddMeshToTlas(*meshResource, transform); }
             }
             else
-                LoadPrimitive(model, primitive, nodeEntity, mesh.name.c_str());
+                LoadPrimitive(model, primitive, nodeEntity, cacheKey);
         }
-        // m_childMeshes.emplace_back(Mesh(model, primitive));
     }
 
-    void Model::LoadPrimitive(fastgltf::Asset& model, fastgltf::Primitive& primitive, Entity parent, const char* meshName)
+    void Model::LoadPrimitive(fastgltf::Asset& model, fastgltf::Primitive& primitive, Entity parent, const std::string& cacheKey)
     {
         auto primitiveEntity = engine.GetECS()->CreateEntity();
 
@@ -132,34 +109,37 @@ namespace Wild
 
         if (parent != entt::null) { transform.SetParent(parent); }
 
+        auto meshResource = GetOrLoadMesh(model, primitive, cacheKey);
+        engine.GetECS()->AddComponent<MeshComponent>(primitiveEntity, meshResource);
+
+        // Every copy gets its own TLAS instance, the BLAS is shared
+        if (engine.GetGfxContext()->GetCapabilities().SupportsRayTracing()) { AddMeshToTlas(*meshResource, transform); }
+    }
+
+    std::shared_ptr<Mesh> Model::GetOrLoadMesh(fastgltf::Asset& model, fastgltf::Primitive& primitive,
+                                               const std::string& cacheKey)
+    {
+        auto& resourceSystem = engine.GetResourceSystems().m_meshResourceSystem;
+
+        // Already loaded by an earlier copy of this model: reuse the GPU
+        // buffers and material, skip the vertex and texture loading entirely
+        if (auto cached = resourceSystem->GetResource(cacheKey))
+        {
+            WD_INFO("Mesh reused from resource cache: {}", cacheKey);
+            return cached;
+        }
+
         std::vector<Vertex> meshVertex{};
         std::vector<uint32_t> meshIndices{};
 
-        // If resource is not yet in the map load it and add it
         LoadMeshData(model, primitive, meshVertex, meshIndices);
 
-        auto& mesh = engine.GetECS()->AddComponent<Mesh>(primitiveEntity, meshVertex, meshIndices);
-        mesh.SetMaterial(LoadMaterials(model, primitive));
+        auto meshResource = resourceSystem->GetOrCreateResource(cacheKey, meshVertex, meshIndices);
 
-        // Add mesh to bottom level acceleation structure
-        if (engine.GetGfxContext()->GetCapabilities().SupportsRayTracing()) { AddMeshToTlas(mesh, transform); }
+        auto material = LoadMaterials(model, primitive);
+        meshResource->SetMaterial(material);
 
-        // auto& resourceSystem = engine.GetResourceSystems().m_meshResourceSystem;
-        // if (resourceSystem->HasResource(meshName))
-        //{
-        //     // If map contains resource create a meshcomponent with the coresponding resource
-        //     auto& component =
-        //         engine.GetECS()->AddComponent<MeshComponent>(primitiveEntity, resourceSystem->GetResource(meshName));
-
-        //    WD_INFO("Mesh found in map: {}", meshName);
-        //}
-        // else
-        //{
-        //
-        //}
-
-        meshVertex.clear();
-        meshIndices.clear();
+        return meshResource;
     }
 
     void Model::LoadMeshData(fastgltf::Asset& model, fastgltf::Primitive& primitive, std::vector<Vertex>& vertexData,
@@ -290,6 +270,10 @@ namespace Wild
 
         auto& material = model.materials[primitive.materialIndex.value()];
 
+        // Textures are cached by file path, models sharing a texture (or the
+        // same model loaded twice) reuse the GPU resource
+        auto& textureSystem = engine.GetResourceSystems().m_textureResourceSystem;
+
         materials.roughness = material.pbrData.roughnessFactor;
         materials.metallic = material.pbrData.metallicFactor;
         materials.emissiveStrength = material.emissiveStrength;
@@ -304,7 +288,7 @@ namespace Wild
 
             std::string file = m_filePath + (std::string)uri.uri.string();
 
-            materials.m_albedo = std::make_unique<Texture>(file, TextureType::TEXTURE_2D);
+            materials.m_albedo = textureSystem->GetOrCreateResource(file, file, TextureType::TEXTURE_2D);
         }
 
         if (material.pbrData.metallicRoughnessTexture.has_value())
@@ -317,7 +301,7 @@ namespace Wild
 
             std::string file = m_filePath + (std::string)uri.uri.string();
 
-            materials.m_roughnessMetallic = std::make_unique<Texture>(file, TextureType::TEXTURE_2D);
+            materials.m_roughnessMetallic = textureSystem->GetOrCreateResource(file, file, TextureType::TEXTURE_2D);
         }
 
         if (material.emissiveTexture.has_value())
@@ -330,7 +314,7 @@ namespace Wild
 
             std::string file = m_filePath + (std::string)uri.uri.string();
 
-            materials.m_emissive = std::make_unique<Texture>(file, TextureType::TEXTURE_2D);
+            materials.m_emissive = textureSystem->GetOrCreateResource(file, file, TextureType::TEXTURE_2D);
         }
 
         if (material.occlusionTexture.has_value())
@@ -343,7 +327,7 @@ namespace Wild
 
             std::string file = m_filePath + (std::string)uri.uri.string();
 
-            materials.m_occlusion = std::make_unique<Texture>(file, TextureType::TEXTURE_2D);
+            materials.m_occlusion = textureSystem->GetOrCreateResource(file, file, TextureType::TEXTURE_2D);
         }
 
         if (material.normalTexture.has_value())
@@ -356,59 +340,69 @@ namespace Wild
 
             std::string file = m_filePath + (std::string)uri.uri.string();
 
-            materials.m_normal = std::make_unique<Texture>(file, TextureType::TEXTURE_2D);
+            materials.m_normal = textureSystem->GetOrCreateResource(file, file, TextureType::TEXTURE_2D);
         }
 
         return materials;
     }
 
-    void Model::AddMeshToTlas(const Mesh& mesh, Transform& transform)
+    void Model::AddMeshToTlas(Mesh& mesh, Transform& transform)
     {
-        D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc = {};
-        geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-        geometryDesc.Triangles.IndexBuffer = mesh.GetIndexBuffer()->GetIBView()->GetGPUVirtualAddress();
-        geometryDesc.Triangles.IndexCount =
-            static_cast<UINT>(mesh.GetIndexBuffer()->GetBuffer()->GetDesc().Width) / sizeof(uint32_t);
-        geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
-        geometryDesc.Triangles.Transform3x4 = 0;
-        geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-        geometryDesc.Triangles.VertexCount =
-            static_cast<UINT>(mesh.GetVertexBuffer()->GetBuffer()->GetDesc().Width) / sizeof(Vertex);
-        geometryDesc.Triangles.VertexBuffer.StartAddress = mesh.GetVertexBuffer()->GetVBView()->GetGPUVirtualAddress();
-        geometryDesc.Triangles.VertexBuffer.StrideInBytes = sizeof(Vertex);
-
-        geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-
         auto as = engine.GetAccelerationStructureManager();
 
-        const uint32_t blasIndex =
-            as->AddBottomLevelAS(&geometryDesc, 1, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE);
+        // The BLAS and mesh info describe the geometry itself, so they are
+        // built once per mesh and shared between all copies of the model
+        if (!mesh.HasAccelerationData())
+        {
+            D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc = {};
+            geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+            geometryDesc.Triangles.IndexBuffer = mesh.GetIndexBuffer()->GetIBView()->GetGPUVirtualAddress();
+            geometryDesc.Triangles.IndexCount =
+                static_cast<UINT>(mesh.GetIndexBuffer()->GetBuffer()->GetDesc().Width) / sizeof(uint32_t);
+            geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
+            geometryDesc.Triangles.Transform3x4 = 0;
+            geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+            geometryDesc.Triangles.VertexCount =
+                static_cast<UINT>(mesh.GetVertexBuffer()->GetBuffer()->GetDesc().Width) / sizeof(Vertex);
+            geometryDesc.Triangles.VertexBuffer.StartAddress = mesh.GetVertexBuffer()->GetVBView()->GetGPUVirtualAddress();
+            geometryDesc.Triangles.VertexBuffer.StrideInBytes = sizeof(Vertex);
 
-        MeshInstanceInfo infoDesc{};
+            geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
-        auto meshAlloc = engine.GetGfxContext()->GetCbvSrvUavAllocator();
+            const uint32_t blasIndex =
+                as->AddBottomLevelAS(&geometryDesc, 1, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE);
 
-        // Slot 0 is not used so skip it
-        infoDesc.vbHandle =
-            meshAlloc->CreateMesh(mesh.GetVertexBuffer()->GetBuffer(), mesh.GetVertexCount() * sizeof(Vertex)) - 1;
-        infoDesc.ibHandle = meshAlloc->CreateMesh(mesh.GetIndexBuffer()->GetBuffer(), mesh.GetDrawCount() * sizeof(uint32_t)) - 1;
+            MeshInstanceInfo infoDesc{};
 
-        const auto& material = mesh.GetMaterial();
-        if (material.m_albedo) infoDesc.albedoView = material.m_albedo->GetSrv()->BindlessView();
+            auto meshAlloc = engine.GetGfxContext()->GetCbvSrvUavAllocator();
 
-        if (material.m_normal) infoDesc.normalView = material.m_normal->GetSrv()->BindlessView();
+            // Slot 0 is not used so skip it
+            infoDesc.vbHandle =
+                meshAlloc->CreateMesh(mesh.GetVertexBuffer()->GetBuffer(), mesh.GetVertexCount() * sizeof(Vertex)) - 1;
+            infoDesc.ibHandle =
+                meshAlloc->CreateMesh(mesh.GetIndexBuffer()->GetBuffer(), mesh.GetDrawCount() * sizeof(uint32_t)) - 1;
 
-        if (material.m_roughnessMetallic) infoDesc.roughnessMetallicView = material.m_roughnessMetallic->GetSrv()->BindlessView();
+            const auto& material = mesh.GetMaterial();
+            if (material.m_albedo) infoDesc.albedoView = material.m_albedo->GetSrv()->BindlessView();
 
-        if (material.m_emissive) infoDesc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
+            if (material.m_normal) infoDesc.normalView = material.m_normal->GetSrv()->BindlessView();
 
-        if (material.m_occlusion) infoDesc.ambientOcclussionView = material.m_occlusion->GetSrv()->BindlessView();
+            if (material.m_roughnessMetallic)
+                infoDesc.roughnessMetallicView = material.m_roughnessMetallic->GetSrv()->BindlessView();
 
-        infoDesc.emissiveStrength = material.emissiveStrength;
-        infoDesc.metallic = material.metallic;
-        infoDesc.roughness = material.roughness;
+            if (material.m_emissive) infoDesc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
 
-        const uint32_t tlasIndex = as->AddTopLevelAS(blasIndex, transform.GetWorldMatrix(), as->AddMeshInfo(infoDesc));
+            if (material.m_occlusion) infoDesc.ambientOcclussionView = material.m_occlusion->GetSrv()->BindlessView();
+
+            infoDesc.emissiveStrength = material.emissiveStrength;
+            infoDesc.metallic = material.metallic;
+            infoDesc.roughness = material.roughness;
+
+            mesh.SetAccelerationData(blasIndex, as->AddMeshInfo(infoDesc));
+        }
+
+        // Each copy still gets its own TLAS instance with its own transform
+        const uint32_t tlasIndex = as->AddTopLevelAS(mesh.GetBlasIndex(), transform.GetWorldMatrix(), mesh.GetMeshInfoIndex());
 
         transform.SetTlasIndex(tlasIndex);
     }

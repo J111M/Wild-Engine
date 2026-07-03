@@ -38,7 +38,9 @@ namespace Wild
         void BeginProfile(const std::string& name);
         void EndProfile(const std::string& name);
 
-        void Display();
+        void Update();
+
+        void DrawImGui();
 
       private:
         std::unordered_map<std::string, ProfiledData> m_profiledTime;

@@ -81,9 +81,12 @@ namespace Wild
                                      DSClearOperation::DepthClear,
                                      "Cascaded shadow pass");
 
-                    auto meshes = engine.GetECS()->GetRegistry().view<Transform, Mesh>();
-                    for (auto&& [entity, trans, mesh] : meshes.each())
+                    auto meshes = engine.GetECS()->GetRegistry().view<Transform, MeshComponent>();
+                    for (auto&& [entity, trans, meshComponent] : meshes.each())
                     {
+                        if (!meshComponent.mesh) continue;
+                        auto& mesh = *meshComponent.mesh;
+
                         m_rc.localModel = trans.GetWorldMatrix();
                         m_rc.projView = m_directLight.viewProj[i];
                         m_rc.cascadeIndex = i;

@@ -17,6 +17,10 @@ namespace Wild
         m_shaderTracker = std::make_shared<ShaderTracker>();
         m_profiler = std::make_shared<Profiler>();
 
+        // The editor's Profiler panel only owns the window, the content comes
+        // from the real profiler through this callback
+        m_imguiCore->SetProfilerDrawCallback([this]() { m_profiler->DrawImGui(); });
+
         m_resourceSystems.m_meshResourceSystem = std::make_shared<ResourceSystem<Mesh>>();
         m_resourceSystems.m_textureResourceSystem = std::make_shared<ResourceSystem<Texture>>();
 
@@ -98,8 +102,9 @@ namespace Wild
             m_renderer->Render(*m_gfxContext->GetCommandList().get(), deltaTime);
 
 #ifdef NDEBUG
-            // Displays profiled data
-            m_profiler->Display();
+            // Folds this frame's samples into the profiler history, the
+            // Profiler panel draws it when open
+            m_profiler->Update();
 
             if (mainCamera) { m_imguiCore->DrawGizmo(mainCamera->GetView(), mainCamera->GetProjection()); }
 
