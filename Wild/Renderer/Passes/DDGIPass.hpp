@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Systems/ProbeSystem.hpp"
+#include "Renderer/RenderGraph/RenderGraph.hpp"
+#include "Renderer/Renderer.hpp"
 
 namespace Wild
 {
@@ -17,11 +18,6 @@ namespace Wild
         Texture* finalTex;
     };
 
-    struct ProbeDebugPassData
-    {
-        Texture* finalTex;
-    };
-
     class DDGIPass : public RenderFeature
     {
       public:
@@ -32,11 +28,8 @@ namespace Wild
         virtual void Update(const float dt) override;
 
         void AddProbeTracePass(Renderer& renderer, RenderGraph& rg);
-        void AddDebugProbePass(Renderer& renderer, RenderGraph& rg);
 
       private:
-        std::unique_ptr<ProbeSystem> m_probeSystem;
-
         DDGIRootConstants m_rc{};
     };
 } // namespace Wild

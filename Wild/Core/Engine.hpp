@@ -48,6 +48,7 @@ namespace Wild
         const std::filesystem::path GetSystemPath() & { return m_systemPath; }
 
         std::shared_ptr<GfxContext> GetGfxContext() { return m_gfxContext; }
+        std::shared_ptr<Renderer> GetRenderer() { return m_renderer; }
         std::shared_ptr<EntityComponentSystem> GetECS() { return m_ecs; }
         std::shared_ptr<ImguiCore> GetImGui() { return m_imguiCore; }
         std::shared_ptr<ShaderTracker> GetShaderTracker() { return m_shaderTracker; }

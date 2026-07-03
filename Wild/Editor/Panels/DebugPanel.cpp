@@ -1,5 +1,8 @@
 #include "Editor/Panels/DebugPanel.hpp"
 
+#include "Core/Engine.hpp"
+#include "Renderer/Passes/ProbeDebugPass.hpp"
+
 #include <imgui.h>
 
 namespace Wild
@@ -17,6 +20,14 @@ namespace Wild
         ImGui::Checkbox("Show Normals", &debug.showNormals);
         ImGui::Checkbox("Freeze Culling", &debug.freezeCulling);
         ImGui::EndDisabled();
+
+        ImGui::SeparatorText("Global Illumination");
+
+        auto renderer = engine.GetRenderer();
+        if (auto* probePass = renderer ? renderer->GetRenderFeature<ProbeDebugPass>() : nullptr)
+        {
+            ImGui::Checkbox("Draw GI Probes", &probePass->drawProbes);
+        }
 
         // engine.GetImGui()->GetDebugFlags()
 

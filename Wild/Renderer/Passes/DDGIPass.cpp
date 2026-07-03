@@ -3,14 +3,11 @@
 
 namespace Wild
 {
-    DDGIPass::DDGIPass()
-    { m_probeSystem = std::make_unique<ProbeSystem>(glm::vec3(-20.0f, 0.0f, -20.0f), glm::vec3(2.0f), glm::ivec3(16, 8, 16)); }
+    // The probe system this pass traces lives on the renderer's SystemManager,
+    // fetch it with renderer.GetSystems().GetSystem<ProbeSystem>()
+    DDGIPass::DDGIPass() {}
 
-    void DDGIPass::Add(Renderer& renderer, RenderGraph& rg)
-    {
-        AddProbeTracePass(renderer, rg);
-        AddDebugProbePass(renderer, rg);
-    }
+    void DDGIPass::Add(Renderer& renderer, RenderGraph& rg) { AddProbeTracePass(renderer, rg); }
 
     void DDGIPass::Update(const float dt)
     {
@@ -108,7 +105,6 @@ namespace Wild
                     list.SetShaderResourceView(3, engine.GetAccelerationStructureManager()->GetMeshIdBuffer().get());
                     list.SetBindlessHeap(4);
 
-                    // Modify to probe size
                     list.Dispatch(desc.width, desc.height, 1);
 
                     list.EndRender();
@@ -119,6 +115,4 @@ namespace Wild
                 }
             });
     }
-
-    void DDGIPass::AddDebugProbePass(Renderer& renderer, RenderGraph& rg) {}
 } // namespace Wild

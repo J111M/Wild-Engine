@@ -1,7 +1,9 @@
 #pragma once
 
-#include <tuple>
+#include <cassert>
+#include <memory>
 #include <type_traits>
+#include <typeindex>
 #include <unordered_map>
 
 namespace Wild
@@ -19,7 +21,7 @@ namespace Wild
         // Adds new system to the registry.
         template <typename T, typename... Args> T& AddSystem(Args&&... args)
         {
-            static_assert(std::is_base_of_v<System, T>, "T must derive from ISystem");
+            static_assert(std::is_base_of_v<System, T>, "T must derive from System");
             auto system = std::make_unique<T>(std::forward<Args>(args)...);
             T& ref = *system;
             auto [it, inserted] = m_systems.emplace(std::type_index(typeid(T)), std::move(system));
@@ -43,7 +45,7 @@ namespace Wild
         }
 
       private:
-        std::unordered_map<std::type_index, std::unique_ptr<ISystem>> m_systems;
+        std::unordered_map<std::type_index, std::unique_ptr<System>> m_systems;
     };
 
 } // namespace Wild

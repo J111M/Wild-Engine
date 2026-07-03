@@ -10,6 +10,8 @@
 #include "Core/Camera.hpp"
 #include "Core/Transform.hpp"
 
+#include "Systems/SystemManager.hpp"
+
 #include "Tools/D3D12Common.hpp"
 #include "Tools/States.hpp"
 
@@ -40,6 +42,9 @@ namespace Wild
 
         template <typename T> T* GetRenderFeature();
 
+        // Systems shared between render passes (probes, etc.) live here
+        SystemManager& GetSystems() { return m_systemManager; }
+
         bool HasPipelineInCache(const std::string& key);
         std::shared_ptr<PipelineState> GetOrCreatePipeline(const std::string& key, PipelineStateType Type,
                                                            PipelineStateSettings& settings,
@@ -67,6 +72,8 @@ namespace Wild
 
       private:
         Entity m_activeCamera{};
+
+        SystemManager m_systemManager;
 
         std::vector<std::unique_ptr<RenderFeature>> m_renderFeatures;
         std::shared_ptr<TransientResourceCache> m_resourceCache;

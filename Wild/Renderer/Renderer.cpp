@@ -11,9 +11,11 @@
 #include "Renderer/Passes/OceanPass.hpp"
 #include "Renderer/Passes/PbrPass.hpp"
 #include "Renderer/Passes/PostProcessPass.hpp"
+#include "Renderer/Passes/ProbeDebugPass.hpp"
 #include "Renderer/Passes/ProceduralTerrainPass.hpp"
 #include "Renderer/Passes/SkyboxPass.hpp"
 #include "Systems/GrassManager.hpp"
+#include "Systems/ProbeSystem.hpp"
 
 #include "Core/Camera.hpp"
 
@@ -27,6 +29,8 @@ namespace Wild
 
         m_resourceCache = std::make_shared<TransientResourceCache>();
 
+        m_systemManager.AddSystem<ProbeSystem>(glm::vec3(-21.0f, 0.0f, -21.0f), glm::vec3(6.0f), glm::ivec3(8, 4, 8));
+
         m_renderFeatures.emplace_back(std::make_unique<CascadedShadowPass>());
         m_renderFeatures.emplace_back(std::make_unique<ProceduralTerrainPass>());
         m_renderFeatures.emplace_back(std::make_unique<GrassPass>());
@@ -37,6 +41,7 @@ namespace Wild
 
         m_renderFeatures.emplace_back(std::make_unique<PostProcessPass>());
         m_renderFeatures.emplace_back(std::make_unique<DebugLinePass>());
+        m_renderFeatures.emplace_back(std::make_unique<ProbeDebugPass>());
         m_renderFeatures.emplace_back(std::make_unique<DDGIPass>());
 
         auto ecs = engine.GetECS();

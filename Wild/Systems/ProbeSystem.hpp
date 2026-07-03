@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Systems/SystemManager.hpp"
+
 #include <glm/glm.hpp>
 #include <vector>
 
 namespace Wild
 {
-    class ProbeSystem
+    class ProbeSystem : public System
     {
       public:
         struct Probe
