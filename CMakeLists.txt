@@ -94,4 +94,15 @@ add_custom_command(TARGET Wild POST_BUILD
         $<TARGET_FILE_DIR:Wild>
 )
 
+# The D3D12 loader expects the Agility SDK runtime in the folder named by the
+# exported D3D12SDKPath symbol
+add_custom_command(TARGET Wild POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:Wild>/D3D12"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${AGILITY_SDK_DLL_DIR}/D3D12Core.dll"
+        "${AGILITY_SDK_DLL_DIR}/d3d12SDKLayers.dll"
+        "$<TARGET_FILE_DIR:Wild>/D3D12"
+    COMMENT "Copying DirectX 12 Agility SDK runtime to output directory"
+)
+
 #${CMAKE_BINARY_DIR}

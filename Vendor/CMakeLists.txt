@@ -33,6 +33,29 @@ target_link_libraries(Wild PRIVATE
 )
 set(PIX_DLL "${winpixeventruntime_SOURCE_DIR}/bin/${PIX_ARCH}/WinPixEventRuntime.dll" PARENT_SCOPE)
 
+# DirectX 12 Agility SDK
+set(AGILITY_SDK_VERSION "1.619.4")
+string(REGEX REPLACE "^[0-9]+\\.([0-9]+)\\..*$" "\\1" AGILITY_SDK_EXPORT_VERSION ${AGILITY_SDK_VERSION})
+FetchContent_Declare(
+    DirectXAgilitySDK
+    URL "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${AGILITY_SDK_VERSION}"
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(DirectXAgilitySDK)
+
+target_include_directories(Wild BEFORE PRIVATE
+    "${directxagilitysdk_SOURCE_DIR}/build/native/include"
+)
+target_compile_definitions(Wild PRIVATE
+    D3D12_AGILITY_SDK_VERSION=${AGILITY_SDK_EXPORT_VERSION}
+)
+if(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
+    set(AGILITY_ARCH "arm64")
+else()
+    set(AGILITY_ARCH "x64")
+endif()
+set(AGILITY_SDK_DLL_DIR "${directxagilitysdk_SOURCE_DIR}/build/native/bin/${AGILITY_ARCH}" PARENT_SCOPE)
+
 # GLM
 FetchContent_Declare(
   glm
