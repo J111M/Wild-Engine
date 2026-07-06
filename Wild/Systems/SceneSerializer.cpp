@@ -7,6 +7,7 @@
 #include "Renderer/Resources/LightTypes.hpp"
 #include "Renderer/Resources/Model.hpp"
 
+#include "Systems/Physics/PhysicsTypes.hpp"
 #include "Systems/SceneManager.hpp"
 
 #include "Tools/Log.hpp"
@@ -35,6 +36,71 @@ namespace Wild
         }
 
         constexpr int kSceneFileVersion = 1;
+
+        nlohmann::json ToJson(const ColliderShape& c)
+        {
+            return {
+                {"type", static_cast<int>(c.type)},
+                {"offset", ToJson(c.offset)},
+                {"rotation", ToJson(c.rotation)},
+                {"boxHalfExtents", ToJson(c.boxHalfExtents)},
+                {"sphereRadius", c.sphereRadius},
+                {"capsuleRadius", c.capsuleRadius},
+                {"capsuleHalfHeight", c.capsuleHalfHeight},
+                {"friction", c.friction},
+                {"restitution", c.restitution},
+            };
+        }
+
+        ColliderShape ColliderShapeFromJson(const nlohmann::json& j)
+        {
+            ColliderShape c;
+            c.type = static_cast<ColliderType>(j.value("type", 0));
+            c.offset = Vec3FromJson(j["offset"]);
+            c.rotation = QuatFromJson(j["rotation"]);
+            c.boxHalfExtents = Vec3FromJson(j["boxHalfExtents"]);
+            c.sphereRadius = j.value("sphereRadius", 0.5f);
+            c.capsuleRadius = j.value("capsuleRadius", 0.5f);
+            c.capsuleHalfHeight = j.value("capsuleHalfHeight", 0.5f);
+            c.friction = j.value("friction", 0.5f);
+            c.restitution = j.value("restitution", 0.0f);
+            return c;
+        }
+
+        nlohmann::json ToJson(const RigidBody& rb)
+        {
+            nlohmann::json shapes = nlohmann::json::array();
+            for (const auto& shape : rb.shapes)
+                shapes.push_back(ToJson(shape));
+
+            return {
+                {"motionType", static_cast<int>(rb.motionType)},
+                {"useGravity", rb.useGravity},
+                {"isTrigger", rb.isTrigger},
+                {"autoMass", rb.autoMass},
+                {"mass", rb.mass},
+                {"linearDamping", rb.linearDamping},
+                {"angularDamping", rb.angularDamping},
+                {"shapes", shapes},
+            };
+        }
+
+        void RigidBodyFromJson(const nlohmann::json& j, RigidBody& rb)
+        {
+            rb.motionType = static_cast<MotionType>(j.value("motionType", 0));
+            rb.useGravity = j.value("useGravity", true);
+            rb.isTrigger = j.value("isTrigger", false);
+            rb.autoMass = j.value("autoMass", true);
+            rb.mass = j.value("mass", 1.0f);
+            rb.linearDamping = j.value("linearDamping", 0.05f);
+            rb.angularDamping = j.value("angularDamping", 0.05f);
+
+            rb.shapes.clear();
+            for (const auto& shapeJson : j["shapes"])
+                rb.shapes.push_back(ColliderShapeFromJson(shapeJson));
+
+            rb.bodyDirty = true;
+        }
     } // namespace
 
     void SceneSerializer::ClearScene() { DestroySceneObjectsRecursive(engine.GetECS()->GetRegistry()); }
@@ -85,6 +151,8 @@ namespace Wild
             auto& light = ecs->GetComponent<DirectionalLight>(e);
             node["directionalLight"] = {{"colorIntensity", ToJson(light.colorIntensity)}, {"direction", ToJson(light.direction)}};
         }
+
+        if (ecs->HasComponent<RigidBody>(e)) node["rigidBody"] = ToJson(ecs->GetComponent<RigidBody>(e));
 
         return node;
     }
@@ -145,15 +213,17 @@ namespace Wild
     {
         auto ecs = engine.GetECS();
 
+        bool baseMatches;
         if (node.contains("model"))
         {
-            return ecs->HasComponent<Model>(e) &&
-                   ecs->GetComponent<Model>(e).GetSourcePath() == node["model"]["sourcePath"].get<std::string>();
+            baseMatches = ecs->HasComponent<Model>(e) &&
+                          ecs->GetComponent<Model>(e).GetSourcePath() == node["model"]["sourcePath"].get<std::string>();
         }
-        if (node.contains("pointLight")) return ecs->HasComponent<PointLight>(e);
-        if (node.contains("directionalLight")) return ecs->HasComponent<DirectionalLight>(e);
+        else if (node.contains("pointLight")) baseMatches = ecs->HasComponent<PointLight>(e);
+        else if (node.contains("directionalLight")) baseMatches = ecs->HasComponent<DirectionalLight>(e);
+        else baseMatches = !ecs->HasComponent<Model>(e) && !ecs->HasComponent<PointLight>(e) && !ecs->HasComponent<DirectionalLight>(e);
 
-        return !ecs->HasComponent<Model>(e) && !ecs->HasComponent<PointLight>(e) && !ecs->HasComponent<DirectionalLight>(e);
+        return baseMatches && (ecs->HasComponent<RigidBody>(e) == node.contains("rigidBody"));
     }
 
     void SceneSerializer::UpdateEntityInPlace(Entity e, const nlohmann::json& node)
@@ -180,6 +250,8 @@ namespace Wild
             light.colorIntensity = Vec4FromJson(node["directionalLight"]["colorIntensity"]);
             light.direction = Vec3FromJson(node["directionalLight"]["direction"]);
         }
+
+        if (node.contains("rigidBody")) RigidBodyFromJson(node["rigidBody"], ecs->GetComponent<RigidBody>(e));
     }
 
     Entity SceneSerializer::CreateEntityFromJson(const nlohmann::json& node)
@@ -218,6 +290,8 @@ namespace Wild
             light.colorIntensity = Vec4FromJson(node["directionalLight"]["colorIntensity"]);
             light.direction = Vec3FromJson(node["directionalLight"]["direction"]);
         }
+
+        if (node.contains("rigidBody")) RigidBodyFromJson(node["rigidBody"], ecs->AddComponent<RigidBody>(e));
 
         return e;
     }
@@ -329,5 +403,91 @@ namespace Wild
         }
 
         return LoadSceneJson(root);
+    }
+
+    std::string SceneSerializer::CopyEntitySubtree(Entity root)
+    {
+        auto& registry = engine.GetECS()->GetRegistry();
+
+        nlohmann::json entities = nlohmann::json::array();
+
+        std::vector<Entity> stack{root};
+        while (!stack.empty())
+        {
+            Entity e = stack.back();
+            stack.pop_back();
+
+            entities.push_back(SerializeEntity(e));
+
+            if (!registry.any_of<Model>(e))
+            {
+                for (auto child : registry.get<Transform>(e).GetChildren())
+                    stack.push_back(child);
+            }
+        }
+
+        nlohmann::json snapshot = {{"version", kSceneFileVersion}, {"entities", entities}};
+        return snapshot.dump();
+    }
+
+    Entity SceneSerializer::PasteEntitySubtree(const std::string& jsonText, Entity newParent)
+    {
+        nlohmann::json root;
+        try
+        {
+            root = nlohmann::json::parse(jsonText);
+        }
+        catch (const nlohmann::json::exception& ex)
+        {
+            WD_WARN("Failed to parse clipboard entity data: {}", ex.what());
+            return entt::null;
+        }
+
+        if (!root.contains("entities") || root["entities"].empty()) return entt::null;
+
+        auto ecs = engine.GetECS();
+        nlohmann::json& entities = root["entities"];
+
+        std::unordered_map<uint64_t, uint64_t> guidRemap;
+        for (auto& node : entities)
+            guidRemap[node["guid"].get<uint64_t>()] = GenerateGuid();
+
+        uint64_t rootOldGuid = entities.front()["guid"].get<uint64_t>();
+
+        std::unordered_map<uint64_t, Entity> newGuidToEntity;
+        Entity newRoot = entt::null;
+
+        for (auto& node : entities)
+        {
+            uint64_t oldGuid = node["guid"].get<uint64_t>();
+            uint64_t newGuid = guidRemap[oldGuid];
+            node["guid"] = newGuid;
+
+            Entity created = CreateEntityFromJson(node);
+            newGuidToEntity[newGuid] = created;
+
+            if (oldGuid == rootOldGuid) newRoot = created;
+        }
+
+        for (auto& node : entities)
+        {
+            Entity child = newGuidToEntity[node["guid"].get<uint64_t>()];
+
+            if (child == newRoot)
+            {
+                if (newParent != entt::null) ecs->GetComponent<Transform>(child).SetParent(newParent);
+                continue;
+            }
+
+            if (node["parentGuid"].is_null()) continue;
+
+            auto remapIt = guidRemap.find(node["parentGuid"].get<uint64_t>());
+            if (remapIt == guidRemap.end()) continue;
+
+            auto parentEntityIt = newGuidToEntity.find(remapIt->second);
+            if (parentEntityIt != newGuidToEntity.end()) ecs->GetComponent<Transform>(child).SetParent(parentEntityIt->second);
+        }
+
+        return newRoot;
     }
 } // namespace Wild

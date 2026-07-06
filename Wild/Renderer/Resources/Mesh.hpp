@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 class Buffer;
 // struct Material;
@@ -36,6 +37,11 @@ namespace Wild
         uint32_t GetVertexCount() const { return m_vertexCount; }
         uint32_t GetDrawCount() const { return m_drawCount; }
 
+        // CPU-side copy of positions/indices, kept around (GPU buffers are upload-only)
+        // so physics colliders can build Jolt mesh/convex-hull shapes from the geometry.
+        const std::vector<glm::vec3>& GetCollisionPositions() const { return m_collisionPositions; }
+        const std::vector<uint32_t>& GetCollisionIndices() const { return m_collisionIndices; }
+
         const Material& GetMaterial() const { return m_material; }
         void SetMaterial(Material& material) { m_material = material; }
 
@@ -60,13 +66,15 @@ namespace Wild
         uint32_t m_vertexCount{};
         uint32_t m_drawCount{};
 
+        std::vector<glm::vec3> m_collisionPositions;
+        std::vector<uint32_t> m_collisionIndices;
+
         uint32_t m_blasIndex = UINT32_MAX;
         uint32_t m_meshInfoIndex = UINT32_MAX;
     };
 
-    // ECS component pointing at a shared Mesh resource. Loading the same model
-    // twice hands out the same Mesh (GPU buffers + material) through the mesh
-    // ResourceSystem; only the Transform differs per copy.
+    // Mesh component for referencing copied entities
+    // to maintain the render structure
     struct MeshComponent
     {
         std::shared_ptr<Mesh> mesh;

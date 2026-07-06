@@ -18,7 +18,7 @@ namespace Wild
         m_profiler = std::make_shared<Profiler>();
 
         // The editor's Profiler panel only owns the window, the content comes
-        // from the real profiler through this callback
+        // from the real profiler through the callback
         m_imguiCore->SetProfilerDrawCallback([this]() { m_profiler->DrawImGui(); });
 
         m_resourceSystems.m_meshResourceSystem = std::make_shared<ResourceSystem<Mesh>>();
@@ -27,10 +27,11 @@ namespace Wild
         m_sceneManager = std::make_shared<SceneManager>();
         m_sceneSerializer = std::make_shared<SceneSerializer>();
         m_undoSystem = std::make_shared<UndoSystem>();
+        m_physicsSystem = std::make_shared<PhysicsSystem>();
 
         m_accelerationStructureManager = std::make_shared<AccelerationStructureManager>();
 
-        m_renderer = std::make_shared<Renderer>();        
+        m_renderer = std::make_shared<Renderer>();
     }
 
     void Engine::Run()
@@ -99,6 +100,10 @@ namespace Wild
             m_imguiCore->Watch("FPS: ", &m_fps);
 #endif
 
+            // Step physics before the renderer so this frame's simulated transforms
+            // (and the TLAS updates they trigger) are what gets drawn
+            m_physicsSystem->Update(deltaTime);
+
             // Update and render all the passes
             m_renderer->Update(deltaTime);
             m_renderer->Render(*m_gfxContext->GetCommandList().get(), deltaTime);
@@ -135,6 +140,7 @@ namespace Wild
         // Explicitly deleting the smart pointers
         m_accelerationStructureManager.reset();
         m_renderer.reset();
+        m_physicsSystem.reset();
         m_undoSystem.reset();
         m_sceneSerializer.reset();
         m_sceneManager.reset();

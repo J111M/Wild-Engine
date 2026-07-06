@@ -15,6 +15,7 @@
 
 #include "Renderer/Resources/Mesh.hpp"
 
+#include "Systems/Physics/PhysicsSystem.hpp"
 #include "Systems/ResourceSystem.hpp"
 #include "Systems/SceneManager.hpp"
 #include "Systems/SceneSerializer.hpp"
@@ -58,6 +59,7 @@ namespace Wild
         std::shared_ptr<SceneManager> GetSceneManager() { return m_sceneManager; }
         std::shared_ptr<SceneSerializer> GetSceneSerializer() { return m_sceneSerializer; }
         std::shared_ptr<UndoSystem> GetUndoSystem() { return m_undoSystem; }
+        std::shared_ptr<PhysicsSystem> GetPhysicsSystem() { return m_physicsSystem; }
         std::shared_ptr<AccelerationStructureManager> GetAccelerationStructureManager() { return m_accelerationStructureManager; }
 
         ResourceSystems& GetResourceSystems() { return m_resourceSystems; }
@@ -77,6 +79,7 @@ namespace Wild
         std::shared_ptr<SceneManager> m_sceneManager;
         std::shared_ptr<SceneSerializer> m_sceneSerializer;
         std::shared_ptr<UndoSystem> m_undoSystem;
+        std::shared_ptr<PhysicsSystem> m_physicsSystem;
         std::shared_ptr<AccelerationStructureManager> m_accelerationStructureManager;
 
         ResourceSystems m_resourceSystems;

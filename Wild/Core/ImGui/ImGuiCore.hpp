@@ -48,10 +48,8 @@ namespace Wild
         void DisplayTexture(std::shared_ptr<Texture> texture, glm::vec2 imageSize = {150.0f, 150.0f});
         void DisplayTexture(Texture* texture, glm::vec2 imageSize = {150.0f, 150.0f});
 
-        // Hands the Profiler panel its draw content, see ProfilerPanel.hpp
         void SetProfilerDrawCallback(std::function<void()> callback);
 
-        // Target of the GLFW file-drop callback, forwards to the Assets panel
         void OnFilesDropped(const char** paths, int count);
 
         bool IsFullScreen() const { return m_fullscreen; }
@@ -70,6 +68,7 @@ namespace Wild
         void DrawStatsBar();
         void BuildDefaultLayout(ImGuiID dockspaceId);
         void ApplyPendingSceneLoad();
+        void HandleCopyPasteShortcuts();
 
         std::shared_ptr<Window> m_window;
 
@@ -87,6 +86,9 @@ namespace Wild
         bool m_rebuildLayout = false;
 
         char m_scenePathBuffer[256] = "Assets/Scenes/scene.json";
+
+        // Holds a copy of an entity
+        std::string m_entityClipboard;
 
         bool m_wasGizmoUsing = false;
 

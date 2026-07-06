@@ -34,5 +34,10 @@ namespace Wild
 
             m_drawCount = indices.size();
         }
+
+        m_collisionPositions.reserve(vertices.size());
+        for (const auto& vertex : vertices)
+            m_collisionPositions.push_back(vertex.position);
+        m_collisionIndices = indices;
     }
 } // namespace Wild

@@ -3,6 +3,8 @@
 #include "Core/Engine.hpp"
 #include "Core/Transform.hpp"
 
+#include "Systems/Physics/PhysicsTypes.hpp"
+
 #include <algorithm>
 
 namespace Wild
@@ -32,6 +34,15 @@ namespace Wild
             for (auto index : tlasIndices)
                 as->RemoveInstance(index);
         }
+
+        void RemovePhysicsBodies(entt::registry& registry, const std::vector<Entity>& toDestroy)
+        {
+            auto physics = engine.GetPhysicsSystem();
+            for (auto e : toDestroy)
+            {
+                if (auto* rigidBody = registry.try_get<RigidBody>(e)) physics->DestroyBody(*rigidBody);
+            }
+        }
     } // namespace
 
     void DestroySceneObjectsRecursive(entt::registry& registry)
@@ -43,6 +54,7 @@ namespace Wild
         if (toDestroy.empty()) return;
 
         RemoveAccelerationInstances(registry, toDestroy);
+        RemovePhysicsBodies(registry, toDestroy);
 
         engine.GetGfxContext()->Flush();
 
@@ -60,6 +72,7 @@ namespace Wild
         CollectDescendants(registry, entity, toDestroy);
 
         RemoveAccelerationInstances(registry, toDestroy);
+        RemovePhysicsBodies(registry, toDestroy);
         engine.GetGfxContext()->Flush();
 
         for (auto e : toDestroy)

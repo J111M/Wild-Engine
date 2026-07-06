@@ -144,6 +144,8 @@ namespace Wild
             if (ImGui::IsKeyPressed(ImGuiKey_N)) m_pendingSceneLoad.kind = PendingSceneLoad::Kind::NewScene;
             if (ImGui::IsKeyPressed(ImGuiKey_Z)) engine.GetUndoSystem()->RequestUndo();
             if (ImGui::IsKeyPressed(ImGuiKey_Y)) engine.GetUndoSystem()->RequestRedo();
+
+            HandleCopyPasteShortcuts();
         }
 
         if (m_fullscreen) return;
@@ -159,6 +161,31 @@ namespace Wild
 
         DrawMenuBar();
         DrawStatsBar();
+    }
+
+    void ImguiCore::HandleCopyPasteShortcuts()
+    {
+        auto ecs = engine.GetECS();
+        auto& registry = ecs->GetRegistry();
+
+        if (ImGui::IsKeyPressed(ImGuiKey_C) && registry.valid(m_state.selectedEntity))
+            m_entityClipboard = engine.GetSceneSerializer()->CopyEntitySubtree(m_state.selectedEntity);
+
+        if (ImGui::IsKeyPressed(ImGuiKey_V) && !m_entityClipboard.empty())
+        {
+            // Pastes as a sibling of whatever's currently selected (same parent), not
+            // as its child - so copy-then-immediately-paste duplicates in place rather
+            // than nesting the copy inside the very thing that was just copied.
+            Entity parent = entt::null;
+            if (registry.valid(m_state.selectedEntity) && registry.any_of<Transform>(m_state.selectedEntity))
+                parent = registry.get<Transform>(m_state.selectedEntity).GetParent();
+
+            engine.GetUndoSystem()->BeginEdit();
+            Entity pasted = engine.GetSceneSerializer()->PasteEntitySubtree(m_entityClipboard, parent);
+            engine.GetUndoSystem()->CommitEdit();
+
+            if (pasted != entt::null) m_state.selectedEntity = pasted;
+        }
     }
 
     void ImguiCore::BuildDefaultLayout(ImGuiID dockspaceId)

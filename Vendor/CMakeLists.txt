@@ -71,6 +71,21 @@ target_link_libraries(Wild PRIVATE glm::glm)
 add_subdirectory("entt")
 target_link_libraries(Wild PUBLIC EnTT)
 
+# Jolt Physics
+set(ENABLE_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
+set(INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
+set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    JoltPhysics
+    GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
+    GIT_TAG v5.5.0
+    SOURCE_SUBDIR Build
+)
+FetchContent_MakeAvailable(JoltPhysics)
+
+target_link_libraries(Wild PRIVATE Jolt)
+target_include_directories(Wild PRIVATE "${joltphysics_SOURCE_DIR}")
+
 # stb
 target_include_directories(Wild PRIVATE "./stb/")
 
@@ -81,7 +96,7 @@ FetchContent_MakeAvailable(spdlog)
 
 target_link_libraries(Wild PRIVATE spdlog::spdlog)
 
-# nlohmann/json (scene serialization)
+# nlohmann/json
 FetchContent_Declare(
     nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
