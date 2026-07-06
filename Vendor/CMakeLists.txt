@@ -81,6 +81,17 @@ FetchContent_MakeAvailable(spdlog)
 
 target_link_libraries(Wild PRIVATE spdlog::spdlog)
 
+# nlohmann/json (scene serialization)
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+
+FetchContent_MakeAvailable(nlohmann_json)
+
+target_link_libraries(Wild PRIVATE nlohmann_json::nlohmann_json)
+
 # Slang
 FetchContent_Declare(
     slang

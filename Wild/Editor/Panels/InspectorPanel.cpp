@@ -12,6 +12,15 @@
 
 namespace Wild
 {
+    namespace
+    {
+        void TrackFieldEdit()
+        {
+            if (ImGui::IsItemActivated()) engine.GetUndoSystem()->BeginEdit();
+            if (ImGui::IsItemDeactivatedAfterEdit()) engine.GetUndoSystem()->CommitEdit();
+        }
+    } // namespace
+
     void InspectorPanel::OnRender()
     {
         auto ecs = engine.GetECS();
@@ -70,7 +79,9 @@ namespace Wild
             auto& pointLight = registry.get<PointLight>(selected);
 
             ImGui::ColorEdit3("Color", &pointLight.colorIntensity[0]);
+            TrackFieldEdit();
             ImGui::DragFloat("Intensity", &pointLight.colorIntensity.w);
+            TrackFieldEdit();
         }
 
         if (ecs->HasComponent<DirectionalLight>(selected) &&
@@ -93,9 +104,12 @@ namespace Wild
                 dirLight.direction[1] = sinf(p);
                 dirLight.direction[2] = cosf(p) * cosf(y);
             }
+            TrackFieldEdit();
 
             ImGui::ColorEdit3("Color", &dirLight.colorIntensity[0]);
+            TrackFieldEdit();
             ImGui::SliderFloat("Intensity", &dirLight.colorIntensity.w, 0.0f, 50.0f);
+            TrackFieldEdit();
         }
     }
 } // namespace Wild

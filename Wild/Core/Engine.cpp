@@ -25,6 +25,8 @@ namespace Wild
         m_resourceSystems.m_textureResourceSystem = std::make_shared<ResourceSystem<Texture>>();
 
         m_sceneManager = std::make_shared<SceneManager>();
+        m_sceneSerializer = std::make_shared<SceneSerializer>();
+        m_undoSystem = std::make_shared<UndoSystem>();
 
         m_accelerationStructureManager = std::make_shared<AccelerationStructureManager>();
 
@@ -133,6 +135,8 @@ namespace Wild
         // Explicitly deleting the smart pointers
         m_accelerationStructureManager.reset();
         m_renderer.reset();
+        m_undoSystem.reset();
+        m_sceneSerializer.reset();
         m_sceneManager.reset();
         m_imguiCore.reset();
         m_ecs.reset();

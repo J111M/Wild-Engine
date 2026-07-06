@@ -1,6 +1,7 @@
 #include "Editor/Panels/ViewportPanel.hpp"
 
 #include "Core/Engine.hpp"
+#include "Core/Guid.hpp"
 #include "Editor/EditorIcons.hpp"
 #include "Renderer/Resources/Model.hpp"
 #include "Tools/Log.hpp"
@@ -60,8 +61,10 @@ namespace Wild
     void ViewportPanel::SpawnDroppedModel(const char* assetPath)
     {
         auto ecs = engine.GetECS();
+        engine.GetUndoSystem()->BeginEdit();
 
         auto entity = ecs->CreateEntity();
+        ecs->AddComponent<Guid>(entity, GenerateGuid());
         ecs->AddComponent<SceneObject>(entity);
         auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0.0f), entity);
         transform.Name = std::filesystem::path(assetPath).stem().string();
@@ -80,6 +83,7 @@ namespace Wild
         ecs->AddComponent<Model>(entity, std::filesystem::path(assetPath), entity);
 
         m_state.selectedEntity = entity;
+        engine.GetUndoSystem()->CommitEdit();
 
         WD_INFO("Spawned model from asset drop: {}", assetPath);
     }
@@ -96,6 +100,22 @@ namespace Wild
         GizmoToolButton(m_state, icons ? WD_ICON_ROTATE : "Rotate", "Rotate (T)", ImGuizmo::ROTATE);
         ImGui::SameLine(0.0f, 4.0f);
         GizmoToolButton(m_state, icons ? WD_ICON_SCALE : "Scale", "Scale (Y)", ImGuizmo::SCALE);
+
+        ImGui::SameLine(0.0f, 12.0f);
+
+        auto undoSystem = engine.GetUndoSystem();
+
+        ImGui::BeginDisabled(!undoSystem->CanUndo());
+        if (ImGui::Button("Undo")) undoSystem->RequestUndo();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) ImGui::SetTooltip("Undo (Ctrl+Z)");
+        ImGui::EndDisabled();
+
+        ImGui::SameLine(0.0f, 4.0f);
+
+        ImGui::BeginDisabled(!undoSystem->CanRedo());
+        if (ImGui::Button("Redo")) undoSystem->RequestRedo();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) ImGui::SetTooltip("Redo (Ctrl+Y)");
+        ImGui::EndDisabled();
 
         ImGui::EndGroup();
 

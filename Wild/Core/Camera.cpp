@@ -1,6 +1,8 @@
 #include "Core/Camera.hpp"
 #include <glm/gtc/matrix_access.hpp>
 
+#include <imgui.h>
+
 namespace Wild
 {
     Camera::Camera(glm::vec3 pos, uint32_t index)
@@ -35,27 +37,34 @@ namespace Wild
 
             dt = glm::clamp(dt, 0.0f, 0.0333f);
 
-            if (glfwGetKey(glfwWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) { m_speed = 15.0f; }
-            else
-            {
-                m_speed = 5.0f;
-            }
+            // Don't let WASD/QE fly the camera around while the user is typing
+            // into an ImGui text field (e.g. the Save/Open Scene path box)
+            const bool keyboardCapturedByUI = ImGui::GetIO().WantTextInput;
 
-            float velocity = m_speed * dt;
-
-            if (glfwGetKey(glfwWindow, GLFW_KEY_S) == GLFW_PRESS) { m_position -= velocity * m_orientation; }
-            if (glfwGetKey(glfwWindow, GLFW_KEY_W) == GLFW_PRESS) { m_position += velocity * m_orientation; }
-            if (glfwGetKey(glfwWindow, GLFW_KEY_A) == GLFW_PRESS)
+            if (!keyboardCapturedByUI)
             {
-                m_position -= velocity * glm::normalize(glm::cross(m_orientation, m_up));
-            }
-            if (glfwGetKey(glfwWindow, GLFW_KEY_D) == GLFW_PRESS)
-            {
-                m_position += velocity * glm::normalize(glm::cross(m_orientation, m_up));
-            }
+                if (glfwGetKey(glfwWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) { m_speed = 15.0f; }
+                else
+                {
+                    m_speed = 5.0f;
+                }
 
-            if (glfwGetKey(glfwWindow, GLFW_KEY_E) == GLFW_PRESS) { m_position += velocity * m_up; }
-            if (glfwGetKey(glfwWindow, GLFW_KEY_Q) == GLFW_PRESS) { m_position -= velocity * m_up; }
+                float velocity = m_speed * dt;
+
+                if (glfwGetKey(glfwWindow, GLFW_KEY_S) == GLFW_PRESS) { m_position -= velocity * m_orientation; }
+                if (glfwGetKey(glfwWindow, GLFW_KEY_W) == GLFW_PRESS) { m_position += velocity * m_orientation; }
+                if (glfwGetKey(glfwWindow, GLFW_KEY_A) == GLFW_PRESS)
+                {
+                    m_position -= velocity * glm::normalize(glm::cross(m_orientation, m_up));
+                }
+                if (glfwGetKey(glfwWindow, GLFW_KEY_D) == GLFW_PRESS)
+                {
+                    m_position += velocity * glm::normalize(glm::cross(m_orientation, m_up));
+                }
+
+                if (glfwGetKey(glfwWindow, GLFW_KEY_E) == GLFW_PRESS) { m_position += velocity * m_up; }
+                if (glfwGetKey(glfwWindow, GLFW_KEY_Q) == GLFW_PRESS) { m_position -= velocity * m_up; }
+            }
 
             // if (glfwGetKey(glfwWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) { speed = 0.05f; }
             // else { speed = 0.05f; }

@@ -1,6 +1,7 @@
 #include "Core/ImGui/ImGuiCore.hpp"
 
 #include "Core/Engine.hpp"
+#include "Core/Guid.hpp"
 #include "Core/Transform.hpp"
 #include "Editor/EditorTheme.hpp"
 #include "Editor/EditorWidgets.hpp"
@@ -132,7 +133,18 @@ namespace Wild
         ImGui::NewFrame();
         ImGuizmo::BeginFrame();
 
+        if (engine.GetUndoSystem()->ProcessPending()) m_state.selectedEntity = entt::null;
+        ApplyPendingSceneLoad();
+
         if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_F)) m_fullscreen = !m_fullscreen;
+
+        if (!ImGui::GetIO().WantTextInput && ImGui::GetIO().KeyCtrl)
+        {
+            if (ImGui::IsKeyPressed(ImGuiKey_S)) engine.GetSceneSerializer()->Serialize(m_scenePathBuffer);
+            if (ImGui::IsKeyPressed(ImGuiKey_N)) m_pendingSceneLoad.kind = PendingSceneLoad::Kind::NewScene;
+            if (ImGui::IsKeyPressed(ImGuiKey_Z)) engine.GetUndoSystem()->RequestUndo();
+            if (ImGui::IsKeyPressed(ImGuiKey_Y)) engine.GetUndoSystem()->RequestRedo();
+        }
 
         if (m_fullscreen) return;
 
@@ -185,16 +197,9 @@ namespace Wild
         {
             if (ImGui::BeginMenu("File"))
             {
-                if (ImGui::MenuItem("New Scene", "Ctrl+N")) {} // TODO implement scene creation
-                if (ImGui::BeginMenu("Open Scene"))
-                {
-                    for (const auto& name : engine.GetSceneManager()->GetSceneNames())
-                    {
-                        if (ImGui::MenuItem(name.c_str())) engine.GetSceneManager()->LoadScene(name);
-                    }
-                    ImGui::EndMenu();
-                }
-                if (ImGui::MenuItem("Save Scene", "Ctrl+S")) {} // TODO implement scene saving
+                if (ImGui::MenuItem("New Scene", "Ctrl+N")) m_pendingSceneLoad.kind = PendingSceneLoad::Kind::NewScene;
+                if (ImGui::BeginMenu("Open Scene")) { DrawOpenSceneMenu(); ImGui::EndMenu(); }
+                if (ImGui::BeginMenu("Save Scene")) { DrawSaveSceneMenu(); ImGui::EndMenu(); }
                 ImGui::Separator();
                 if (ImGui::MenuItem("Exit", "Alt+F4")) glfwSetWindowShouldClose(m_window->GetWindow(), GLFW_TRUE);
                 ImGui::EndMenu();
@@ -202,13 +207,15 @@ namespace Wild
 
             if (ImGui::BeginMenu("Edit"))
             {
-                if (ImGui::MenuItem("Undo", "Ctrl+Z", false, false)) {}
-                if (ImGui::MenuItem("Redo", "Ctrl+Y", false, false)) {}
+                if (ImGui::MenuItem("Undo", "Ctrl+Z", false, engine.GetUndoSystem()->CanUndo())) engine.GetUndoSystem()->RequestUndo();
+                if (ImGui::MenuItem("Redo", "Ctrl+Y", false, engine.GetUndoSystem()->CanRedo())) engine.GetUndoSystem()->RequestRedo();
                 ImGui::Separator();
                 if (ImGui::MenuItem("Delete Entity", "Del", false, m_state.selectedEntity != entt::null))
                 {
-                    engine.GetECS()->GetRegistry().destroy(m_state.selectedEntity);
+                    engine.GetUndoSystem()->BeginEdit();
+                    DestroyEntityRecursive(engine.GetECS()->GetRegistry(), m_state.selectedEntity);
                     m_state.selectedEntity = entt::null;
+                    engine.GetUndoSystem()->CommitEdit();
                 }
                 ImGui::EndMenu();
             }
@@ -233,10 +240,37 @@ namespace Wild
                 ImGui::SeparatorText("Scene");
                 if (ImGui::MenuItem("Spawn Point Light"))
                 {
+                    engine.GetUndoSystem()->BeginEdit();
                     auto entity = engine.GetECS()->CreateEntity();
+                    engine.GetECS()->AddComponent<Guid>(entity, GenerateGuid());
+                    engine.GetECS()->AddComponent<SceneObject>(entity);
                     auto& transform = engine.GetECS()->AddComponent<Transform>(entity, entity);
                     transform.Name = "Point light";
                     engine.GetECS()->AddComponent<PointLight>(entity);
+                    engine.GetUndoSystem()->CommitEdit();
+                }
+                if (ImGui::MenuItem("Spawn Directional Light"))
+                {
+                    engine.GetUndoSystem()->BeginEdit();
+                    auto entity = engine.GetECS()->CreateEntity();
+                    engine.GetECS()->AddComponent<Guid>(entity, GenerateGuid());
+                    engine.GetECS()->AddComponent<SceneObject>(entity);
+                    auto& transform = engine.GetECS()->AddComponent<Transform>(entity, entity);
+                    transform.Name = "Directional light";
+                    auto& light = engine.GetECS()->AddComponent<DirectionalLight>(entity);
+                    light.colorIntensity = glm::vec4(1.0f, 1.0f, 1.0f, 3.0f);
+                    light.direction = glm::vec3(0.0f, -1.0f, 0.0f);
+                    engine.GetUndoSystem()->CommitEdit();
+                }
+                if (ImGui::MenuItem("Add Empty Entity"))
+                {
+                    engine.GetUndoSystem()->BeginEdit();
+                    auto entity = engine.GetECS()->CreateEntity();
+                    engine.GetECS()->AddComponent<Guid>(entity, GenerateGuid());
+                    engine.GetECS()->AddComponent<SceneObject>(entity);
+                    auto& transform = engine.GetECS()->AddComponent<Transform>(entity, entity);
+                    transform.Name = "Empty Entity";
+                    engine.GetUndoSystem()->CommitEdit();
                 }
                 ImGui::EndMenu();
             }
@@ -251,6 +285,69 @@ namespace Wild
             ImGui::EndMainMenuBar();
         }
         ImGui::PopStyleVar();
+    }
+
+    void ImguiCore::DrawSaveSceneMenu()
+    {
+        ImGui::SetNextItemWidth(220.0f);
+        ImGui::InputText("##ScenePath", m_scenePathBuffer, sizeof(m_scenePathBuffer));
+        ImGui::SameLine();
+        if (ImGui::Button("Save")) engine.GetSceneSerializer()->Serialize(m_scenePathBuffer);
+    }
+
+    void ImguiCore::DrawOpenSceneMenu()
+    {
+        for (const auto& name : engine.GetSceneManager()->GetSceneNames())
+        {
+            if (ImGui::MenuItem(name.c_str()))
+            {
+                m_pendingSceneLoad.kind = PendingSceneLoad::Kind::ProceduralScene;
+                m_pendingSceneLoad.proceduralName = name;
+            }
+        }
+
+        ImGui::Separator();
+
+        std::error_code ec;
+        const std::filesystem::path scenesDir = "Assets/Scenes";
+        if (std::filesystem::exists(scenesDir, ec))
+        {
+            for (const auto& entry : std::filesystem::directory_iterator(scenesDir, ec))
+            {
+                if (entry.path().extension() != ".json") continue;
+                if (ImGui::MenuItem(entry.path().filename().string().c_str()))
+                {
+                    m_pendingSceneLoad.kind = PendingSceneLoad::Kind::SceneFile;
+                    m_pendingSceneLoad.filePath = entry.path();
+                }
+            }
+        }
+
+        ImGui::Separator();
+
+        ImGui::SetNextItemWidth(220.0f);
+        ImGui::InputText("##OpenScenePath", m_scenePathBuffer, sizeof(m_scenePathBuffer));
+        ImGui::SameLine();
+        if (ImGui::Button("Open"))
+        {
+            m_pendingSceneLoad.kind = PendingSceneLoad::Kind::SceneFile;
+            m_pendingSceneLoad.filePath = m_scenePathBuffer;
+        }
+    }
+
+    void ImguiCore::ApplyPendingSceneLoad()
+    {
+        switch (m_pendingSceneLoad.kind)
+        {
+        case PendingSceneLoad::Kind::NewScene: engine.GetSceneSerializer()->ClearScene(); break;
+        case PendingSceneLoad::Kind::ProceduralScene: engine.GetSceneManager()->LoadScene(m_pendingSceneLoad.proceduralName); break;
+        case PendingSceneLoad::Kind::SceneFile: engine.GetSceneSerializer()->Deserialize(m_pendingSceneLoad.filePath); break;
+        case PendingSceneLoad::Kind::None: return;
+        }
+
+        m_pendingSceneLoad.kind = PendingSceneLoad::Kind::None;
+        engine.GetUndoSystem()->ClearHistory();
+        m_state.selectedEntity = entt::null;
     }
 
     void ImguiCore::DrawStatsBar()
@@ -313,7 +410,11 @@ namespace Wild
         ImGuizmo::Manipulate(
             glm::value_ptr(view), glm::value_ptr(projection), m_state.gizmoOperation, m_state.gizmoMode, glm::value_ptr(model));
 
-        if (ImGuizmo::IsUsing())
+        const bool isUsing = ImGuizmo::IsUsing();
+
+        if (isUsing && !m_wasGizmoUsing) engine.GetUndoSystem()->BeginEdit();
+
+        if (isUsing)
         {
             if (transform.HasParent())
             {
@@ -322,6 +423,10 @@ namespace Wild
             }
             transform.SetFromMatrix(model);
         }
+
+        if (!isUsing && m_wasGizmoUsing) engine.GetUndoSystem()->CommitEdit();
+
+        m_wasGizmoUsing = isUsing;
     }
 
     void ImguiCore::DrawViewport(Renderer* renderer)

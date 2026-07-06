@@ -1,5 +1,6 @@
 #include "Editor/EditorWidgets.hpp"
 
+#include "Core/Engine.hpp"
 #include "Renderer/Resources/Texture.hpp"
 
 #include <imgui.h>
@@ -14,6 +15,10 @@ namespace Wild
             ImGui::PushStyleColor(ImGuiCol_FrameBg, bgColor);
             bool changed = ImGui::DragFloat(id, &value, speed);
             ImGui::PopStyleColor(2);
+
+            if (ImGui::IsItemActivated()) engine.GetUndoSystem()->BeginEdit();
+            if (ImGui::IsItemDeactivatedAfterEdit()) engine.GetUndoSystem()->CommitEdit();
+
             return changed;
         }
     } // namespace

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <entt/entt.hpp>
+
 #include <functional>
 #include <unordered_map>
 
@@ -10,7 +12,12 @@ namespace Wild
         uint32_t id;
     };
 
-    // TODO add jasos parsing for scene loading
+    // Destroys every entity reachable from a root object
+    void DestroySceneObjectsRecursive(entt::registry& registry);
+
+    // Destroys a single entity and its full Transform child subtree.
+    void DestroyEntityRecursive(entt::registry& registry, entt::entity entity);
+
     class SceneManager : public NonCopyable
     {
       public:

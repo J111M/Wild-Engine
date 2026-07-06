@@ -62,6 +62,7 @@ namespace Wild
         void MarkDirty();
 
         void SetTlasIndex(uint32_t index) { m_tlasIndex = index; }
+        const std::optional<uint32_t>& GetTlasIndex() const { return m_tlasIndex; }
 
         std::string Name{};
 

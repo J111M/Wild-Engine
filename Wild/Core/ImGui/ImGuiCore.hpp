@@ -10,6 +10,7 @@
 
 #include <glm/glm.hpp>
 
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
@@ -30,7 +31,6 @@ namespace Wild
         ImguiCore(std::shared_ptr<Window> window);
         ~ImguiCore();
 
-        // New frame + dockspace + menu/status bars. Call before render passes.
         void Prepare();
 
         // Renders all panels and submits the ImGui draw data to the command list.
@@ -39,14 +39,10 @@ namespace Wild
         // Displays a live value in the Debug panel, cheap to call every frame
         template <typename T> void Watch(const std::string& name, T* value);
 
-        // Legacy panel registration used by render passes. Shows up in the
-        // Window menu under "Systems". Safe to call every frame.
         void AddPanel(const std::string& name, std::function<void()> renderFunc);
 
         void DrawGizmo(const glm::mat4& view, const glm::mat4& projection);
 
-        // Feeds the renderer's composite texture into the Viewport panel
-        // (or draws it fullscreen when the editor UI is hidden with Ctrl+F)
         void DrawViewport(Renderer* renderer);
 
         void DisplayTexture(std::shared_ptr<Texture> texture, glm::vec2 imageSize = {150.0f, 150.0f});
@@ -69,8 +65,11 @@ namespace Wild
         void RegisterPanels();
 
         void DrawMenuBar();
+        void DrawSaveSceneMenu();
+        void DrawOpenSceneMenu();
         void DrawStatsBar();
         void BuildDefaultLayout(ImGuiID dockspaceId);
+        void ApplyPendingSceneLoad();
 
         std::shared_ptr<Window> m_window;
 
@@ -85,7 +84,26 @@ namespace Wild
         std::unordered_map<std::string, std::function<void()>> m_watches;
 
         bool m_fullscreen = false;
-        bool m_rebuildLayout = false; // set on first run and by Window > Reset Layout
+        bool m_rebuildLayout = false;
+
+        char m_scenePathBuffer[256] = "Assets/Scenes/scene.json";
+
+        bool m_wasGizmoUsing = false;
+
+        // Scene loading data
+        struct PendingSceneLoad
+        {
+            enum class Kind
+            {
+                None,
+                NewScene,
+                ProceduralScene,
+                SceneFile
+            } kind = Kind::None;
+
+            std::string proceduralName;
+            std::filesystem::path filePath;
+        } m_pendingSceneLoad;
     };
 
     template <typename T> inline void ImguiCore::Watch(const std::string& name, T* value)

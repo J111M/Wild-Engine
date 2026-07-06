@@ -20,6 +20,8 @@ namespace Wild
         Model(std::filesystem::path filePath, Entity parent);
         ~Model() {};
 
+        const std::string& GetSourcePath() const { return m_sourcePath; }
+
       private:
         void Load(fastgltf::Asset& model, Entity parent = entt::null);
         void LoadNode(fastgltf::Asset& model, uint32_t nodeIndex, Entity parent);
