@@ -15,6 +15,7 @@
 #include <nlohmann/json.hpp>
 
 #include <fstream>
+#include <iterator>
 
 // Stored the scene data into a json file for loading
 namespace Wild
@@ -138,10 +139,8 @@ namespace Wild
         if (ecs->HasComponent<Model>(e))
         {
             node["model"] = {{"sourcePath", ecs->GetComponent<Model>(e).GetSourcePath()}};
-            return node;
         }
-
-        if (ecs->HasComponent<PointLight>(e))
+        else if (ecs->HasComponent<PointLight>(e))
         {
             auto& light = ecs->GetComponent<PointLight>(e);
             node["pointLight"] = {{"colorIntensity", ToJson(light.colorIntensity)}, {"position", ToJson(light.position)}};
@@ -489,5 +488,38 @@ namespace Wild
         }
 
         return newRoot;
+    }
+
+    bool SceneSerializer::SavePrefab(Entity root, const std::filesystem::path& path)
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(path.parent_path(), ec);
+
+        std::ofstream file(path);
+        if (!file.is_open())
+        {
+            WD_WARN("Failed to open prefab file for writing: {}", path.string());
+            return false;
+        }
+
+        file << CopyEntitySubtree(root);
+        WD_INFO("Prefab saved: {}", path.string());
+        return true;
+    }
+
+    Entity SceneSerializer::InstantiatePrefab(const std::filesystem::path& path, Entity newParent)
+    {
+        std::ifstream file(path);
+        if (!file.is_open())
+        {
+            WD_WARN("Failed to open prefab file for reading: {}", path.string());
+            return entt::null;
+        }
+
+        std::string jsonText((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+        Entity root = PasteEntitySubtree(jsonText, newParent);
+        if (root != entt::null) WD_INFO("Prefab instantiated: {}", path.string());
+        return root;
     }
 } // namespace Wild

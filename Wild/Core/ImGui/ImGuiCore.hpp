@@ -85,7 +85,11 @@ namespace Wild
         bool m_fullscreen = false;
         bool m_rebuildLayout = false;
 
+#ifdef ASSETS_SOURCE_DIR
+        char m_scenePathBuffer[256] = ASSETS_SOURCE_DIR "/Scenes/scene.json";
+#else
         char m_scenePathBuffer[256] = "Assets/Scenes/scene.json";
+#endif
 
         // Holds a copy of an entity
         std::string m_entityClipboard;

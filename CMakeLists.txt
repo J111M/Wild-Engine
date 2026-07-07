@@ -61,6 +61,7 @@ set(SHADER_SRC_DIR "${CMAKE_SOURCE_DIR}/Shaders")
 
 target_compile_definitions(Wild PRIVATE
     SHADER_SOURCE_DIR="${CMAKE_SOURCE_DIR}/Shaders"
+    ASSETS_SOURCE_DIR="${CMAKE_SOURCE_DIR}/Assets"
 )
 
 set_target_properties(Wild PROPERTIES

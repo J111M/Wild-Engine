@@ -27,7 +27,7 @@ namespace Wild
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) ImGui::SetTooltip("%s", tooltip);
         }
 
-        // Standard Möller-Trumbore ray/triangle test, world-space in, world-space out.
+        // Möller-Trumbore ray/triangle test, world-space in, world-space out.
         bool RayIntersectsTriangle(const glm::vec3& origin, const glm::vec3& dir, const glm::vec3& a, const glm::vec3& b,
                                    const glm::vec3& c, float& outT)
         {
@@ -101,11 +101,13 @@ namespace Wild
             m_state.viewportSize = ImGui::GetItemRectSize();
             m_state.viewportHovered = ImGui::IsItemHovered();
 
-            // Models dragged from the Assets panel spawn in the scene
+            // Models and prefabs dragged from the Assets panel spawn in the scene
             if (ImGui::BeginDragDropTarget())
             {
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("WILD_MODEL_ASSET"))
                     SpawnDroppedModel(static_cast<const char*>(payload->Data));
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("WILD_PREFAB_ASSET"))
+                    SpawnDroppedPrefab(static_cast<const char*>(payload->Data));
 
                 ImGui::EndDragDropTarget();
             }
@@ -155,6 +157,37 @@ namespace Wild
         engine.GetUndoSystem()->CommitEdit();
 
         WD_INFO("Spawned model from asset drop: {}", assetPath);
+    }
+
+    void ViewportPanel::SpawnDroppedPrefab(const char* assetPath)
+    {
+        auto ecs = engine.GetECS();
+        engine.GetUndoSystem()->BeginEdit();
+
+        Entity entity = engine.GetSceneSerializer()->InstantiatePrefab(std::filesystem::path(assetPath));
+        if (entity == entt::null)
+        {
+            engine.GetUndoSystem()->CommitEdit();
+            return;
+        }
+
+        auto& transform = ecs->GetComponent<Transform>(entity);
+
+        for (auto cameraEntity : ecs->View<Camera>())
+        {
+            auto& camera = ecs->GetComponent<Camera>(cameraEntity);
+            if (camera.GetCameraIndex() != 0) continue;
+
+            const glm::mat4& view = camera.GetView();
+            glm::vec3 forward = -glm::normalize(glm::vec3(view[0][2], view[1][2], view[2][2]));
+            transform.SetPosition(camera.GetPosition() + forward * 10.0f);
+            break;
+        }
+
+        m_state.selectedEntity = entity;
+        engine.GetUndoSystem()->CommitEdit();
+
+        WD_INFO("Spawned prefab from asset drop: {}", assetPath);
     }
 
     void ViewportPanel::TryPickEntity()

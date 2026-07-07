@@ -30,6 +30,9 @@ namespace Wild
         std::string CopyEntitySubtree(Entity root);
         Entity PasteEntitySubtree(const std::string& jsonText, Entity newParent);
 
+        bool SavePrefab(Entity root, const std::filesystem::path& path);
+        Entity InstantiatePrefab(const std::filesystem::path& path, Entity newParent = entt::null);
+
       private:
         bool ShouldSerializeAsRoot(Entity e);
         nlohmann::json SerializeEntity(Entity e);

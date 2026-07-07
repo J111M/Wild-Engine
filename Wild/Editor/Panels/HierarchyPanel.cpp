@@ -43,6 +43,13 @@ namespace Wild
         registry.view<Transform>().each([&](auto entity, Transform& transform) {
             if (!transform.HasParent()) DrawEntityNode(registry, entity);
         });
+
+        if (m_openSaveAsPrefabPopup)
+        {
+            ImGui::OpenPopup("Save as Prefab");
+            m_openSaveAsPrefabPopup = false;
+        }
+        DrawSaveAsPrefabPopup();
     }
 
     void HierarchyPanel::DrawEntityNode(entt::registry& registry, Entity entity)
@@ -62,11 +69,51 @@ namespace Wild
 
         if (ImGui::IsItemClicked()) m_state.selectedEntity = entity;
 
+        if (ImGui::BeginPopupContextItem())
+        {
+            if (ImGui::MenuItem("Save as Prefab..."))
+            {
+                m_prefabSaveTarget = entity;
+#ifdef ASSETS_SOURCE_DIR
+                snprintf(m_prefabPathBuffer, sizeof(m_prefabPathBuffer), ASSETS_SOURCE_DIR "/Prefabs/%s.prefab", label.c_str());
+#else
+                snprintf(m_prefabPathBuffer, sizeof(m_prefabPathBuffer), "Assets/Prefabs/%s.prefab", label.c_str());
+#endif
+                m_openSaveAsPrefabPopup = true;
+            }
+            ImGui::EndPopup();
+        }
+
         if (nodeOpen)
         {
             for (auto child : transform.GetChildren())
                 DrawEntityNode(registry, child);
             ImGui::TreePop();
+        }
+    }
+
+    void HierarchyPanel::DrawSaveAsPrefabPopup()
+    {
+        if (ImGui::BeginPopupModal("Save as Prefab", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::SetNextItemWidth(300.0f);
+            ImGui::InputText("##PrefabPath", m_prefabPathBuffer, sizeof(m_prefabPathBuffer));
+
+            auto& registry = engine.GetECS()->GetRegistry();
+            bool validTarget = registry.valid(m_prefabSaveTarget);
+
+            ImGui::BeginDisabled(!validTarget);
+            if (ImGui::Button("Save"))
+            {
+                engine.GetSceneSerializer()->SavePrefab(m_prefabSaveTarget, m_prefabPathBuffer);
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndDisabled();
+
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+
+            ImGui::EndPopup();
         }
     }
 } // namespace Wild

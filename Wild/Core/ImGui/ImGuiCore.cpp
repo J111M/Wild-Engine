@@ -336,7 +336,11 @@ namespace Wild
         ImGui::Separator();
 
         std::error_code ec;
+#ifdef ASSETS_SOURCE_DIR
+        const std::filesystem::path scenesDir = ASSETS_SOURCE_DIR "/Scenes";
+#else
         const std::filesystem::path scenesDir = "Assets/Scenes";
+#endif
         if (std::filesystem::exists(scenesDir, ec))
         {
             for (const auto& entry : std::filesystem::directory_iterator(scenesDir, ec))

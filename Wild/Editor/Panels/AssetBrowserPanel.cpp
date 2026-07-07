@@ -28,12 +28,23 @@ namespace Wild
             std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return (char)std::tolower(c); });
             return ext == ".gltf" || ext == ".glb";
         }
+
+        bool IsPrefabFile(const std::filesystem::path& path)
+        {
+            std::string ext = path.extension().string();
+            std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+            return ext == ".prefab";
+        }
     } // namespace
 
     AssetBrowserPanel::AssetBrowserPanel()
     {
         std::error_code ec;
-        m_root = std::filesystem::exists("Assets", ec) ? std::filesystem::path("Assets") : std::filesystem::current_path(ec);
+#ifdef ASSETS_SOURCE_DIR
+        if (std::filesystem::exists(ASSETS_SOURCE_DIR, ec)) m_root = ASSETS_SOURCE_DIR;
+        else
+#endif
+            m_root = std::filesystem::exists("Assets", ec) ? std::filesystem::path("Assets") : std::filesystem::current_path(ec);
         m_current = m_root;
     }
 
@@ -165,6 +176,7 @@ namespace Wild
                 const char* icon = entry.isDirectory   ? WD_ICON_FOLDER
                                    : IsImageFile(entry.path) ? WD_ICON_IMAGE
                                    : IsModelFile(entry.path) ? WD_ICON_MODEL
+                                   : IsPrefabFile(entry.path) ? WD_ICON_MODEL
                                                              : WD_ICON_FILE;
 
                 ImGui::PushFont(nullptr, 30.0f);
@@ -178,10 +190,12 @@ namespace Wild
 
             ImGui::PopStyleColor();
 
-            if (!entry.isDirectory && IsModelFile(entry.path) && ImGui::BeginDragDropSource())
+            bool isPrefab = IsPrefabFile(entry.path);
+            if (!entry.isDirectory && (IsModelFile(entry.path) || isPrefab) && ImGui::BeginDragDropSource())
             {
                 std::string payloadPath = entry.path.generic_string();
-                ImGui::SetDragDropPayload("WILD_MODEL_ASSET", payloadPath.c_str(), payloadPath.size() + 1);
+                const char* payloadType = isPrefab ? "WILD_PREFAB_ASSET" : "WILD_MODEL_ASSET";
+                ImGui::SetDragDropPayload(payloadType, payloadPath.c_str(), payloadPath.size() + 1);
 
                 if (EditorIconsLoaded())
                 {

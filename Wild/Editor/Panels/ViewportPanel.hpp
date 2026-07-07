@@ -24,6 +24,7 @@ namespace Wild
         void DrawGizmoToolbar();
 
         void SpawnDroppedModel(const char* assetPath);
+        void SpawnDroppedPrefab(const char* assetPath);
         void TryPickEntity();
 
         EditorState& m_state;
