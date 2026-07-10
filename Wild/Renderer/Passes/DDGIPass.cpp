@@ -21,6 +21,9 @@ namespace Wild
     {
         auto ecs = engine.GetECS();
 
+        Camera* camera = GetActiveCamera();
+        if (camera) m_rc.inverseView = glm::inverse(camera->GetView());
+
         // Use the first directional light for now
         auto view = ecs->View<DirectionalLight>();
         for (auto entity : view)
@@ -104,7 +107,7 @@ namespace Wild
         }
 
         rg.AddPass<DDGIPassData>(
-            "DDGI probe trace pass", PassType::Raytracing, [&renderer, this](DDGIPassData&, CommandList& list) {
+            "DDGI probe trace pass", PassType::Raytracing, [&renderer, this](DDGIPassData& passData, CommandList& list) {
                 if (!enabled) return;
 
                 auto* probeSystem = renderer.GetSystems().TryGetSystem<ProbeSystem>();
@@ -118,6 +121,12 @@ namespace Wild
 
                 auto& lightSystem = renderer.GetSystems().GetSystem<LightSystem>();
                 m_rc.numPointLights = lightSystem.GetPointLightCount();
+
+                passData.radianceTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                passData.visibilityTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+                m_rc.irradianceView = passData.radianceTexture->GetSrv()->BindlessView();
+                m_rc.distanceView = passData.visibilityTexture->GetSrv()->BindlessView();
 
                 PipelineStateSettings settings{};
 

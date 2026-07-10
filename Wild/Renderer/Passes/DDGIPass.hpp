@@ -10,6 +10,8 @@ namespace Wild
 {
     struct DDGIRootConstants
     {
+        glm::mat4 inverseView{1.0f};
+
         glm::vec4 randomRotation{0.0f, 0.0f, 0.0f, 1.0f}; // quaternion (xyz axis*sin(half), w = cos(half))
 
         glm::vec4 lightDirection{0.0f, -1.0f, 0.0f, 0.0f};     // xyz = direction the light travels, w unused
@@ -25,6 +27,8 @@ namespace Wild
         uint32_t environmentView{};
 
         uint32_t numPointLights{};
+        uint32_t irradianceView{};
+        uint32_t distanceView{};
     };
 
     struct DDGIBlendRootConstants
