@@ -1,17 +1,13 @@
 #include "Renderer/Passes/PbrPass.hpp"
 #include "Renderer/Passes/DeferredPass.hpp"
 
+#include "Systems/LightSystem.hpp"
+#include "Systems/ProbeSystem.hpp"
+
 namespace Wild
 {
     PbrPass::PbrPass()
     {
-        // Create point light buffer
-        {
-            BufferDesc desc{};
-            desc.bufferSize = sizeof(PointLight) * MAX_POINT_LIGHTS;
-            m_pointLightsBuffer = std::make_unique<Buffer>(desc, BufferType::constant);
-        }
-
         {
             BufferDesc desc{};
             desc.bufferSize = sizeof(CameraBuffer);
@@ -42,20 +38,7 @@ namespace Wild
         auto context = engine.GetGfxContext();
         auto ecs = engine.GetECS();
 
-        std::vector<PointLight> lightData;
-        auto& lightsView = ecs->GetRegistry().view<PointLight, Transform>();
-
-        for (auto [entity, pointLight, transform] : lightsView.each())
-        {
-            // auto& light = lightsView.get<PointLight>(entity);
-            PointLight gpuLight{};
-            gpuLight.position = transform.GetPosition();
-            gpuLight.colorIntensity = pointLight.colorIntensity;
-            lightData.emplace_back(gpuLight);
-        }
-
-        m_pbrData.numOfPointLights = lightData.size();
-        if (!lightData.empty()) { m_pointLightsBuffer->Allocate(lightData.data()); }
+        m_pbrData.numOfPointLights = engine.GetRenderer()->GetSystems().GetSystem<LightSystem>().GetPointLightCount();
 
         Camera* camera = GetActiveCamera();
 
@@ -95,8 +78,9 @@ namespace Wild
         auto* deferredData = rg.GetPassData<PbrPassData, DeferredPassData>();
         auto* shadowMapData = rg.GetPassData<PbrPassData, CsmPassData>();
 
-        passData->pointlights = m_pointLightsBuffer;
-        passData->numOfPointLights = m_pbrData.numOfPointLights;
+        auto& lightSystem = renderer.GetSystems().GetSystem<LightSystem>();
+        passData->pointlights = lightSystem.GetPointLightBuffer();
+        passData->numOfPointLights = lightSystem.GetPointLightCount();
         passData->depthTexture = deferredData->depthTexture;
 
         // Final texture
@@ -184,6 +168,11 @@ namespace Wild
                 // shadowSampler.samplerState.borderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
                 uniforms.emplace_back(shadowSampler);
 
+                // DDGI probe irradiance structured buffer
+                Uniform probeIrradianceUni{0, 2, RootParams::RootResourceType::ShaderResourceView};
+                probeIrradianceUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                uniforms.emplace_back(probeIrradianceUni);
+
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Pbr assembly pass", PipelineStateType::Graphics, settings, uniforms);
 
@@ -226,9 +215,12 @@ namespace Wild
                 list.SetConstantBufferView(1, m_cameraBuffer[frameIndex].get());
                 list.SetConstantBufferView(2, m_pbrDataBuffer[frameIndex].get());
                 list.SetConstantBufferView(3, m_environmentData.get());
-                list.SetConstantBufferView(4, m_pointLightsBuffer.get());
+                list.SetConstantBufferView(4, renderer.GetSystems().GetSystem<LightSystem>().GetPointLightBuffer().get());
                 list.SetConstantBufferView(5, shadowMapData->directLightBuffer.get());
                 list.SetBindlessHeap(6);
+
+                auto probeSystem = renderer.GetSystems().GetSystem<ProbeSystem>();
+                list.SetShaderResourceView(7, probeSystem.GetProbeIrradianceBuffer().get());
 
                 list.GetList()->DrawInstanced(3, 1, 0, 0);
                 list.EndRender();

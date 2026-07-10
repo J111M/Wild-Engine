@@ -37,7 +37,7 @@ namespace Wild
             return *static_cast<T*>(it->second.get());
         }
 
-        // Use when the system could be optional.
+        // Use when the system could be not exist.
         template <typename T> T* TryGetSystem()
         {
             auto it = m_systems.find(std::type_index(typeid(T)));

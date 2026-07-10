@@ -15,6 +15,7 @@
 #include "Renderer/Passes/ProceduralTerrainPass.hpp"
 #include "Renderer/Passes/SkyboxPass.hpp"
 #include "Systems/GrassManager.hpp"
+#include "Systems/LightSystem.hpp"
 #include "Systems/ProbeSystem.hpp"
 
 #include "Core/Camera.hpp"
@@ -29,7 +30,8 @@ namespace Wild
 
         m_resourceCache = std::make_shared<TransientResourceCache>();
 
-        m_systemManager.AddSystem<ProbeSystem>(glm::vec3(-21.0f, 0.0f, -21.0f), glm::vec3(6.0f), glm::ivec3(8, 4, 8));
+        m_systemManager.AddSystem<ProbeSystem>(glm::vec3(-21.0f, 0.0f, -21.0f), glm::vec3(3.0f), glm::ivec3(16, 8, 16));
+        m_systemManager.AddSystem<LightSystem>();
 
         m_renderFeatures.emplace_back(std::make_unique<DDGIPass>());
         m_renderFeatures.emplace_back(std::make_unique<CascadedShadowPass>());
@@ -81,6 +83,8 @@ namespace Wild
 
             auto& currentCamera = ecs->GetComponent<Camera>(m_activeCamera);
             currentCamera.SetRenderActivity(true);
+
+            m_systemManager.GetSystem<LightSystem>().Update();
 
             for (auto& feature : m_renderFeatures)
             {

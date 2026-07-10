@@ -20,6 +20,7 @@ struct VSOutput
 {
     float4 position : SV_Position;
     float3 normal : NORMAL;
+    nointerpolation uint instanceId : INSTANCE_ID;
 };
 
 [shader("vertex")]
@@ -39,5 +40,6 @@ VSOutput main(uint vertexId: SV_VertexID, uint instanceId: SV_InstanceID)
     VSOutput output;
     output.position = mul(projView, float4(worldPosition, 1.0f));
     output.normal = direction;
+    output.instanceId = instanceId;
     return output;
 }

@@ -1,6 +1,7 @@
 #include "Editor/Panels/DebugPanel.hpp"
 
 #include "Core/Engine.hpp"
+#include "Renderer/Passes/DDGIPass.hpp"
 #include "Renderer/Passes/ProbeDebugPass.hpp"
 
 #include <imgui.h>
@@ -27,6 +28,11 @@ namespace Wild
         if (auto* probePass = renderer ? renderer->GetRenderFeature<ProbeDebugPass>() : nullptr)
         {
             ImGui::Checkbox("Draw GI Probes", &probePass->drawProbes);
+        }
+
+        if (auto* ddgiPass = renderer ? renderer->GetRenderFeature<DDGIPass>() : nullptr)
+        {
+            ImGui::Checkbox("Enable DDGI", &ddgiPass->enabled);
         }
 
         // engine.GetImGui()->GetDebugFlags()

@@ -1,3 +1,5 @@
+#pragma once
+
 struct DirectionalLight
 {
     glm::vec4 colorIntensity{}; // w component stores intensity

@@ -9,8 +9,6 @@
 
 namespace Wild
 {
-#define MAX_POINT_LIGHTS 15;
-
     struct PbrPassData
     {
         Texture* finalTexture;
@@ -69,8 +67,6 @@ namespace Wild
 
         std::unique_ptr<Buffer> m_cameraBuffer[BACK_BUFFER_COUNT];
         std::unique_ptr<Buffer> m_pbrDataBuffer[BACK_BUFFER_COUNT];
-
-        std::shared_ptr<Buffer> m_pointLightsBuffer;
 
         std::unique_ptr<Buffer> m_environmentData;
     };

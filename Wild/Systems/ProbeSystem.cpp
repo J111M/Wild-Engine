@@ -13,6 +13,7 @@ namespace Wild
         Generate();
 
         AllocateProbes();
+        AllocateProbeGIBuffers();
     }
 
     void ProbeSystem::SetOrigin(const glm::vec3& origin)
@@ -31,6 +32,31 @@ namespace Wild
         desc.numOfElements = m_probes.size();
         m_probeStructure = std::make_shared<Buffer>(desc, structured);
         m_probeStructure->UploadToGPU(m_probes.data(), m_probes.size() * sizeof(Probe));
+    }
+
+    void ProbeSystem::AllocateProbeGIBuffers()
+    {
+        const uint32_t probeCount = GetProbeCount();
+
+        {
+            BufferDesc desc{};
+            desc.bufferSize = sizeof(ProbeRayData);
+            desc.numOfElements = probeCount * MAX_RAYS_PER_PROBE;
+            m_probeRayData = std::make_shared<Buffer>(desc, BufferType::uav);
+
+            std::vector<ProbeRayData> zeroed(desc.numOfElements);
+            m_probeRayData->UploadToGPU(zeroed.data(), zeroed.size() * sizeof(ProbeRayData));
+        }
+
+        {
+            BufferDesc desc{};
+            desc.bufferSize = sizeof(ProbeIrradiance);
+            desc.numOfElements = probeCount;
+            m_probeIrradiance = std::make_shared<Buffer>(desc, BufferType::uav);
+
+            std::vector<ProbeIrradiance> zeroed(desc.numOfElements);
+            m_probeIrradiance->UploadToGPU(zeroed.data(), zeroed.size() * sizeof(ProbeIrradiance));
+        }
     }
 
     void ProbeSystem::Generate()

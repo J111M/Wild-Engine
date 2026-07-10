@@ -56,6 +56,8 @@ cbuffer shadowMapBuffer : register(b5)
 Texture2D textures[4096] : register(t0, space0);
 TextureCube cubeTextures[4096] : register(t0, space1);
 
+StructuredBuffer<float4> probeIrradiance : register(t0, space2);
+
 SamplerState pointSampler : register(s0);
 SamplerComparisonState shadowSampler : register(s1);
 

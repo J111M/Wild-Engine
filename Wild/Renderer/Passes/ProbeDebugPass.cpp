@@ -46,6 +46,10 @@ namespace Wild
                 Uniform probeBuffer{0, 0, RootParams::RootResourceType::ShaderResourceView};
                 uniforms.emplace_back(probeBuffer);
 
+                // Probe irradiance structured buffer, indexed with the instance id
+                Uniform probeIrradianceBuffer{1, 0, RootParams::RootResourceType::ShaderResourceView};
+                uniforms.emplace_back(probeIrradianceBuffer);
+
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Probe debug pass", PipelineStateType::Graphics, settings, uniforms);
 
@@ -61,6 +65,7 @@ namespace Wild
 
                 list.SetRootConstant<ProbeDebugRootConstants>(0, m_rc);
                 list.SetShaderResourceView(1, probeSystem->GetProbeBuffer().get());
+                list.SetShaderResourceView(2, probeSystem->GetProbeIrradianceBuffer().get());
 
                 list.GetList()->DrawInstanced(12 * 8 * 6, probeSystem->GetProbeCount(), 0, 0);
 
