@@ -37,17 +37,17 @@ namespace Wild
     class GrassManager : public RenderFeature
     {
     public:
-        GrassManager(std::shared_ptr<Buffer> GrassData);
+        GrassManager(std::shared_ptr<GPUBuffer> GrassData);
         ~GrassManager();
 
         virtual void Add(Renderer& renderer, RenderGraph& rg) override;
         virtual void Update(const float dt) override;
     private:
 
-        std::shared_ptr<Buffer> m_grassBuffer;
-        std::shared_ptr<Buffer> m_sceneData[BACK_BUFFER_COUNT];
+        std::shared_ptr<GPUBuffer> m_grassBuffer;
+        std::shared_ptr<GPUBuffer> m_sceneData[BACK_BUFFER_COUNT];
 
-        std::shared_ptr<Buffer> m_grassDataBuffer;
+        std::shared_ptr<GPUBuffer> m_grassDataBuffer;
 
         float m_accumulatedTime{};
 

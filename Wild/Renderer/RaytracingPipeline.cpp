@@ -82,8 +82,10 @@ namespace Wild
         if (!rayGenId) { WD_FATAL("Raygen ID identifier not found: {}", WStringToString(entryPoints->rayGen[0])); }
 
         BufferDesc rayGenDesc{};
-        rayGenDesc.bufferSize = sbtEntrySize;
-        m_rayGenSBT = std::make_unique<Buffer>(rayGenDesc, BufferType::shaderBindingTable);
+        rayGenDesc.size = sbtEntrySize;
+        rayGenDesc.usage = BufferUsage::None;
+        rayGenDesc.access = MemoryAccess::CpuToGpu;
+        m_rayGenSBT = std::make_unique<GPUBuffer>(rayGenDesc);
 
         m_rayGenSBT->Map();
         m_rayGenSBT->WriteData(rayGenId);
@@ -106,8 +108,10 @@ namespace Wild
 
         // Create miss sbt buffer
         BufferDesc missDesc{};
-        missDesc.bufferSize = missData.size();
-        m_missSBT = std::make_unique<Buffer>(missDesc, BufferType::shaderBindingTable);
+        missDesc.size = missData.size();
+        missDesc.usage = BufferUsage::None;
+        missDesc.access = MemoryAccess::CpuToGpu;
+        m_missSBT = std::make_unique<GPUBuffer>(missDesc);
 
         m_missSBT->Map();
         m_missSBT->WriteData(missData.data());
@@ -129,8 +133,10 @@ namespace Wild
         }
 
         BufferDesc hitGroupDesc{};
-        hitGroupDesc.bufferSize = hitGroupData.size();
-        m_hitGroupSBT = std::make_unique<Buffer>(hitGroupDesc, BufferType::shaderBindingTable);
+        hitGroupDesc.size = hitGroupData.size();
+        hitGroupDesc.usage = BufferUsage::None;
+        hitGroupDesc.access = MemoryAccess::CpuToGpu;
+        m_hitGroupSBT = std::make_unique<GPUBuffer>(hitGroupDesc);
 
         m_hitGroupSBT->Map();
         m_hitGroupSBT->WriteData(hitGroupData.data());

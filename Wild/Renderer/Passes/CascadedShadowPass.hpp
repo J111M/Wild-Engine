@@ -9,7 +9,7 @@ namespace Wild
     struct CsmPassData
     {
         Texture* shadowMap[SHADOWMAP_CASCADES];
-        std::shared_ptr<Buffer> directLightBuffer;
+        std::shared_ptr<GPUBuffer> directLightBuffer;
         float biasValue;
     };
 
@@ -46,7 +46,7 @@ namespace Wild
 
         DirectLightBuffer m_directLight;
         CsmRootConstants m_rc{};
-        std::shared_ptr<Buffer> m_directionalLightBuffer{};
+        std::shared_ptr<GPUBuffer> m_directionalLightBuffer{};
 
         bool m_lightChanged = true;
 

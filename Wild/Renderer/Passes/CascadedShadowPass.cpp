@@ -10,8 +10,10 @@ namespace Wild
     CascadedShadowPass::CascadedShadowPass()
     {
         BufferDesc desc{};
-        desc.bufferSize = sizeof(DirectLightBuffer);
-        m_directionalLightBuffer = std::make_shared<Buffer>(desc, BufferType::constant);
+        desc.size = sizeof(DirectLightBuffer);
+        desc.usage = BufferUsage::Constant;
+        desc.access = MemoryAccess::CpuToGpu;
+        m_directionalLightBuffer = std::make_shared<GPUBuffer>(desc);
     }
 
     void CascadedShadowPass::Add(Renderer& renderer, RenderGraph& rg)

@@ -49,16 +49,16 @@ namespace Wild
             gfxContext->GetDevice7()->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuild);
 
             BufferDesc scratchDesc{};
-            scratchDesc.bufferSize = prebuild.ScratchDataSizeInBytes;
-            scratchDesc.numOfElements = 1;
-            scratchDesc.state = D3D12_RESOURCE_STATE_COMMON;
-            entry.scratch = std::make_unique<Buffer>(scratchDesc, BufferType::uav);
+            scratchDesc.size = prebuild.ScratchDataSizeInBytes;
+            scratchDesc.usage = BufferUsage::ShaderWrite;
+            scratchDesc.access = MemoryAccess::GpuOnly;
+            entry.scratch = std::make_unique<GPUBuffer>(scratchDesc);
 
             BufferDesc resultDesc{};
-            resultDesc.bufferSize = prebuild.ResultDataMaxSizeInBytes;
-            resultDesc.numOfElements = 1;
-            resultDesc.state = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
-            entry.result = std::make_unique<Buffer>(resultDesc, BufferType::uav);
+            resultDesc.size = prebuild.ResultDataMaxSizeInBytes;
+            resultDesc.usage = BufferUsage::AccelerationStruct;
+            resultDesc.access = MemoryAccess::GpuOnly;
+            entry.result = std::make_unique<GPUBuffer>(resultDesc);
 
             D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
             buildDesc.Inputs = inputs;
@@ -138,11 +138,13 @@ namespace Wild
 
             // Upload instance descs
             BufferDesc instanceBuffDesc{};
-            instanceBuffDesc.bufferSize = sizeof(D3D12_RAYTRACING_INSTANCE_DESC);
-            instanceBuffDesc.numOfElements = instanceDescs.size();
+            instanceBuffDesc.size = static_cast<uint64_t>(sizeof(D3D12_RAYTRACING_INSTANCE_DESC)) * instanceDescs.size();
+            instanceBuffDesc.stride = sizeof(D3D12_RAYTRACING_INSTANCE_DESC);
+            instanceBuffDesc.usage = BufferUsage::ShaderWrite;
+            instanceBuffDesc.access = MemoryAccess::GpuOnly;
 
             // Upload buffer
-            m_instanceDescsBuffer = std::make_unique<Buffer>(instanceBuffDesc, BufferType::uav);
+            m_instanceDescsBuffer = std::make_unique<GPUBuffer>(instanceBuffDesc);
             m_instanceDescsBuffer->UploadToGPU(instanceDescs.data());
 
             D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
@@ -166,30 +168,32 @@ namespace Wild
                 m_tlasUpdateScratch.reset();
 
                 BufferDesc scratchDesc{};
-                scratchDesc.bufferSize = prebuild.ScratchDataSizeInBytes;
-                scratchDesc.numOfElements = 1;
-                scratchDesc.state = D3D12_RESOURCE_STATE_COMMON;
-                m_tlasScratch = std::make_unique<Buffer>(scratchDesc, BufferType::uav);
+                scratchDesc.size = prebuild.ScratchDataSizeInBytes;
+                scratchDesc.usage = BufferUsage::ShaderWrite;
+                scratchDesc.access = MemoryAccess::GpuOnly;
+                m_tlasScratch = std::make_unique<GPUBuffer>(scratchDesc);
 
                 BufferDesc resultDesc{};
-                resultDesc.bufferSize = prebuild.ResultDataMaxSizeInBytes;
-                resultDesc.numOfElements = 1;
-                resultDesc.state = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
-                m_tlasResult = std::make_unique<Buffer>(resultDesc, BufferType::uav);
+                resultDesc.size = prebuild.ResultDataMaxSizeInBytes;
+                resultDesc.usage = BufferUsage::AccelerationStruct;
+                resultDesc.access = MemoryAccess::GpuOnly;
+                m_tlasResult = std::make_unique<GPUBuffer>(resultDesc);
                 m_tlasResultSize = prebuild.ResultDataMaxSizeInBytes;
 
                 // Update scratch
                 BufferDesc updateScratchDesc{};
-                updateScratchDesc.bufferSize = prebuild.UpdateScratchDataSizeInBytes;
-                updateScratchDesc.numOfElements = 1;
-                updateScratchDesc.state = D3D12_RESOURCE_STATE_COMMON;
-                m_tlasUpdateScratch = std::make_unique<Buffer>(updateScratchDesc, BufferType::uav);
+                updateScratchDesc.size = prebuild.UpdateScratchDataSizeInBytes;
+                updateScratchDesc.usage = BufferUsage::ShaderWrite;
+                updateScratchDesc.access = MemoryAccess::GpuOnly;
+                m_tlasUpdateScratch = std::make_unique<GPUBuffer>(updateScratchDesc);
 
                 // Update mesh instance buffer
                 BufferDesc desc{};
-                desc.bufferSize = sizeof(MeshInstanceInfo);
-                desc.numOfElements = m_initialCapacity;
-                m_meshIdBuffer = std::make_unique<Buffer>(desc, uav);
+                desc.size = static_cast<uint64_t>(sizeof(MeshInstanceInfo)) * m_initialCapacity;
+                desc.stride = sizeof(MeshInstanceInfo);
+                desc.usage = BufferUsage::ShaderWrite;
+                desc.access = MemoryAccess::GpuOnly;
+                m_meshIdBuffer = std::make_unique<GPUBuffer>(desc);
                 m_meshIdBuffer->UploadToGPU(m_tlasMeshData.data(), m_tlasMeshData.size() * sizeof(MeshInstanceInfo));
             }
 

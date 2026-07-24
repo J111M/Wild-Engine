@@ -5,7 +5,7 @@
 
 namespace Wild
 {
-    // GrassManager::GrassManager(std::shared_ptr<Buffer> GrassData)
+    // GrassManager::GrassManager(std::shared_ptr<GPUBuffer> GrassData)
     //{
     //	m_grassDataBuffer = GrassData;
     //	std::vector<GrassVertex> grassBlade{};
@@ -33,7 +33,7 @@ namespace Wild
 
     //	{
     //		BufferDesc desc{};
-    //		m_grassBuffer = std::make_shared<Buffer>(desc);
+    //		m_grassBuffer = std::make_shared<GPUBuffer>(desc);
     //		m_grassBuffer->CreateVertexBuffer<GrassVertex>(grassBlade);
     //	}
 
@@ -43,7 +43,7 @@ namespace Wild
 
     //		for (int i = 0; i < BACK_BUFFER_COUNT; i++)
     //		{
-    //			m_sceneData[i] = std::make_shared<Buffer>(desc);
+    //			m_sceneData[i] = std::make_shared<GPUBuffer>(desc);
     //			m_sceneData[i]->CreateConstantBuffer();
 
     //			// Keep buffer data mapped for cpu write access

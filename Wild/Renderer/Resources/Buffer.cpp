@@ -5,200 +5,96 @@
 
 namespace Wild
 {
-    Buffer::Buffer(const BufferDesc& desc, BufferType type)
+    GPUBuffer::GPUBuffer(const BufferDesc& desc)
     {
         m_desc = desc;
-        m_desc.type = type;
 
-        m_dataSize = m_desc.bufferSize;
+        // Constant buffers must be aligned to 256 bytes, keep the view in sync with the allocation
+        if (HasFlag(m_desc.usage, BufferUsage::Constant)) m_desc.size = (m_desc.size + 255) & ~static_cast<uint64_t>(255);
 
-        switch (type)
-        {
-        case BufferType::constant:
-            CreateConstantBuffer();
-            break;
-        case BufferType::uav:
-            CreateUAVBuffer();
-            break;
-        case BufferType::shaderBindingTable:
-            CreateSBTBuffer();
-            break;
-        case BufferType::structured:
-            CreateStructuredBuffer();
-            break;
-        default:
-            break;
-        }
+        m_dataSize = static_cast<uint32_t>(m_desc.size);
 
-        m_desc.bufferSize = m_dataSize;
-    }
+        // Vertex and index buffers are created later once their data is known
+        if (HasFlag(m_desc.usage, BufferUsage::Vertex) || HasFlag(m_desc.usage, BufferUsage::Index)) return;
 
-    Buffer::~Buffer() { Unmap(); }
+        // Nothing to allocate yet if no size was supplied
+        if (m_desc.size == 0) return;
 
-    void Buffer::CreateConstantBuffer()
-    {
-        auto gfxContext = engine.GetGfxContext();
-
-        if (m_desc.bufferSize <= 0)
-        {
-            WD_ERROR("Constant buffer invalid data size.");
-            return;
-        }
-
-        m_desc.bufferSize = (m_desc.bufferSize + 255) & ~255;
-
-        m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_GENERIC_READ);
-
-        ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-                                                                       D3D12_HEAP_FLAG_NONE,
-                                                                       &CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
-                                                                       D3D12_RESOURCE_STATE_GENERIC_READ,
-                                                                       nullptr,
-                                                                       IID_PPV_ARGS(&m_resource->Handle())),
-                      "Failed to create constant buffer.");
-
-        m_cbView = std::make_shared<ConstantBufferView>(m_resource->Handle(), m_desc.bufferSize);
-    }
-
-    void Buffer::CreateUAVBuffer()
-    {
-        auto gfxContext = engine.GetGfxContext();
-
-        if (m_desc.bufferSize <= 0 || m_desc.numOfElements <= 0)
-        {
-            WD_ERROR("UAV buffer invalid data size or elements not specified.");
-            return;
-        }
-
-        D3D12_RESOURCE_DESC desc = {};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        desc.Width = m_desc.bufferSize * m_desc.numOfElements;
-        desc.Height = m_desc.height;
-        desc.DepthOrArraySize = m_desc.depth;
-        desc.MipLevels = m_desc.mipLevels;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-        m_resource = std::make_unique<D3D12Resource>(m_desc.state);
-
-        gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-                                                         D3D12_HEAP_FLAG_NONE,
-                                                         &desc,
-                                                         m_desc.state,
-                                                         nullptr,
-                                                         IID_PPV_ARGS(&m_resource->Handle()));
-
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-        uavDesc.Format = DXGI_FORMAT_UNKNOWN;
-        uavDesc.Buffer.FirstElement = 0;
-        uavDesc.Buffer.NumElements = m_desc.numOfElements;
-        uavDesc.Buffer.StructureByteStride = m_desc.bufferSize;
-
-        m_uaView = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc);
-        m_resource->Handle()->SetName(StringToWString(m_desc.name).c_str());
-    }
-
-    void Buffer::CreateSBTBuffer()
-    {
-        auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-        auto desc = CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize);
-
-        auto device7 = engine.GetGfxContext()->GetDevice7();
-
-        m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_COMMON);
-
-        if (device7)
-        {
-            ThrowIfFailed(device7->CreateCommittedResource(&heapProps,
-                                                           D3D12_HEAP_FLAG_NONE,
-                                                           &desc,
-                                                           D3D12_RESOURCE_STATE_GENERIC_READ,
-                                                           nullptr,
-                                                           IID_PPV_ARGS(&m_resource->Handle())),
-                          "Failed to create shader binding table buffer.");
-        }
-    }
-
-    void Buffer::CreateStructuredBuffer()
-    {
-        auto gfxContext = engine.GetGfxContext();
-
-        if (m_desc.bufferSize <= 0 || m_desc.numOfElements <= 0)
-        {
-            WD_ERROR("Structured buffer invalid data size or elements not specified.");
-            return;
-        }
-
-        D3D12_RESOURCE_DESC desc = {};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        desc.Width = static_cast<UINT64>(m_desc.bufferSize) * m_desc.numOfElements;
-        desc.Height = m_desc.height;
-        desc.DepthOrArraySize = m_desc.depth;
-        desc.MipLevels = m_desc.mipLevels;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-        m_resource = std::make_unique<D3D12Resource>(m_desc.state);
-
-        ThrowIfFailed(gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-                                                                       D3D12_HEAP_FLAG_NONE,
-                                                                       &desc,
-                                                                       m_desc.state,
-                                                                       nullptr,
-                                                                       IID_PPV_ARGS(&m_resource->Handle())),
-                      "Failed to create structured buffer.");
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-        srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Buffer.FirstElement = 0;
-        srvDesc.Buffer.NumElements = m_desc.numOfElements;
-        srvDesc.Buffer.StructureByteStride = m_desc.bufferSize;
-        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-
-        m_srView = std::make_shared<ShaderResourceView>(m_resource->Handle(), srvDesc);
+        m_resource = engine.GetGfxContext()->GetBufferAllocator()->CreateBuffer(m_desc);
 
         if (!m_desc.name.empty()) m_resource->Handle()->SetName(StringToWString(m_desc.name).c_str());
+
+        CreateViews();
     }
 
-    void Buffer::CreateIndexBuffer(std::vector<uint32_t> indices)
+    GPUBuffer::~GPUBuffer() { Unmap(); }
+
+    void GPUBuffer::CreateViews()
+    {
+        const uint32_t stride = m_desc.stride;
+        const uint32_t numElements = stride ? static_cast<uint32_t>(m_desc.size / stride) : 1;
+
+        if (HasFlag(m_desc.usage, BufferUsage::Constant))
+        {
+            m_cbView = std::make_shared<ConstantBufferView>(m_resource->Handle(), static_cast<uint32_t>(m_desc.size));
+        }
+
+        // A stride of zero means the buffer is used only through its GPU address (AC scratch and result buffers)
+        if (HasFlag(m_desc.usage, BufferUsage::ShaderWrite) && stride > 0)
+        {
+            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+            uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+            uavDesc.Buffer.FirstElement = 0;
+            uavDesc.Buffer.NumElements = numElements;
+            uavDesc.Buffer.StructureByteStride = stride;
+
+            m_uaView = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc);
+        }
+
+        if (HasFlag(m_desc.usage, BufferUsage::ShaderRead) && stride > 0)
+        {
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+            srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.Buffer.FirstElement = 0;
+            srvDesc.Buffer.NumElements = numElements;
+            srvDesc.Buffer.StructureByteStride = stride;
+            srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+
+            m_srView = std::make_shared<ShaderResourceView>(m_resource->Handle(), srvDesc);
+        }
+    }
+
+    void GPUBuffer::CreateIndexBuffer(std::vector<uint32_t> indices)
     {
         auto gfxContext = engine.GetGfxContext();
+        auto bufferAllocator = gfxContext->GetBufferAllocator();
 
-        m_desc.bufferSize = indices.size() * sizeof(uint32_t);
+        m_desc.stride = sizeof(uint32_t);
+        m_desc.size = indices.size() * sizeof(uint32_t);
+        m_dataSize = static_cast<uint32_t>(m_desc.size);
 
-        WriteData((void*)indices.data(), m_desc.bufferSize);
+        WriteData((void*)indices.data(), m_desc.size);
 
-        m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
+        m_resource = bufferAllocator->CreateBuffer(m_desc);
 
-        gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-                                                         D3D12_HEAP_FLAG_NONE,
-                                                         &CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
-                                                         D3D12_RESOURCE_STATE_COMMON,
-                                                         nullptr,
-                                                         IID_PPV_ARGS(&m_resource->Handle()));
-
-        // Upload buffer
-        ComPtr<ID3D12Resource> uploadHeap;
-        gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-                                                         D3D12_HEAP_FLAG_NONE,
-                                                         &CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
-                                                         D3D12_RESOURCE_STATE_GENERIC_READ,
-                                                         nullptr,
-                                                         IID_PPV_ARGS(&uploadHeap));
+        // Upload staging resource, kept alive until the copy has finished at the end of this scope
+        AllocatedResource upload = bufferAllocator->AllocateRaw(D3D12_HEAP_TYPE_UPLOAD,
+                                                                m_desc.size,
+                                                                D3D12_RESOURCE_FLAG_NONE,
+                                                                D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                                "Upload resource: " + m_desc.name);
 
         D3D12_SUBRESOURCE_DATA indexData = {};
         indexData.pData = m_data;
-        indexData.RowPitch = m_desc.bufferSize;
+        indexData.RowPitch = m_desc.size;
         indexData.SlicePitch = indexData.RowPitch;
 
         auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-        UpdateSubresources(list.GetList().Get(), m_resource->Handle().Get(), uploadHeap.Get(), 0, 0, 1, &indexData);
+        UpdateSubresources(list.GetList().Get(), m_resource->Handle().Get(), upload.resource.Get(), 0, 0, 1, &indexData);
 
         m_resource->Transition(list, D3D12_RESOURCE_STATE_INDEX_BUFFER);
 
@@ -207,16 +103,18 @@ namespace Wild
         gfxContext->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
         gfxContext->GetCommandQueue(QueueType::Direct)->WaitForFence();
 
-        m_ibView = std::make_shared<IndexBufferView>(m_resource->Handle(), m_desc.bufferSize, DXGI_FORMAT_R32_UINT);
+        m_ibView =
+            std::make_shared<IndexBufferView>(m_resource->Handle(), static_cast<uint32_t>(m_desc.size), DXGI_FORMAT_R32_UINT);
 
-        if (m_desc.useBindless)
+        // Optional raw byte address SRV for bindless index access
+        if (HasFlag(m_desc.usage, BufferUsage::ShaderRead))
         {
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
             srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Buffer.FirstElement = 0;
-            srvDesc.Buffer.NumElements = static_cast<UINT>(m_desc.bufferSize / 4); // R32 raw
+            srvDesc.Buffer.NumElements = static_cast<UINT>(m_desc.size / 4); // R32 raw
             srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
 
             m_srView = std::make_shared<ShaderResourceView>(m_resource->Handle(), srvDesc);
@@ -224,7 +122,7 @@ namespace Wild
     }
 
     // Allocate data
-    void Buffer::Allocate(void* dataSrc, size_t size)
+    void GPUBuffer::Allocate(void* dataSrc, size_t size)
     {
         Map();
         WriteData(dataSrc, size);
@@ -232,27 +130,25 @@ namespace Wild
     }
 
     // Upload data straight to a GPU buffer
-    void Buffer::UploadToGPU(void* dataSrc, size_t size)
+    void GPUBuffer::UploadToGPU(void* dataSrc, size_t size)
     {
-        // Upload staging buffer
-        ComPtr<ID3D12Resource> uploadBuffer;
-
-        size_t uploadSize = m_desc.bufferSize * m_desc.numOfElements;
-
         auto gfxContext = engine.GetGfxContext();
+        auto bufferAllocator = gfxContext->GetBufferAllocator();
 
-        gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-                                                         D3D12_HEAP_FLAG_NONE,
-                                                         &CD3DX12_RESOURCE_DESC::Buffer(uploadSize),
-                                                         D3D12_RESOURCE_STATE_GENERIC_READ,
-                                                         nullptr,
-                                                         IID_PPV_ARGS(&uploadBuffer));
+        size_t uploadSize = static_cast<size_t>(m_desc.size);
+
+        // Upload staging buffer
+        AllocatedResource upload = bufferAllocator->AllocateRaw(D3D12_HEAP_TYPE_UPLOAD,
+                                                                uploadSize,
+                                                                D3D12_RESOURCE_FLAG_NONE,
+                                                                D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                                "Upload staging: " + m_desc.name);
 
         // Copy data into the upload buffer
         void* mapped = nullptr;
-        uploadBuffer->Map(0, nullptr, &mapped);
+        upload.resource->Map(0, nullptr, &mapped);
         memcpy(mapped, dataSrc, uploadSize);
-        uploadBuffer->Unmap(0, nullptr);
+        upload.resource->Unmap(0, nullptr);
 
         auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
@@ -260,7 +156,7 @@ namespace Wild
 
         m_resource->Transition(list, D3D12_RESOURCE_STATE_COPY_DEST);
 
-        list.GetList()->CopyBufferRegion(m_resource->Handle().Get(), 0, uploadBuffer.Get(), 0, uploadSize);
+        list.GetList()->CopyBufferRegion(m_resource->Handle().Get(), 0, upload.resource.Get(), 0, uploadSize);
 
         m_resource->Transition(list, oldState);
 
@@ -269,15 +165,15 @@ namespace Wild
         gfxContext->GetCommandQueue(QueueType::Direct)->WaitForFence();
     }
 
-    void Buffer::Transition(CommandList& list, D3D12_RESOURCE_STATES newState) { m_resource->Transition(list, newState); }
+    void GPUBuffer::Transition(CommandList& list, D3D12_RESOURCE_STATES newState) { m_resource->Transition(list, newState); }
 
-    void Buffer::Map(CD3DX12_RANGE* readRange)
+    void GPUBuffer::Map(CD3DX12_RANGE* readRange)
     {
         m_dataIsMapped = true;
         m_resource->Handle()->Map(0, readRange, &m_data);
     }
 
-    void Buffer::Unmap()
+    void GPUBuffer::Unmap()
     {
         if (m_dataIsMapped)
         {
@@ -286,18 +182,18 @@ namespace Wild
         }
     }
 
-    void Buffer::WriteData(void* dataSrc, size_t size)
+    void GPUBuffer::WriteData(void* dataSrc, size_t size)
     {
         // TODO change to just use 1 standard instead of being able to overwrite it
-        if (size > 0) m_desc.bufferSize = size;
+        if (size > 0) m_desc.size = size;
 
-        // Make sure the pointed has allocated data
-        if (!m_data) m_data = malloc(m_desc.bufferSize);
+        // Make sure the pointer has allocated data
+        if (!m_data) m_data = malloc(static_cast<size_t>(m_desc.size));
 
-        if (m_data) { memcpy(m_data, dataSrc, m_desc.bufferSize); }
+        if (m_data) { memcpy(m_data, dataSrc, static_cast<size_t>(m_desc.size)); }
     }
 
-    std::shared_ptr<VertexBufferView> Buffer::GetVBView() const
+    std::shared_ptr<VertexBufferView> GPUBuffer::GetVBView() const
     {
         if (m_vbView) { return m_vbView; }
 
@@ -305,7 +201,7 @@ namespace Wild
         return nullptr;
     }
 
-    std::shared_ptr<IndexBufferView> Buffer::GetIBView() const
+    std::shared_ptr<IndexBufferView> GPUBuffer::GetIBView() const
     {
         if (m_ibView) { return m_ibView; }
 
@@ -313,7 +209,7 @@ namespace Wild
         return nullptr;
     }
 
-    std::shared_ptr<ConstantBufferView> Buffer::GetCBView() const
+    std::shared_ptr<ConstantBufferView> GPUBuffer::GetCBView() const
     {
         if (m_cbView) { return m_cbView; }
 
@@ -321,7 +217,7 @@ namespace Wild
         return nullptr;
     }
 
-    std::shared_ptr<UnorderedAccessView> Buffer::GetUAView() const
+    std::shared_ptr<UnorderedAccessView> GPUBuffer::GetUAView() const
     {
         if (m_uaView) { return m_uaView; }
 
@@ -329,7 +225,7 @@ namespace Wild
         return nullptr;
     }
 
-    std::shared_ptr<ShaderResourceView> Buffer::GetSRView() const
+    std::shared_ptr<ShaderResourceView> GPUBuffer::GetSRView() const
     {
         if (m_srView) { return m_srView; }
 

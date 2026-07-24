@@ -14,7 +14,7 @@ namespace Wild
 {
     class Texture;
     class PipelineState;
-    class Buffer;
+    class GPUBuffer;
 
     class CommandList : private NonCopyable
     {
@@ -48,12 +48,12 @@ namespace Wild
 
         template <typename rc> void SetRootConstant(uint32_t rootIndex, rc& rootConstant);
         void SetBindlessHeap(uint32_t rootIndex);
-        void SetConstantBufferView(uint32_t rootIndex, Buffer* buffer);
+        void SetConstantBufferView(uint32_t rootIndex, GPUBuffer* buffer);
 
-        void SetUnorderedAccessView(uint32_t rootIndex, Buffer* buffer);
+        void SetUnorderedAccessView(uint32_t rootIndex, GPUBuffer* buffer);
         void SetUnorderedAccessView(uint32_t rootIndex, Texture* texture, std::optional<uint32_t> index = std::nullopt);
 
-        void SetShaderResourceView(uint32_t rootIndex, Buffer* buffer);
+        void SetShaderResourceView(uint32_t rootIndex, GPUBuffer* buffer);
 
         void SetVertexBuffer() {};
         void SetIndexBuffer() {};

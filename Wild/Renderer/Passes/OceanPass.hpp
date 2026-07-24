@@ -203,7 +203,7 @@ namespace Wild
 
         /// Initial spectrum
         bool m_recomputeInitialSpectrum = true;
-        std::unique_ptr<Buffer> m_gaussianDistribution{};
+        std::unique_ptr<GPUBuffer> m_gaussianDistribution{};
         InitialSpectrumRootConstants m_initialSpectrumRC{};
 
         float m_fetch[2] = {1400, 100000.0f};
@@ -225,14 +225,14 @@ namespace Wild
         Entity m_chunkEntity;
 
         // Ocean mesh
-        std::unique_ptr<Buffer> m_oceanVertices[MAX_OCEAN_LOD];
-        std::unique_ptr<Buffer> m_oceanIndices[MAX_OCEAN_LOD];
+        std::unique_ptr<GPUBuffer> m_oceanVertices[MAX_OCEAN_LOD];
+        std::unique_ptr<GPUBuffer> m_oceanIndices[MAX_OCEAN_LOD];
         uint32_t m_drawCount[MAX_OCEAN_LOD]{};
 
         OceanRenderData m_oceanRenderData{};
-        std::unique_ptr<Buffer> m_oceanRenderDataBuffer;
+        std::unique_ptr<GPUBuffer> m_oceanRenderDataBuffer;
 
-        std::unique_ptr<Buffer> m_cameraBuffer{};
+        std::unique_ptr<GPUBuffer> m_cameraBuffer{};
     };
 
 } // namespace Wild

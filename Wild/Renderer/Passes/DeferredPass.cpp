@@ -125,8 +125,10 @@ namespace Wild
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)
         {
             BufferDesc desc{};
-            desc.bufferSize = sizeof(IndirectFrustum);
-            m_frustumBuffer[i] = std::make_unique<Buffer>(desc, BufferType::constant);
+            desc.size = sizeof(IndirectFrustum);
+            desc.usage = BufferUsage::Constant;
+            desc.access = MemoryAccess::CpuToGpu;
+            m_frustumBuffer[i] = std::make_unique<GPUBuffer>(desc);
         }
     }
 

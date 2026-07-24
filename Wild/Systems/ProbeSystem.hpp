@@ -37,9 +37,9 @@ namespace Wild
         uint32_t GetProbeCount() const noexcept { return static_cast<uint32_t>(m_counts.x * m_counts.y * m_counts.z); }
 
         const std::vector<Probe>& GetProbes() const noexcept { return m_probes; }
-        std::shared_ptr<Buffer> GetProbeBuffer() { return m_probeStructure; }
-        std::shared_ptr<Buffer> GetProbeRayDataBuffer() { return m_probeRayData; }
-        std::shared_ptr<Buffer> GetProbeIrradianceBuffer() { return m_probeIrradiance; }
+        std::shared_ptr<GPUBuffer> GetProbeBuffer() { return m_probeStructure; }
+        std::shared_ptr<GPUBuffer> GetProbeRayDataBuffer() { return m_probeRayData; }
+        std::shared_ptr<GPUBuffer> GetProbeIrradianceBuffer() { return m_probeIrradiance; }
 
         size_t GetByteSize() const noexcept { return m_probes.size() * sizeof(Probe); }
 
@@ -53,9 +53,9 @@ namespace Wild
 
         //bool m_markDirty = false;
 
-        std::shared_ptr<Buffer> m_probeStructure{};
-        std::shared_ptr<Buffer> m_probeRayData{};
-        std::shared_ptr<Buffer> m_probeIrradiance{};
+        std::shared_ptr<GPUBuffer> m_probeStructure{};
+        std::shared_ptr<GPUBuffer> m_probeRayData{};
+        std::shared_ptr<GPUBuffer> m_probeIrradiance{};
 
         glm::vec3 m_origin;
         glm::vec3 m_spacing;

@@ -13,7 +13,7 @@ namespace Wild
     {
         Texture* finalTexture;
         Texture* depthTexture;
-        std::shared_ptr<Buffer> pointlights;
+        std::shared_ptr<GPUBuffer> pointlights;
         uint32_t numOfPointLights{};
     };
 
@@ -65,9 +65,9 @@ namespace Wild
 
         CameraBuffer m_camData{};
 
-        std::unique_ptr<Buffer> m_cameraBuffer[BACK_BUFFER_COUNT];
-        std::unique_ptr<Buffer> m_pbrDataBuffer[BACK_BUFFER_COUNT];
+        std::unique_ptr<GPUBuffer> m_cameraBuffer[BACK_BUFFER_COUNT];
+        std::unique_ptr<GPUBuffer> m_pbrDataBuffer[BACK_BUFFER_COUNT];
 
-        std::unique_ptr<Buffer> m_environmentData;
+        std::unique_ptr<GPUBuffer> m_environmentData;
     };
 } // namespace Wild

@@ -10,26 +10,32 @@ namespace Wild
     {
         {
             BufferDesc desc{};
-            desc.bufferSize = sizeof(CameraBuffer);
+            desc.size = sizeof(CameraBuffer);
+            desc.usage = BufferUsage::Constant;
+            desc.access = MemoryAccess::CpuToGpu;
             for (int i = 0; i < BACK_BUFFER_COUNT; i++)
             {
-                m_cameraBuffer[i] = std::make_unique<Buffer>(desc, BufferType::constant);
+                m_cameraBuffer[i] = std::make_unique<GPUBuffer>(desc);
             }
         }
 
         {
             BufferDesc desc{};
-            desc.bufferSize = sizeof(PBRData);
+            desc.size = sizeof(PBRData);
+            desc.usage = BufferUsage::Constant;
+            desc.access = MemoryAccess::CpuToGpu;
             for (int i = 0; i < BACK_BUFFER_COUNT; i++)
             {
-                m_pbrDataBuffer[i] = std::make_unique<Buffer>(desc, BufferType::constant);
+                m_pbrDataBuffer[i] = std::make_unique<GPUBuffer>(desc);
             }
         }
 
         {
             BufferDesc desc{};
-            desc.bufferSize = sizeof(EnvironmentData);
-            m_environmentData = std::make_unique<Buffer>(desc, BufferType::constant);
+            desc.size = sizeof(EnvironmentData);
+            desc.usage = BufferUsage::Constant;
+            desc.access = MemoryAccess::CpuToGpu;
+            m_environmentData = std::make_unique<GPUBuffer>(desc);
         }
     }
 

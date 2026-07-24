@@ -45,7 +45,9 @@ namespace Wild
                 if (m_lines.size() > 0)
                 {
                     BufferDesc vDesc{};
-                    m_lineVertexBuffer = std::make_unique<Buffer>(vDesc);
+                    vDesc.usage = BufferUsage::Vertex;
+                    vDesc.access = MemoryAccess::GpuOnly;
+                    m_lineVertexBuffer = std::make_unique<GPUBuffer>(vDesc);
                     m_lineVertexBuffer->CreateVertexBuffer<DebugVertex>(m_lines);
                 }
 

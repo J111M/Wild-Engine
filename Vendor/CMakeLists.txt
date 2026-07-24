@@ -56,6 +56,18 @@ else()
 endif()
 set(AGILITY_SDK_DLL_DIR "${directxagilitysdk_SOURCE_DIR}/build/native/bin/${AGILITY_ARCH}" PARENT_SCOPE)
 
+# D3D12 Memory Allocator
+set(D3D12MA_BUILD_SAMPLE OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    D3D12MemoryAllocator
+    GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator.git
+    GIT_TAG v3.0.1
+)
+FetchContent_MakeAvailable(D3D12MemoryAllocator)
+
+target_link_libraries(Wild PRIVATE D3D12MemoryAllocator)
+target_include_directories(Wild PRIVATE "${d3d12memoryallocator_SOURCE_DIR}/include")
+
 # GLM
 FetchContent_Declare(
   glm

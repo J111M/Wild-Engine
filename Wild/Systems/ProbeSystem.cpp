@@ -28,9 +28,11 @@ namespace Wild
 
         // Create structured probe buffer
         BufferDesc desc{};
-        desc.bufferSize = sizeof(Probe);
-        desc.numOfElements = m_probes.size();
-        m_probeStructure = std::make_shared<Buffer>(desc, structured);
+        desc.size = static_cast<uint64_t>(sizeof(Probe)) * m_probes.size();
+        desc.stride = sizeof(Probe);
+        desc.usage = BufferUsage::ShaderRead;
+        desc.access = MemoryAccess::GpuOnly;
+        m_probeStructure = std::make_shared<GPUBuffer>(desc);
         m_probeStructure->UploadToGPU(m_probes.data(), m_probes.size() * sizeof(Probe));
     }
 
@@ -39,22 +41,28 @@ namespace Wild
         const uint32_t probeCount = GetProbeCount();
 
         {
-            BufferDesc desc{};
-            desc.bufferSize = sizeof(ProbeRayData);
-            desc.numOfElements = probeCount * MAX_RAYS_PER_PROBE;
-            m_probeRayData = std::make_shared<Buffer>(desc, BufferType::uav);
+            const uint32_t elementCount = probeCount * MAX_RAYS_PER_PROBE;
 
-            std::vector<ProbeRayData> zeroed(desc.numOfElements);
+            BufferDesc desc{};
+            desc.size = static_cast<uint64_t>(sizeof(ProbeRayData)) * elementCount;
+            desc.stride = sizeof(ProbeRayData);
+            desc.usage = BufferUsage::ShaderWrite;
+            desc.access = MemoryAccess::GpuOnly;
+            m_probeRayData = std::make_shared<GPUBuffer>(desc);
+
+            std::vector<ProbeRayData> zeroed(elementCount);
             m_probeRayData->UploadToGPU(zeroed.data(), zeroed.size() * sizeof(ProbeRayData));
         }
 
         {
             BufferDesc desc{};
-            desc.bufferSize = sizeof(ProbeIrradiance);
-            desc.numOfElements = probeCount;
-            m_probeIrradiance = std::make_shared<Buffer>(desc, BufferType::uav);
+            desc.size = static_cast<uint64_t>(sizeof(ProbeIrradiance)) * probeCount;
+            desc.stride = sizeof(ProbeIrradiance);
+            desc.usage = BufferUsage::ShaderWrite;
+            desc.access = MemoryAccess::GpuOnly;
+            m_probeIrradiance = std::make_shared<GPUBuffer>(desc);
 
-            std::vector<ProbeIrradiance> zeroed(desc.numOfElements);
+            std::vector<ProbeIrradiance> zeroed(probeCount);
             m_probeIrradiance->UploadToGPU(zeroed.data(), zeroed.size() * sizeof(ProbeIrradiance));
         }
     }

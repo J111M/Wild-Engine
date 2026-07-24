@@ -137,15 +137,15 @@ namespace Wild
 
         std::unique_ptr<Texture> noiseBlendTexture;
 
-        std::unique_ptr<Buffer> m_terrainTexturesCbv;
-        std::unique_ptr<Buffer> m_cameraCbv;
+        std::unique_ptr<GPUBuffer> m_terrainTexturesCbv;
+        std::unique_ptr<GPUBuffer> m_cameraCbv;
 
         TerrainTextures m_terrainTexturesView{};
         ProjViewCamera m_pvc{};
 
         // Terrain mesh
-        std::unique_ptr<Buffer> m_terrainVertices;
-        std::unique_ptr<Buffer> m_terrainIndices;
+        std::unique_ptr<GPUBuffer> m_terrainVertices;
+        std::unique_ptr<GPUBuffer> m_terrainIndices;
         uint32_t m_drawCount{};
     };
 } // namespace Wild

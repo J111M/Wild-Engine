@@ -11,12 +11,16 @@ namespace Wild
 
         // Create buffer for all terrain textures
         BufferDesc terrainTextureBuffer{};
-        terrainTextureBuffer.bufferSize = sizeof(TerrainTextures);
-        m_terrainTexturesCbv = std::make_unique<Buffer>(terrainTextureBuffer, BufferType::constant);
+        terrainTextureBuffer.size = sizeof(TerrainTextures);
+        terrainTextureBuffer.usage = BufferUsage::Constant;
+        terrainTextureBuffer.access = MemoryAccess::CpuToGpu;
+        m_terrainTexturesCbv = std::make_unique<GPUBuffer>(terrainTextureBuffer);
 
         BufferDesc cameraBufferDesc{};
-        cameraBufferDesc.bufferSize = sizeof(ProjViewCamera);
-        m_cameraCbv = std::make_unique<Buffer>(cameraBufferDesc, BufferType::constant);
+        cameraBufferDesc.size = sizeof(ProjViewCamera);
+        cameraBufferDesc.usage = BufferUsage::Constant;
+        cameraBufferDesc.access = MemoryAccess::CpuToGpu;
+        m_cameraCbv = std::make_unique<GPUBuffer>(cameraBufferDesc);
 
         // Load all terrain textures
         grassTexture = std::make_unique<Texture>("Assets/Textures/grass/Grass008_2K-JPG_Color.jpg");
@@ -364,7 +368,9 @@ namespace Wild
         }
 
         BufferDesc vDesc{};
-        m_terrainVertices = std::make_unique<Buffer>(vDesc);
+        vDesc.usage = BufferUsage::Vertex;
+        vDesc.access = MemoryAccess::GpuOnly;
+        m_terrainVertices = std::make_unique<GPUBuffer>(vDesc);
         m_terrainVertices->CreateVertexBuffer(vertices);
 
         std::vector<uint32_t> indices;
@@ -391,7 +397,7 @@ namespace Wild
         }
 
         BufferDesc iDesc{};
-        m_terrainIndices = std::make_unique<Buffer>(vDesc);
+        m_terrainIndices = std::make_unique<GPUBuffer>(vDesc);
         m_terrainIndices->CreateIndexBuffer(indices);
 
         m_drawCount = indices.size();

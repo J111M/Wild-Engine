@@ -7,9 +7,9 @@ namespace Wild
     // Source of blas creation from https://developer.nvidia.com/rtx/raytracing/dxr/dx12-raytracing-tutorial-part-1
     struct BLASEntry
     {
-        std::unique_ptr<Buffer> scratch; // Scratch memory for AS builder
-        std::unique_ptr<Buffer> result;  // Where the AS is
-        // std::unique_ptr<Buffer> pInstanceDesc; // Hold the matrices of the instances
+        std::unique_ptr<GPUBuffer> scratch; // Scratch memory for AS builder
+        std::unique_ptr<GPUBuffer> result;  // Where the AS is
+        // std::unique_ptr<GPUBuffer> pInstanceDesc; // Hold the matrices of the instances
     };
 
     struct TLASInstance
@@ -65,7 +65,7 @@ namespace Wild
         D3D12_GPU_VIRTUAL_ADDRESS GetTLASAddress() const
         { return m_tlasResult ? m_tlasResult->GetBuffer()->GetGPUVirtualAddress() : 0; }
 
-        std::shared_ptr<Buffer> GetMeshIdBuffer() const { return m_meshIdBuffer; }
+        std::shared_ptr<GPUBuffer> GetMeshIdBuffer() const { return m_meshIdBuffer; }
 
       private:
         // Update capacity of the mesh id buffer
@@ -80,14 +80,14 @@ namespace Wild
         std::vector<TLASInstance> m_dynamicTlasInstances{};
 
         // TLAS buffer
-        std::unique_ptr<Buffer> m_instanceDescsBuffer;
-        std::unique_ptr<Buffer> m_tlasScratch;
-        std::unique_ptr<Buffer> m_tlasUpdateScratch;
-        std::unique_ptr<Buffer> m_tlasResult;
+        std::unique_ptr<GPUBuffer> m_instanceDescsBuffer;
+        std::unique_ptr<GPUBuffer> m_tlasScratch;
+        std::unique_ptr<GPUBuffer> m_tlasUpdateScratch;
+        std::unique_ptr<GPUBuffer> m_tlasResult;
         UINT64 m_tlasResultSize = 0;
 
         std::vector<MeshInstanceInfo> m_tlasMeshData;
-        std::shared_ptr<Buffer> m_meshIdBuffer;
+        std::shared_ptr<GPUBuffer> m_meshIdBuffer;
 
         bool m_raytracingSupported = false;
     };

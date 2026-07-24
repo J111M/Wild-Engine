@@ -81,7 +81,7 @@ namespace Wild
         }
     }
 
-    void CommandList::SetConstantBufferView(uint32_t rootIndex, Buffer* buffer)
+    void CommandList::SetConstantBufferView(uint32_t rootIndex, GPUBuffer* buffer)
     {
         switch (m_pipelineState->GetPassType())
         {
@@ -98,7 +98,7 @@ namespace Wild
         }
     }
 
-    void CommandList::SetUnorderedAccessView(uint32_t rootIndex, Buffer* buffer)
+    void CommandList::SetUnorderedAccessView(uint32_t rootIndex, GPUBuffer* buffer)
     {
         switch (m_pipelineState->GetPassType())
         {
@@ -139,7 +139,7 @@ namespace Wild
         }
     }
 
-    void CommandList::SetShaderResourceView(uint32_t rootIndex, Buffer* buffer)
+    void CommandList::SetShaderResourceView(uint32_t rootIndex, GPUBuffer* buffer)
     {
 
         switch (m_pipelineState->GetPassType())

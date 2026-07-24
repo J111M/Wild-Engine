@@ -44,6 +44,11 @@ namespace Wild
         m_descriptorAllocatorsDsv.reset();
         m_descriptorAllocatorsRtv.reset();
 
+        // Release the buffer allocator, then the memory allocator it draws from,
+        // after every resource that was allocated from them
+        m_bufferAllocator.reset();
+        m_allocator.Reset();
+
 #ifdef DEBUG
         ComPtr<IDXGIDebug1> dxgiDebug;
         if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug))))
@@ -66,6 +71,7 @@ namespace Wild
         SetupFactory();
         CreateAdapter();
         CreateDevice();
+        CreateAllocator();
 
         m_capabilities.GetSupportedFeatures(this);
 
@@ -74,6 +80,8 @@ namespace Wild
         m_descriptorAllocatorsRtv = std::make_shared<DescriptorAllocatorRtv>(m_device, 64);
         m_descriptorAllocatorsDsv = std::make_shared<DescriptorAllocatorDsv>(m_device, 64);
         m_desciptorAllocatorCbvSrvUav = std::make_shared<DescriptorAllocatorCbvSrvUav>(m_device, 32768);
+
+        m_bufferAllocator = std::make_shared<BufferAllocator>(m_allocator);
 
         m_commandQueue[static_cast<uint32_t>(QueueType::Direct)] =
             std::make_shared<CommandQueue>(m_device, D3D12_COMMAND_LIST_TYPE_DIRECT, "Direct queue");
@@ -239,6 +247,16 @@ namespace Wild
 #if defined(_DEBUG)
         ThrowIfFailed(m_device->QueryInterface(IID_PPV_ARGS(&m_debugDevice)));
 #endif
+    }
+
+    void GfxContext::CreateAllocator()
+    {
+        D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
+        allocatorDesc.pDevice = m_device.Get();
+        allocatorDesc.pAdapter = m_adapter.Get();
+
+        ThrowIfFailed(D3D12MA::CreateAllocator(&allocatorDesc, m_allocator.GetAddressOf()),
+                      "Failed to create the D3D12 memory allocator.");
     }
 
     void GfxContext::CreateSwapchain()

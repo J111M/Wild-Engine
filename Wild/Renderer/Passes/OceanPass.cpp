@@ -23,16 +23,20 @@ namespace Wild
 
         {
             BufferDesc desc{};
-            desc.bufferSize = sizeof(ComplexValue);
-            desc.numOfElements = val.size();
-            m_gaussianDistribution = std::make_unique<Buffer>(desc, uav);
+            desc.size = static_cast<uint64_t>(sizeof(ComplexValue)) * val.size();
+            desc.stride = sizeof(ComplexValue);
+            desc.usage = BufferUsage::ShaderWrite;
+            desc.access = MemoryAccess::GpuOnly;
+            m_gaussianDistribution = std::make_unique<GPUBuffer>(desc);
             m_gaussianDistribution->UploadToGPU(val.data());
         }
 
         {
             BufferDesc desc{};
-            desc.bufferSize = sizeof(OceanRenderData);
-            m_oceanRenderDataBuffer = std::make_unique<Buffer>(desc, BufferType::constant);
+            desc.size = sizeof(OceanRenderData);
+            desc.usage = BufferUsage::Constant;
+            desc.access = MemoryAccess::CpuToGpu;
+            m_oceanRenderDataBuffer = std::make_unique<GPUBuffer>(desc);
         }
 
         GenerateOceanPlane(64);
@@ -41,8 +45,10 @@ namespace Wild
 
         {
             BufferDesc desc{};
-            desc.bufferSize = sizeof(CameraBuffer);
-            m_cameraBuffer = std::make_unique<Buffer>(desc, BufferType::constant);
+            desc.size = sizeof(CameraBuffer);
+            desc.usage = BufferUsage::Constant;
+            desc.access = MemoryAccess::CpuToGpu;
+            m_cameraBuffer = std::make_unique<GPUBuffer>(desc);
         }
     }
 
@@ -755,7 +761,9 @@ namespace Wild
             }
 
             BufferDesc vDesc{};
-            m_oceanVertices[i] = std::make_unique<Buffer>(vDesc);
+            vDesc.usage = BufferUsage::Vertex;
+            vDesc.access = MemoryAccess::GpuOnly;
+            m_oceanVertices[i] = std::make_unique<GPUBuffer>(vDesc);
             m_oceanVertices[i]->CreateVertexBuffer(vertices);
 
             std::vector<uint32_t> indices;
@@ -782,7 +790,7 @@ namespace Wild
             }
 
             BufferDesc iDesc{};
-            m_oceanIndices[i] = std::make_unique<Buffer>(vDesc);
+            m_oceanIndices[i] = std::make_unique<GPUBuffer>(vDesc);
             m_oceanIndices[i]->CreateIndexBuffer(indices);
 
             m_drawCount[i] = indices.size();

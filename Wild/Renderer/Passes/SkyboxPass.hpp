@@ -77,8 +77,8 @@ namespace Wild
         std::vector<Vertex> CreateCube();
         std::vector<Vertex> m_cube;
 
-        std::unique_ptr<Buffer> m_cameraProjection[BACK_BUFFER_COUNT];
-        std::unique_ptr<Buffer> m_cubeVertexBuffer;
+        std::unique_ptr<GPUBuffer> m_cameraProjection[BACK_BUFFER_COUNT];
+        std::unique_ptr<GPUBuffer> m_cubeVertexBuffer;
         std::unique_ptr<Texture> m_skyboxTexture;
 
         uint32_t m_debugSkyboxMode = 0;

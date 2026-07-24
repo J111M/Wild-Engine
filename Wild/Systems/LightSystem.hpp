@@ -7,7 +7,7 @@
 
 namespace Wild
 {
-    class Buffer;
+    class GPUBuffer;
 
     class LightSystem : public System
     {
@@ -18,11 +18,11 @@ namespace Wild
 
         void Update();
 
-        std::shared_ptr<Buffer> GetPointLightBuffer() { return m_pointLightBuffer; }
+        std::shared_ptr<GPUBuffer> GetPointLightBuffer() { return m_pointLightBuffer; }
         uint32_t GetPointLightCount() const noexcept { return m_pointLightCount; }
 
       private:
-        std::shared_ptr<Buffer> m_pointLightBuffer{};
+        std::shared_ptr<GPUBuffer> m_pointLightBuffer{};
         uint32_t m_pointLightCount{};
     };
 } // namespace Wild

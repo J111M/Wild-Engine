@@ -105,7 +105,7 @@ namespace Wild
         // Volumetric data
         VolumetricRootConstants m_volumetricRC{};
         SceneBuffer m_sceneData{};
-        std::unique_ptr<Buffer> m_sceneDataBuffer[BACK_BUFFER_COUNT];
+        std::unique_ptr<GPUBuffer> m_sceneDataBuffer[BACK_BUFFER_COUNT];
 
         bool m_enabledVolumetricFog = false;
 

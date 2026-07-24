@@ -7,10 +7,12 @@ namespace Wild
     PostProcessPass::PostProcessPass()
     {
         BufferDesc desc{};
-        desc.bufferSize = sizeof(SceneBuffer);
+        desc.size = sizeof(SceneBuffer);
+        desc.usage = BufferUsage::Constant;
+        desc.access = MemoryAccess::CpuToGpu;
         for (size_t i = 0; i < BACK_BUFFER_COUNT; i++)
         {
-            m_sceneDataBuffer[i] = std::make_unique<Buffer>(desc, BufferType::constant);
+            m_sceneDataBuffer[i] = std::make_unique<GPUBuffer>(desc);
         }
     }
 

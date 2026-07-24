@@ -65,16 +65,16 @@ namespace Wild
 
         // Indirect rendering resources
         // Store frustum data
-        std::unique_ptr<Buffer> m_frustumBuffer[BACK_BUFFER_COUNT];
+        std::unique_ptr<GPUBuffer> m_frustumBuffer[BACK_BUFFER_COUNT];
 
         // Keeps track of all instances that need to be culled
-        std::shared_ptr<Buffer> m_culledInstancesBuffer[BACK_BUFFER_COUNT];
+        std::shared_ptr<GPUBuffer> m_culledInstancesBuffer[BACK_BUFFER_COUNT];
 
         // Instance count buffer keeps track of the amount of instances that need to be drawn per LOD
-        std::unique_ptr<Buffer> m_automicCounter[BACK_BUFFER_COUNT];
+        std::unique_ptr<GPUBuffer> m_automicCounter[BACK_BUFFER_COUNT];
 
         // Draw command buffer stores the grass blades that need to be drawn via execute indirect
-        std::unique_ptr<Buffer> m_drawCommandsBuffer[BACK_BUFFER_COUNT];
+        std::unique_ptr<GPUBuffer> m_drawCommandsBuffer[BACK_BUFFER_COUNT];
 
         // Command signature for Execute indirect
         ComPtr<ID3D12CommandSignature> m_commandSignature;

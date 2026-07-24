@@ -7,15 +7,19 @@ namespace Wild
     SkyboxPass::SkyboxPass(std::string filePath)
     {
         m_cube = CreateCube();
-        BufferDesc desc;
-        m_cubeVertexBuffer = std::make_unique<Buffer>(desc);
+        BufferDesc desc{};
+        desc.usage = BufferUsage::Vertex;
+        desc.access = MemoryAccess::GpuOnly;
+        m_cubeVertexBuffer = std::make_unique<GPUBuffer>(desc);
         m_cubeVertexBuffer->CreateVertexBuffer<Vertex>(m_cube);
 
         BufferDesc bufferDesc{};
-        bufferDesc.bufferSize = sizeof(CameraProjection);
+        bufferDesc.size = sizeof(CameraProjection);
+        bufferDesc.usage = BufferUsage::Constant;
+        bufferDesc.access = MemoryAccess::CpuToGpu;
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)
         {
-            m_cameraProjection[i] = std::make_unique<Buffer>(bufferDesc, BufferType::constant);
+            m_cameraProjection[i] = std::make_unique<GPUBuffer>(bufferDesc);
         }
 
         // TODO remvoe skybox texture because it is wasted data

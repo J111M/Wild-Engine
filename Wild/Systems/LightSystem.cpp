@@ -9,8 +9,10 @@ namespace Wild
     LightSystem::LightSystem()
     {
         BufferDesc desc{};
-        desc.bufferSize = sizeof(PointLight) * MAX_POINT_LIGHTS;
-        m_pointLightBuffer = std::make_shared<Buffer>(desc, BufferType::constant);
+        desc.size = sizeof(PointLight) * MAX_POINT_LIGHTS;
+        desc.usage = BufferUsage::Constant;
+        desc.access = MemoryAccess::CpuToGpu;
+        m_pointLightBuffer = std::make_shared<GPUBuffer>(desc);
     }
 
     void LightSystem::Update()

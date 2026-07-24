@@ -22,8 +22,8 @@ namespace Wild
 
         D3D12_DISPATCH_RAYS_DESC m_dispatchDesc{};
 
-        std::unique_ptr<Buffer> m_rayGenSBT{};
-        std::unique_ptr<Buffer> m_missSBT{};
-        std::unique_ptr<Buffer> m_hitGroupSBT{};
+        std::unique_ptr<GPUBuffer> m_rayGenSBT{};
+        std::unique_ptr<GPUBuffer> m_missSBT{};
+        std::unique_ptr<GPUBuffer> m_hitGroupSBT{};
     };
 } // namespace Wild

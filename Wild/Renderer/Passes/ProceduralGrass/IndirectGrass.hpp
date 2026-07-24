@@ -46,7 +46,7 @@ namespace Wild
     /// </summary>
     struct GrassCullData
     {
-        std::shared_ptr<Buffer> CulledBuffer = nullptr;
+        std::shared_ptr<GPUBuffer> CulledBuffer = nullptr;
     };
 
     struct FrustumBuffer
@@ -139,20 +139,20 @@ namespace Wild
 
         // PerBladeCompute data
         PerBladeComputeRootConstants m_pbcrc{};
-        std::unique_ptr<Buffer> m_perBladeDataBuffer;
+        std::unique_ptr<GPUBuffer> m_perBladeDataBuffer;
         bool m_recomputeGrassBlades = true;
 
         // Store frustum data
-        std::unique_ptr<Buffer> m_frustumBuffer[BACK_BUFFER_COUNT];
+        std::unique_ptr<GPUBuffer> m_frustumBuffer[BACK_BUFFER_COUNT];
 
         // Keeps track of all instances that need to be culled
-        std::shared_ptr<Buffer> m_culledInstancesBuffer[BACK_BUFFER_COUNT];
+        std::shared_ptr<GPUBuffer> m_culledInstancesBuffer[BACK_BUFFER_COUNT];
 
         // Instance count buffer keeps track of the amount of instances that need to be drawn per LOD
-        std::unique_ptr<Buffer> m_instanceCountBuffer[BACK_BUFFER_COUNT];
+        std::unique_ptr<GPUBuffer> m_instanceCountBuffer[BACK_BUFFER_COUNT];
 
         // Draw command buffer stores the grass blades that need to be drawn via execute indirect
-        std::unique_ptr<Buffer> m_drawCommandsBuffer[BACK_BUFFER_COUNT];
+        std::unique_ptr<GPUBuffer> m_drawCommandsBuffer[BACK_BUFFER_COUNT];
 
         // Command signature for Execute indirect
         ComPtr<ID3D12CommandSignature> m_commandSignature;
@@ -161,11 +161,11 @@ namespace Wild
         GrassRootConstants m_rc{};
         Entity m_chunkEntity;
         float m_accumulatedTime{};
-        std::shared_ptr<Buffer> m_sceneData[BACK_BUFFER_COUNT];
+        std::shared_ptr<GPUBuffer> m_sceneData[BACK_BUFFER_COUNT];
 
         // Contains all LOD's inside the same buffer
-        std::unique_ptr<Buffer> m_grassVertices;
-        std::unique_ptr<Buffer> m_grassIndices;
+        std::unique_ptr<GPUBuffer> m_grassVertices;
+        std::unique_ptr<GPUBuffer> m_grassIndices;
 
         SceneData m_grassSceneData{};
 

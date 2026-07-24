@@ -3,8 +3,11 @@
 #include "Renderer/CommandList.hpp"
 #include "Renderer/Resources/D3D12Resource.hpp"
 
+#include "Tools/BufferAllocator.hpp"
 #include "Tools/D3D12Common.hpp"
 #include "Tools/D3D12Views.hpp"
+
+#include "Renderer/Resources/BufferTypes.hpp"
 
 #include <optional>
 #include <string>
@@ -14,51 +17,11 @@ namespace Wild
 {
     struct Vertex;
 
-    enum BufferFlag : uint32_t
-    {
-        none = 0,
-        shaderResource = 1 << 1,
-        readWrite = 1 << 2,
-        cpuResource = 1 << 3,
-    };
-
-    enum BufferType : uint32_t
-    {
-        default = 0,
-        constant = 1 << 1,
-        uav = 1 << 2,
-        shaderBindingTable = 1 << 3,
-        structured = 1 << 4,
-    };
-
-    struct BufferDesc
-    {
-        BufferFlag flag = BufferFlag::shaderResource;
-        BufferType type = BufferType::default;
-
-        uint32_t bufferSize{};
-        uint32_t numOfElements{};
-
-        UINT64 width{1};
-        UINT height{1};
-        UINT16 depth{1};
-        UINT16 mipLevels{1};
-        DXGI_FORMAT format;
-        // D3D12_RESOURCE_FLAGS flags;
-
-        bool useBindless = false;
-
-        D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
-
-        std::string name = "default";
-    };
-
-    // TODO rework buffer class so that the resource creation is done in the initializer
-    class Buffer
+    class GPUBuffer
     {
       public:
-        Buffer(const BufferDesc& desc, BufferType type = BufferType::default);
-        ~Buffer();
+        explicit GPUBuffer(const BufferDesc& desc);
+        ~GPUBuffer();
 
         void CreateIndexBuffer(std::vector<uint32_t> indices);
 
@@ -82,10 +45,8 @@ namespace Wild
       private:
         BufferDesc m_desc;
 
-        void CreateConstantBuffer();
-        void CreateUAVBuffer();
-        void CreateSBTBuffer();
-        void CreateStructuredBuffer();
+        // Builds the CBV / SRV / UAV descriptor views that match the requested usage
+        void CreateViews();
 
         std::unique_ptr<D3D12Resource> m_resource;
 
@@ -114,7 +75,6 @@ namespace Wild
             }
 
             uint32_t stride = static_cast<uint32_t>(sizeof(T));
-            m_desc.bufferSize = vertices.size() * stride;
 
             if (stride == 0)
             {
@@ -122,45 +82,35 @@ namespace Wild
                 return;
             }
 
+            m_desc.stride = stride;
+            m_desc.size = vertices.size() * stride;
+            m_dataSize = static_cast<uint32_t>(m_desc.size);
+
             auto gfxContext = engine.GetGfxContext();
+            auto bufferAllocator = gfxContext->GetBufferAllocator();
 
-            m_resource = std::make_unique<D3D12Resource>(D3D12_RESOURCE_STATE_COPY_DEST);
-
-            gfxContext->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-                                                             D3D12_HEAP_FLAG_NONE,
-                                                             &CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize),
-                                                             D3D12_RESOURCE_STATE_COMMON,
-                                                             nullptr,
-                                                             IID_PPV_ARGS(&m_resource->Handle()));
-
+            // Default heap resource that will hold the vertex data
+            m_resource = bufferAllocator->CreateBuffer(m_desc);
             m_resource->Handle()->SetName(std::wstring(m_desc.name.begin(), m_desc.name.end()).c_str());
 
-            // Upload heap for GPU resources
-            ComPtr<ID3D12Resource> uploadHeap;
-
-            gfxContext->GetDevice()->CreateCommittedResource(
-                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),  // upload heap
-                D3D12_HEAP_FLAG_NONE,                              // no flags
-                &CD3DX12_RESOURCE_DESC::Buffer(m_desc.bufferSize), // resource description for a buffer
-                D3D12_RESOURCE_STATE_GENERIC_READ, // GPU will read from this buffer and copy its contents to the default heap
-                nullptr,
-                IID_PPV_ARGS(&uploadHeap));
-
+            // Upload staging resource, kept alive until the copy has finished at the end of this scope
             std::string uploadResourceName = "Upload resource: " + m_desc.name;
+            AllocatedResource upload = bufferAllocator->AllocateRaw(D3D12_HEAP_TYPE_UPLOAD,
+                                                                    m_desc.size,
+                                                                    D3D12_RESOURCE_FLAG_NONE,
+                                                                    D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                                    uploadResourceName);
 
-            uploadHeap->SetName(std::wstring(uploadResourceName.begin(), uploadResourceName.end()).c_str());
+            WriteData((void*)vertices.data(), m_desc.size);
 
-            WriteData((void*)vertices.data(), m_desc.bufferSize);
-
-            // Buffer type to upload heap
             D3D12_SUBRESOURCE_DATA data = {};
             data.pData = reinterpret_cast<BYTE*>(m_data);
-            data.RowPitch = m_desc.bufferSize;
-            data.SlicePitch = m_desc.bufferSize;
+            data.RowPitch = m_desc.size;
+            data.SlicePitch = m_desc.size;
 
             auto list = CommandList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-            UpdateSubresources(list.GetList().Get(), m_resource->Handle().Get(), uploadHeap.Get(), 0, 0, 1, &data);
+            UpdateSubresources(list.GetList().Get(), m_resource->Handle().Get(), upload.resource.Get(), 0, 0, 1, &data);
 
             m_resource->Transition(list, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
@@ -169,7 +119,8 @@ namespace Wild
             gfxContext->GetCommandQueue(QueueType::Direct)->ExecuteList(list);
             gfxContext->GetCommandQueue(QueueType::Direct)->WaitForFence();
 
-            m_vbView = std::make_shared<VertexBufferView>(m_resource->Handle(), m_desc.bufferSize, stride);
+            m_vbView =
+                std::make_shared<VertexBufferView>(m_resource->Handle(), static_cast<uint32_t>(m_desc.size), stride);
         }
     };
 } // namespace Wild

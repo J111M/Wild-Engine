@@ -8,9 +8,11 @@ namespace Wild
     IndirectGrass::IndirectGrass()
     {
         BufferDesc desc{};
-        desc.bufferSize = sizeof(GrassBladeData);
-        desc.numOfElements = MAXGRASSBLADES;
-        m_perBladeDataBuffer = std::make_unique<Buffer>(desc, BufferType::uav);
+        desc.size = static_cast<uint64_t>(sizeof(GrassBladeData)) * MAXGRASSBLADES;
+        desc.stride = sizeof(GrassBladeData);
+        desc.usage = BufferUsage::ShaderWrite;
+        desc.access = MemoryAccess::GpuOnly;
+        m_perBladeDataBuffer = std::make_unique<GPUBuffer>(desc);
 
         // Generate grass mesh data
         CreateGrassMeshes();
@@ -20,9 +22,11 @@ namespace Wild
         {
             BufferDesc desc{};
             desc.name = "Cullinstance buffer: " + std::to_string(i);
-            desc.bufferSize = sizeof(CulledInstance);
-            desc.numOfElements = MAXGRASSBLADES;
-            m_culledInstancesBuffer[i] = std::make_shared<Buffer>(desc, BufferType::uav);
+            desc.size = static_cast<uint64_t>(sizeof(CulledInstance)) * MAXGRASSBLADES;
+            desc.stride = sizeof(CulledInstance);
+            desc.usage = BufferUsage::ShaderWrite;
+            desc.access = MemoryAccess::GpuOnly;
+            m_culledInstancesBuffer[i] = std::make_shared<GPUBuffer>(desc);
         }
 
         // Single uint for writing instance count UAV, u1
@@ -30,17 +34,21 @@ namespace Wild
         {
             BufferDesc desc{};
             desc.name = "Indirect instance count buffer: " + std::to_string(i);
-            desc.bufferSize = sizeof(uint32_t);
-            desc.numOfElements = m_lodAmount;
-            m_instanceCountBuffer[i] = std::make_unique<Buffer>(desc, BufferType::uav);
+            desc.size = static_cast<uint64_t>(sizeof(uint32_t)) * m_lodAmount;
+            desc.stride = sizeof(uint32_t);
+            desc.usage = BufferUsage::ShaderWrite;
+            desc.access = MemoryAccess::GpuOnly;
+            m_instanceCountBuffer[i] = std::make_unique<GPUBuffer>(desc);
         }
 
         // Frustum constant buffer
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)
         {
             BufferDesc desc{};
-            desc.bufferSize = sizeof(FrustumBuffer);
-            m_frustumBuffer[i] = std::make_unique<Buffer>(desc, BufferType::constant);
+            desc.size = sizeof(FrustumBuffer);
+            desc.usage = BufferUsage::Constant;
+            desc.access = MemoryAccess::CpuToGpu;
+            m_frustumBuffer[i] = std::make_unique<GPUBuffer>(desc);
         }
 
         // We need to create the commands on the gpu we do that in this buffer
@@ -48,9 +56,11 @@ namespace Wild
         {
             BufferDesc desc{};
             desc.name = "Indirect commands buffer: " + std::to_string(i);
-            desc.bufferSize = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
-            desc.numOfElements = m_lodAmount;
-            m_drawCommandsBuffer[i] = std::make_unique<Buffer>(desc, BufferType::uav);
+            desc.size = static_cast<uint64_t>(sizeof(D3D12_DRAW_INDEXED_ARGUMENTS)) * m_lodAmount;
+            desc.stride = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
+            desc.usage = BufferUsage::ShaderWrite | BufferUsage::Indirect;
+            desc.access = MemoryAccess::GpuOnly;
+            m_drawCommandsBuffer[i] = std::make_unique<GPUBuffer>(desc);
         }
 
         D3D12_INDIRECT_ARGUMENT_DESC argumentDesc = {};
@@ -66,11 +76,13 @@ namespace Wild
 
         {
             BufferDesc desc{};
-            desc.bufferSize = sizeof(SceneData);
+            desc.size = sizeof(SceneData);
+            desc.usage = BufferUsage::Constant;
+            desc.access = MemoryAccess::CpuToGpu;
 
             for (int i = 0; i < BACK_BUFFER_COUNT; i++)
             {
-                m_sceneData[i] = std::make_shared<Buffer>(desc, BufferType::constant);
+                m_sceneData[i] = std::make_shared<GPUBuffer>(desc);
 
                 // Keep buffer data mapped for cpu write access
                 CD3DX12_RANGE readRange(0, 0);
@@ -583,10 +595,12 @@ namespace Wild
         grassIndices.insert(grassIndices.end(), {2, 3, 4});          // Top triangle
 
         BufferDesc desc{};
-        m_grassVertices = std::make_unique<Buffer>(desc);
+        desc.usage = BufferUsage::Vertex;
+        desc.access = MemoryAccess::GpuOnly;
+        m_grassVertices = std::make_unique<GPUBuffer>(desc);
         m_grassVertices->CreateVertexBuffer<GrassVertex>(grassVertices);
 
-        m_grassIndices = std::make_unique<Buffer>(desc);
+        m_grassIndices = std::make_unique<GPUBuffer>(desc);
         m_grassIndices->CreateIndexBuffer(grassIndices);
     }
 } // namespace Wild

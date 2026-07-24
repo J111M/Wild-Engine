@@ -40,6 +40,6 @@ namespace Wild
         DebugRootConstants m_rc;
         std::vector<DebugVertex> m_lines;
 
-        std::unique_ptr<Buffer> m_lineVertexBuffer;
+        std::unique_ptr<GPUBuffer> m_lineVertexBuffer;
     };
 } // namespace Wild

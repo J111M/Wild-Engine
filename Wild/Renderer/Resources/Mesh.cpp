@@ -16,8 +16,10 @@ namespace Wild
 
         {
             BufferDesc desc{};
+            desc.usage = BufferUsage::Vertex;
+            desc.access = MemoryAccess::GpuOnly;
 
-            m_vertexBuffer = std::make_shared<Buffer>(desc);
+            m_vertexBuffer = std::make_shared<GPUBuffer>(desc);
             m_vertexBuffer->CreateVertexBuffer<Vertex>(vertices);
 
             m_vertexCount = vertices.size();
@@ -28,8 +30,10 @@ namespace Wild
         if (m_hasIndexBuffer)
         {
             BufferDesc desc{};
+            desc.usage = BufferUsage::Index;
+            desc.access = MemoryAccess::GpuOnly;
 
-            m_indexBuffer = std::make_shared<Buffer>(desc);
+            m_indexBuffer = std::make_shared<GPUBuffer>(desc);
             m_indexBuffer->CreateIndexBuffer(indices);
 
             m_drawCount = indices.size();

@@ -5,11 +5,14 @@
 #include "Renderer/Resources/Texture.hpp"
 #include "Renderer/Window.hpp"
 
+#include "Tools/BufferAllocator.hpp"
 #include "Tools/DescriptorAllocator.hpp"
 #include "Tools/DeviceCapabilities.hpp"
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
+
+#include <D3D12MemAlloc.h>
 
 namespace Wild
 {
@@ -28,6 +31,7 @@ namespace Wild
         ComPtr<ID3D12Device2> GetDevice2() { return m_device2; }
         ComPtr<ID3D12Device7> GetDevice7() { return m_device7; }
         ComPtr<IDXGIFactory4> GetFactory() { return m_factory; }
+        ComPtr<D3D12MA::Allocator> GetAllocator() { return m_allocator; }
         ComPtr<ID3D12PipelineLibrary> GetPipelineLibrary() { return m_pipelineLibrary; }
         std::string GetAdapterName();
 
@@ -62,6 +66,7 @@ namespace Wild
         std::shared_ptr<DescriptorAllocatorRtv> GetRtvAllocator() { return m_descriptorAllocatorsRtv; }
         std::shared_ptr<DescriptorAllocatorDsv> GetDsvAllocator() { return m_descriptorAllocatorsDsv; }
         std::shared_ptr<DescriptorAllocatorCbvSrvUav> GetCbvSrvUavAllocator() { return m_desciptorAllocatorCbvSrvUav; }
+        std::shared_ptr<BufferAllocator> GetBufferAllocator() { return m_bufferAllocator; }
 
       private:
         // Entrypoint to graphics API
@@ -72,6 +77,9 @@ namespace Wild
 
         // Creating the actual device object
         void CreateDevice();
+
+        // Creates the D3D12 Memory Allocator used to back all buffer and texture allocations
+        void CreateAllocator();
 
         // Creates or resizes swapchain if availiable
         void CreateSwapchain();
@@ -93,6 +101,9 @@ namespace Wild
         ComPtr<ID3D12Device2> m_device2;
         ComPtr<ID3D12Device7> m_device7;
         ComPtr<ID3D12DebugDevice> m_debugDevice;
+
+        // D3D12 Memory Allocator instance
+        ComPtr<D3D12MA::Allocator> m_allocator;
 
         // Pipeline library for caching the PSO's
         ComPtr<ID3D12PipelineLibrary> m_pipelineLibrary;
@@ -118,6 +129,9 @@ namespace Wild
         std::shared_ptr<DescriptorAllocatorRtv> m_descriptorAllocatorsRtv;
         std::shared_ptr<DescriptorAllocatorDsv> m_descriptorAllocatorsDsv;
         std::shared_ptr<DescriptorAllocatorCbvSrvUav> m_desciptorAllocatorCbvSrvUav;
+
+        // Creates and owns all buffer resource allocations through the D3D12 memory allocator
+        std::shared_ptr<BufferAllocator> m_bufferAllocator;
 
         UINT m_backBufferIndex{};
         UINT m_currentFrame{};
