@@ -1,7 +1,4 @@
-import DDGI.RaytracingUtils;
-
-#define PROBE_DISTANCE_TEXELS 14
-#define PROBE_IRRADIANCE_TEXELS 6
+import DDGI.RayTracingUtils;
 
 struct RayPayload {
     float3 radiance;
@@ -91,24 +88,6 @@ static const uint VOFS_COLOR = 16;
 static const uint VOFS_NORMAL = 32;
 static const uint VOFS_UV = 48;
 static const uint VOFS_TANGENT = 64;
-
-static const float PI = 3.14159265359;
-
-static const float INV_GOLDEN_RATIO = 0.6180339887498949;
-
-// Evenly distributes `n` directions over the sphere.
-float3 SphericalFibonacci(uint i, uint n) {
-    float phi = 2.0 * PI * frac(float(i) * INV_GOLDEN_RATIO);
-    float cosTheta = 1.0 - (2.0 * float(i) + 1.0) / float(n);
-    float sinTheta = sqrt(saturate(1.0 - cosTheta * cosTheta));
-    return float3(cos(phi) * sinTheta, cosTheta, sin(phi) * sinTheta);
-}
-
-float3 RotateByQuaternion(float3 v, float4 q) {
-    float3 qv = q.xyz;
-    float3 t = 2.0 * cross(qv, v);
-    return v + q.w * t + cross(qv, t);
-}
 
 [shader("raygeneration")]
 void RayGen() {

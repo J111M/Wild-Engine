@@ -31,7 +31,7 @@ namespace Wild
         uint32_t distanceView{};
     };
 
-    struct DDGIBlendRootConstants
+    struct DDGIIrradianceRootConstants
     {
         float hysteresis{0.97f};
         uint32_t raysPerProbe{64};
@@ -45,7 +45,11 @@ namespace Wild
         Texture* visibilityTexture{};
     };
 
-    struct DDGIBlendPassData
+    struct UpdateIrradiancePassData
+    {
+    };
+
+    struct UpdateDistancePassData
     {
     };
 
@@ -59,13 +63,14 @@ namespace Wild
         virtual void Update(const float dt) override;
 
         void AddProbeTracePass(Renderer& renderer, RenderGraph& rg);
-        void AddProbeBlendPass(Renderer& renderer, RenderGraph& rg);
+        void AddUpdateIrradiancePass(Renderer& renderer, RenderGraph& rg);
+        void AddUpdateDistancePass(Renderer& renderer, RenderGraph& rg);
 
         bool enabled = false;
 
       private:
-        DDGIRootConstants m_rc{};
-        DDGIBlendRootConstants m_blendRc{};
+        DDGIRootConstants m_ddgiRc{};
+        DDGIIrradianceRootConstants m_irradianceRc{};
 
         int m_raysPerProbe = 64;
         float m_hysteresis = 0.97f;

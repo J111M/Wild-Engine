@@ -1,3 +1,6 @@
+#define PROBE_IRRADIANCE_TEXELS 6
+#define PROBE_DISTANCE_TEXELS 14
+
 float2 SignNotZero(float2 v) {
     return float2(v.x >= 0.0 ? 1.0 : -1.0, v.y >= 0.0 ? 1.0 : -1.0);
 }
@@ -29,6 +32,23 @@ static const float M_PI_INV = 0.318309886f;
 
 float3 DiffuseBRDF(float3 albedo) {
     return albedo * M_PI_INV;
+}
+
+static const float PI = 3.14159265359;
+static const float INV_GOLDEN_RATIO = 0.6180339887498949;
+
+// Evenly distributes `n` directions over the sphere.
+float3 SphericalFibonacci(uint i, uint n) {
+    float phi = 2.0 * PI * frac(float(i) * INV_GOLDEN_RATIO);
+    float cosTheta = 1.0 - (2.0 * float(i) + 1.0) / float(n);
+    float sinTheta = sqrt(saturate(1.0 - cosTheta * cosTheta));
+    return float3(cos(phi) * sinTheta, cosTheta, sin(phi) * sinTheta);
+}
+
+float3 RotateByQuaternion(float3 v, float4 q) {
+    float3 qv = q.xyz;
+    float3 t = 2.0 * cross(qv, v);
+    return v + q.w * t + cross(qv, t);
 }
 
 float Pow2(float x) { return x * x; }
