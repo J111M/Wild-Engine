@@ -65,9 +65,6 @@ void main(CSInput input) {
     uint3 probeGridCoords = GetProbeGridCoord(probeIndex);
     if (probeIndex >= probeCount) return;
 
-
-
-
     float3 sum = float3(0, 0, 0);
     uint count = 0;
 

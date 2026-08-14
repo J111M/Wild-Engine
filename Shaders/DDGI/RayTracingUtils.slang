@@ -1,5 +1,4 @@
-#define PROBE_IRRADIANCE_TEXELS 6
-#define PROBE_DISTANCE_TEXELS 14
+
 
 float2 SignNotZero(float2 v) {
     return float2(v.x >= 0.0 ? 1.0 : -1.0, v.y >= 0.0 ? 1.0 : -1.0);
@@ -36,6 +35,9 @@ float3 DiffuseBRDF(float3 albedo) {
 
 static const float PI = 3.14159265359;
 static const float INV_GOLDEN_RATIO = 0.6180339887498949;
+
+static const int PROBE_IRRADIANCE_TEXELS = 6;
+static const int PROBE_DISTANCE_TEXELS = 14;
 
 // Evenly distributes `n` directions over the sphere.
 float3 SphericalFibonacci(uint i, uint n) {
