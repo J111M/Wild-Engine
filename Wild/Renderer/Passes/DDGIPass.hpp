@@ -8,6 +8,13 @@
 
 namespace Wild
 {
+    class GPUBuffer;
+
+    // No descriptor is ever allocated at this index, the heap hands out slots starting at 1
+    static constexpr uint32_t INVALID_HEAP_INDEX = UINT32_MAX;
+
+    // Shared by every DDGI pass, mirrors the DDGIConstants cbuffer in Shaders/DDGI/DDGIConstants.slang.
+    // Both files must stay in sync, the trace and the update passes bind this same struct to b0.
     struct DDGIRootConstants
     {
         glm::mat4 inverseView{1.0f};
@@ -29,20 +36,27 @@ namespace Wild
         uint32_t numPointLights{};
         uint32_t irradianceView{};
         uint32_t distanceView{};
-    };
-
-    struct DDGIIrradianceRootConstants
-    {
         float hysteresis{0.97f};
-        uint32_t raysPerProbe{64};
-        uint32_t maxRaysPerProbe{};
-        uint32_t probeCount{};
+
+        // Descriptor heap slots of the ping-pong irradiance pair, raw heap indices for ResourceDescriptorHeap.
+        // INVALID_HEAP_INDEX means the view could not be resolved and the update pass must skip its dispatch,
+        // heap slot 0 is never handed out so it is not usable as a "none" value.
+        uint32_t irradianceReadView{INVALID_HEAP_INDEX};
+        uint32_t irradianceWriteView{INVALID_HEAP_INDEX};
+        uint32_t ddgiPadding[2]{};
     };
 
+    // The cbuffer is 13 16-byte rows
+    static_assert(sizeof(DDGIRootConstants) == 208, "DDGIRootConstants must match the DDGIConstants cbuffer layout");
+
+    // Double buffering so that the read and writing is done in different frames
     struct DDGIPassData
     {
-        Texture* radianceTexture{};
-        Texture* visibilityTexture{};
+        // Take care of which buffer to use
+        uint32_t frameParity = 0;
+
+        Texture* iradianceTexture[BACK_BUFFER_COUNT];
+        Texture* visibilityTexture[BACK_BUFFER_COUNT];
     };
 
     struct UpdateIrradiancePassData
@@ -69,8 +83,10 @@ namespace Wild
         bool enabled = false;
 
       private:
+        // Backs the DDGIConstants cbuffer for all three passes, uploaded once per frame by the trace pass
+        std::shared_ptr<GPUBuffer> m_ddgiConstantBuffer{};
+
         DDGIRootConstants m_ddgiRc{};
-        DDGIIrradianceRootConstants m_irradianceRc{};
 
         int m_raysPerProbe = 64;
         float m_hysteresis = 0.97f;

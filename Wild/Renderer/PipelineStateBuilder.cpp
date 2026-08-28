@@ -119,11 +119,17 @@ namespace Wild
         }
 
         // If the pipeline is using raytracing use default flag for every other pipeline use the input assembler
-        if (m_type == PipelineStateType::Raytracing)
-            m_rootSignature = builder.Build(gfxContext->GetDevice().Get(), D3D12_ROOT_SIGNATURE_FLAG_NONE);
-        else
-            m_rootSignature =
-                builder.Build(gfxContext->GetDevice().Get(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+        D3D12_ROOT_SIGNATURE_FLAGS rootFlags = (m_type == PipelineStateType::Raytracing)
+            ? D3D12_ROOT_SIGNATURE_FLAG_NONE
+            : D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+        // Shaders that resolve a descriptor straight from the heap (ResourceDescriptorHeap, what Slang's
+        // DescriptorHandle lowers to) need the heap declared directly indexable. Tier 3 binding is the
+        // requirement, so pipelines built on a lesser device keep the old flags.
+        if (gfxContext->GetCapabilities().CheckResourceBindingSupport(ResourceBindingSupport::Tier3))
+            rootFlags |= D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
+
+        m_rootSignature = builder.Build(gfxContext->GetDevice().Get(), rootFlags);
     }
 
     void PipelineState::CreateGraphicsPSO()

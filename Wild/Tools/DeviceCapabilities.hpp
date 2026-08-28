@@ -16,6 +16,14 @@ namespace Wild
         Tier12
     };
 
+    enum class ResourceBindingSupport : uint8_t
+    {
+        TierNotSupported,
+        Tier1,
+        Tier2,
+        Tier3
+    };
+
     enum class ShaderCacheSupport : uint8_t
     {
         NotSupported,
@@ -40,6 +48,9 @@ namespace Wild
         bool SupportsRayTracing() const { return CheckRayTracingSupport(RayTracingSupport::Tier10); }
         bool CheckRayTracingSupport(RayTracingSupport rts) const { return m_rayTracingSupport >= rts; }
 
+        bool SupportsResourceBinding() const { return CheckResourceBindingSupport(ResourceBindingSupport::Tier1); }
+        bool CheckResourceBindingSupport(ResourceBindingSupport tier) const { return m_resourceBindingSupport >= tier; }
+
         bool SupportsShaderCache() const { return CheckMeshShaderSupport(MeshShaderSupport::Tier1); }
         bool CheckLibraryPSOCacheSupport() const { return m_shaderCacheSupported == ShaderCacheSupport::Library; }
         bool CheckDriverManagedPSOCacheSupport() const { return m_shaderCacheSupported == ShaderCacheSupport::DriverManaged; }
@@ -48,5 +59,6 @@ namespace Wild
         MeshShaderSupport m_meshShaderSupported = MeshShaderSupport::TierNotSupported;
         ShaderCacheSupport m_shaderCacheSupported = ShaderCacheSupport::NotSupported;
         RayTracingSupport m_rayTracingSupport = RayTracingSupport::TierNotSupported;
+        ResourceBindingSupport m_resourceBindingSupport = ResourceBindingSupport::TierNotSupported;
     };
 } // namespace Wild

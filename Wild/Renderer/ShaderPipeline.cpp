@@ -2,6 +2,10 @@
 
 namespace Wild
 {
+    // `import Foo.Bar` is resolved against these roots, unlike `#include` which is relative to the
+    // including file. The shader folder is copied next to the executable by the build.
+    static const char* const SHADER_SEARCH_PATHS[] = {"Shaders", SHADER_SOURCE_DIR};
+
     Shader::Shader(const std::string& shaderPath)
     {
         // Check if the shader is a raytracing shader
@@ -40,21 +44,36 @@ namespace Wild
         sessionDesc.targets = &targetDesc;
         sessionDesc.targetCount = 1;
 
+        sessionDesc.searchPaths = SHADER_SEARCH_PATHS;
+        sessionDesc.searchPathCount = SLANG_COUNT_OF(SHADER_SEARCH_PATHS);
+
         slang::ISession* session;
         globalSession->createSession(sessionDesc, &session);
 
         ComPtr<slang::IBlob> diagnostics;
         ComPtr<slang::IModule> module = session->loadModule(shaderPath.c_str(), &diagnostics);
 
+        // Slang reports warnings through the same blob as errors, only a null module means the load failed.
+        if (!module)
+        {
+            WD_ERROR("Shader: '{}' could not be loaded: {}", shaderPath.c_str(),
+                     diagnostics ? (const char*)diagnostics->getBufferPointer() : "no diagnostics available");
+            return;
+        }
+
         if (diagnostics && diagnostics->getBufferSize() > 0)
         {
-            WD_ERROR("Shader: '{}' could not be loaded: {}", shaderPath.c_str(), (const char*)diagnostics->getBufferPointer());
+            WD_WARN("Shader: '{}': {}", shaderPath.c_str(), (const char*)diagnostics->getBufferPointer());
         }
 
         ComPtr<slang::IEntryPoint> entryPoint;
         module->findEntryPointByName("main", &entryPoint);
 
-        if (!entryPoint) WD_ERROR("Failed to find entrypoint for shader: '{}'", shaderPath.c_str());
+        if (!entryPoint)
+        {
+            WD_ERROR("Failed to find entrypoint for shader: '{}'", shaderPath.c_str());
+            return;
+        }
 
         slang::IComponentType* components[] = {module.Get(), entryPoint.Get()};
         ComPtr<slang::IComponentType> program;
@@ -65,6 +84,7 @@ namespace Wild
             {
                 WD_ERROR("Diagnostics: {}", (const char*)diagnostics->getBufferPointer());
             }
+            return;
         }
 
         if (SLANG_FAILED(program->getEntryPointCode(0, 0, &m_shaderBlob, &diagnostics)))
@@ -74,6 +94,7 @@ namespace Wild
             {
                 WD_ERROR("Diagnostics: {}", (const char*)diagnostics->getBufferPointer());
             }
+            return;
         }
 
         m_shaderBytecode.BytecodeLength = m_shaderBlob->getBufferSize();
@@ -92,14 +113,26 @@ namespace Wild
         sessionDesc.targets = &targetDesc;
         sessionDesc.targetCount = 1;
 
+        sessionDesc.searchPaths = SHADER_SEARCH_PATHS;
+        sessionDesc.searchPathCount = SLANG_COUNT_OF(SHADER_SEARCH_PATHS);
+
         slang::ISession* session;
         globalSession->createSession(sessionDesc, &session);
 
         ComPtr<slang::IBlob> diagnostics;
         ComPtr<slang::IModule> module = session->loadModule(shaderPath.c_str(), &diagnostics);
+
+        // Slang reports warnings through the same blob as errors, only a null module means the load failed.
+        if (!module)
+        {
+            WD_ERROR("Shader: '{}' could not be loaded: {}", shaderPath.c_str(),
+                     diagnostics ? (const char*)diagnostics->getBufferPointer() : "no diagnostics available");
+            return;
+        }
+
         if (diagnostics && diagnostics->getBufferSize() > 0)
         {
-            WD_ERROR("Shader: '{}' could not be loaded: {}", shaderPath.c_str(), (const char*)diagnostics->getBufferPointer());
+            WD_WARN("Shader: '{}': {}", shaderPath.c_str(), (const char*)diagnostics->getBufferPointer());
         }
 
         SlangInt entryPointCount = module->getDefinedEntryPointCount();
@@ -124,6 +157,7 @@ namespace Wild
             WD_ERROR("Failed to create slang program for shader: '{}'", shaderPath.c_str());
             if (diagnostics && diagnostics->getBufferSize() > 0)
                 WD_ERROR("Diagnostics: {}", (const char*)diagnostics->getBufferPointer());
+            return;
         }
 
         // Link
@@ -133,6 +167,7 @@ namespace Wild
             WD_ERROR("Failed to link slang program for shader: '{}'", shaderPath.c_str());
             if (diagnostics && diagnostics->getBufferSize() > 0)
                 WD_ERROR("Diagnostics: {}", (const char*)diagnostics->getBufferPointer());
+            return;
         }
 
         m_rtEntry = std::make_shared<RTEntryPoints>();

@@ -44,6 +44,20 @@ namespace Wild
         return ShaderCacheSupport::NotSupported;
     }
 
+    constexpr ResourceBindingSupport ConvertResourceBindingSupport(D3D12_RESOURCE_BINDING_TIER tier)
+    {
+        switch (tier)
+        {
+        case D3D12_RESOURCE_BINDING_TIER_1:
+            return ResourceBindingSupport::Tier1;
+        case D3D12_RESOURCE_BINDING_TIER_2:
+            return ResourceBindingSupport::Tier2;
+        case D3D12_RESOURCE_BINDING_TIER_3:
+            return ResourceBindingSupport::Tier3;
+        }
+        return ResourceBindingSupport::TierNotSupported;
+    }
+
     bool GfxCapabilities::GetSupportedFeatures(GfxContext* context)
     {
         CD3DX12FeatureSupport featureSupport;
@@ -53,6 +67,7 @@ namespace Wild
         m_meshShaderSupported = ConvertMeshShaderTier(featureSupport.MeshShaderTier());
         m_shaderCacheSupported = ConvertShaderCacheSupport(featureSupport.ShaderCacheSupportFlags());
         m_rayTracingSupport = ConvertRayTracingTier(featureSupport.RaytracingTier());
+        m_resourceBindingSupport = ConvertResourceBindingSupport(featureSupport.ResourceBindingTier());
 
         return true;
     }

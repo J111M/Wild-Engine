@@ -1,4 +1,5 @@
 import DDGI.RayTracingUtils;
+import DDGI.DDGIConstants;
 
 struct RayPayload {
     float3 radiance;
@@ -7,28 +8,6 @@ struct RayPayload {
 
 struct ShadowPayload {
     int occluded;
-};
-
-cbuffer DDGIConstants : register(b0) {
-    column_major float4x4 inverseView;
-
-    float4 randomRotation; // quaternion (xyz axis*sin(half), w = cos(half))
-
-    float4 lightDirection;      // xyz = direction the light travels, w unused
-    float4 lightColorIntensity; // rgb = color, a = intensity
-
-    float4 probeOrigin;  // xyz = grid origin, w unused
-    float4 probeSpacing; // xyz = grid spacing, w unused
-    int4 probeCounts;    // xyz = probe grid counts, w = maxRaysPerProbe (buffer stride)
-
-    uint raysPerProbe;
-    float maxRayDistance;
-    float intensity;
-    uint environmentView;
-
-    uint numPointLights;
-    uint IrradianceView;
-    uint DistanceView;
 };
 
 struct PointLight {
@@ -95,7 +74,7 @@ void RayGen() {
     uint probeIndex = DispatchRaysIndex().y;
 
     float3 probePosition = probes[probeIndex].xyz;
-    float3 randomDirection = normalize(RotateByQuaternion(SphericalFibonacci(rayIndex, raysPerProbe), randomRotation));
+    float3 randomDirection = GetRayDirection(rayIndex, raysPerProbe, randomRotation);
 
     RayDesc ray;
     ray.Origin = probePosition;
@@ -109,7 +88,7 @@ void RayGen() {
 
     TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
 
-    uint rayDataIndex = probeIndex * uint(probeCounts.w) + rayIndex;
+    uint rayDataIndex = probeIndex * GetMaxRaysPerProbe() + rayIndex;
 
     // TODO merge into 1 float4 to reduce shader lookups and storing
     probeRayData[rayDataIndex].radiance = payload.radiance;
@@ -228,7 +207,6 @@ float3 SampleDDGIIrradiance(float3 P, float3 N, float3 Wo) {
     sumIrradiance *= PI;
     return sumIrradiance * volumeWeight;
 }
-
 
 [shader("closesthit")]
 void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes attribs) {

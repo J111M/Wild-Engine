@@ -7,7 +7,7 @@ float2 SignNotZero(float2 v) {
 float2 EncodeNormalOctahedron(float3 n)
 {
     n /= (abs(n.x) + abs(n.y) + abs(n.z));
-    n.xy = n.z >= 0.0 ? n.xy : (1.0 - abs(n.yx)) * lerp(-1.0, 1.0, n.xy >= 0.0);
+    n.xy = n.z >= 0.0 ? n.xy : (1.0 - abs(n.yx)) * SignNotZero(n.xy);
     return n.xy;
 }
 
@@ -51,6 +51,13 @@ float3 RotateByQuaternion(float3 v, float4 q) {
     float3 qv = q.xyz;
     float3 t = 2.0 * cross(qv, v);
     return v + q.w * t + cross(qv, t);
+}
+
+// Direction of ray `rayIndex` for a probe. The ray buffer only stores radiance and hit distance, so the
+// update passes rebuild the direction to weight each ray. Both the trace and the update passes must call
+// this so the reconstructed direction is by construction the one that was traced.
+float3 GetRayDirection(uint rayIndex, uint raysPerProbe, float4 randomRotation) {
+    return normalize(RotateByQuaternion(SphericalFibonacci(rayIndex, raysPerProbe), randomRotation));
 }
 
 float Pow2(float x) { return x * x; }

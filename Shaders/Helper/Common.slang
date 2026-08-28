@@ -23,6 +23,15 @@ float3 OctDecode(float2 enc)
     return normalize(n);
 }
 
+// Doesn't use ramaped input
+float3 OctNormalDecode(float2 enc)
+{
+    float3 n = float3(enc.x, enc.y, 1.0 - abs(enc.x) - abs(enc.y));
+    float t = saturate(-n.z);
+    n.xy += select(n.xy >= 0.0, -t, t);
+    return normalize(n);
+}
+
 float remap(float value, float inMin, float inMax, float outMin, float outMax)
 {
     return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin);
