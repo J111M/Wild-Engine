@@ -1,0 +1,31 @@
+{
+  "entities": [
+    {
+      "guid": 3581074057803323141,
+      "model": {
+        "sourcePath": "Assets/Models/Sponza/glTF/Sponza.gltf"
+      },
+      "name": "Sponza",
+      "parentGuid": null,
+      "transform": {
+        "position": {
+          "x": 3.8677875995635986,
+          "y": 2.1957807540893555,
+          "z": 7.633143424987793
+        },
+        "rotation": {
+          "w": 1.0,
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "scale": {
+          "x": 1.0,
+          "y": 1.0,
+          "z": 1.0
+        }
+      }
+    }
+  ],
+  "version": 1
+}

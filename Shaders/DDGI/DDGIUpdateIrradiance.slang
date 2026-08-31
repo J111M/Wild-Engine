@@ -1,5 +1,5 @@
 import DDGI.RayTracingUtils;
-import DDGI.DDGIConstants;
+import DDGI.DDGIUpdateConstants;
 import Helper.Common;
 
 struct ProbeRayData {
@@ -10,7 +10,7 @@ struct ProbeRayData {
 StructuredBuffer<ProbeRayData> probeRayData : register(t0);
 
 // The irradiance pair ping-pongs, so both resources are resolved from the descriptor heap through the
-// indices in DDGIConstants rather than through fixed register slots.
+// indices in DDGIUpdateConstants rather than through fixed register slots.
 
 #define CACHE_SIZE PROBE_IRRADIANCE_TEXELS * PROBE_IRRADIANCE_TEXELS
 groupshared float3 SharedRadianceCache[CACHE_SIZE];
@@ -23,21 +23,6 @@ struct CSInput
     uint3 DispatchThreadId : SV_DispatchThreadID;
     uint GroupIndex : SV_GroupIndex;
 };
-
-uint3 GetProbeGridCoord(uint probeIndex)
-{
-    uint3 gridCoord;
-    gridCoord.x = probeIndex % probeCounts.x;
-    gridCoord.y = (probeIndex % (probeCounts.x * probeCounts.y)) / probeCounts.x;
-    gridCoord.z = probeIndex / (probeCounts.x * probeCounts.y);
-    return gridCoord;
-}
-
-uint2 GetProbeTexel(uint3 probeIndex3D, uint numProbeInteriorTexels)
-{
-    uint numProbeTexels = 1 + numProbeInteriorTexels + 1;
-    return uint2(probeIndex3D.x + probeIndex3D.y * probeCounts.x, probeIndex3D.z) * numProbeTexels + 1;
-}
 
 static const uint BORDER_TEXELS = PROBE_IRRADIANCE_TEXELS * 4 + 4;
 static const uint4 BORDER_OFFSETS[BORDER_TEXELS] = 
@@ -55,19 +40,19 @@ static const uint4 BORDER_OFFSETS[BORDER_TEXELS] =
 [shader("compute")]
 [numthreads(PROBE_IRRADIANCE_TEXELS, PROBE_IRRADIANCE_TEXELS, 1)]
 void main(CSInput input) {
-    uint probeIndex = input.GroupId.x;
-    uint3 probeGridCoords = GetProbeGridCoord(probeIndex);
-    uint2 texelLocation = GetProbeTexel(probeGridCoords, PROBE_IRRADIANCE_TEXELS);
-    uint2 cornerTexelLocation = texelLocation - 1u;
-    texelLocation += input.GroupThreadId.xy;
+    uint3 probeGridCoords = uint3(input.GroupId.x, input.GroupId.z, input.GroupId.y);
 
-    // Check if the probe index doesnt exceed the count
-    if (probeIndex >= GetProbeCount()) return;
+    uint probeIndex = probeGridCoords.x + probeGridCoords.y * probeCounts.x +
+                      probeGridCoords.z * probeCounts.x * probeCounts.y;
 
-    Texture2D<float4> irradianceSrc = DescriptorHandle<Texture2D<float4> >(irradianceReadView);
-    RWTexture2D<float4> irradianceDst = DescriptorHandle<RWTexture2D<float4> >(irradianceWriteView);
+    uint3 texelLocation = GetProbeTexel(probeGridCoords, PROBE_IRRADIANCE_TEXELS);
+    uint3 cornerTexelLocation = texelLocation - uint3(1, 1, 0);
+    texelLocation.xy += input.GroupThreadId.xy;
 
-    float3 prevRadiance = irradianceSrc[texelLocation].rgb;
+    Texture2DArray<float4> irradianceHistory = DescriptorHandle<Texture2DArray<float4>>(irradianceReadView);
+    RWTexture2DArray<float4> newIrradiance = DescriptorHandle<RWTexture2DArray<float4>>(irradianceWriteView);
+
+    float3 prevRadiance = irradianceHistory[texelLocation].rgb;
 
     float3 probeDirection = OctNormalDecode(((input.GroupThreadId.xy + 0.5f) / (float)PROBE_IRRADIANCE_TEXELS) * 2 - 1);
 
@@ -107,9 +92,6 @@ void main(CSInput input) {
             weightedSum += weight;
         }
 
-        // TODO accumulate: weight each cached radiance by saturate(dot(texelDirection, SharedDirectionCache[i]))
-        // and skip rays whose hitDistance is negative (the trace pass marks backface hits that way).
-
         remainingRays -= numRays;
         offset += numRays;
     }
@@ -123,14 +105,16 @@ void main(CSInput input) {
     const float historyBlendWeight = saturate(1.0f - hysteresis);
     result = lerp(prevRadiance, result, historyBlendWeight);
 
-    irradianceDst[texelLocation] = float4(result, 1);
+    newIrradiance[texelLocation] = float4(result, 1);
 
-    GroupMemoryBarrierWithGroupSync();
+    // Orders the UAV writes above against the UAV reads below, a group memory barrier only covers groupshared.
+    AllMemoryBarrierWithGroupSync();
 
     for (uint index = input.GroupIndex; index < BORDER_TEXELS; index += PROBE_IRRADIANCE_TEXELS * PROBE_IRRADIANCE_TEXELS)
     {
-        uint2 sourceIndex = cornerTexelLocation + BORDER_OFFSETS[index].xy;
-        uint2 targetIndex = cornerTexelLocation + BORDER_OFFSETS[index].zw;
-        irradianceDst[targetIndex] = irradianceDst[sourceIndex];
+        // BORDER_OFFSETS are corner relative in plane offsets, the corner's slice carries through untouched
+        uint3 sourceIndex = cornerTexelLocation + uint3(BORDER_OFFSETS[index].xy, 0);
+        uint3 targetIndex = cornerTexelLocation + uint3(BORDER_OFFSETS[index].zw, 0);
+        newIrradiance[targetIndex] = newIrradiance[sourceIndex];
     }
 }

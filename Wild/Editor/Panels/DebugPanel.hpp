@@ -14,9 +14,7 @@ namespace Wild
       public:
         DebugPanel(EditorState& state, std::unordered_map<std::string, std::function<void()>>& watches)
             : m_state(state), m_watches(watches)
-        {
-            defaultOpen = false;
-        }
+        { defaultOpen = true; }
 
         const char* Name() const override { return "Debug"; }
         const char* Category() const override { return "Debug"; }

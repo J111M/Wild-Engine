@@ -28,6 +28,11 @@ namespace Wild
         if (auto* probePass = renderer ? renderer->GetRenderFeature<ProbeDebugPass>() : nullptr)
         {
             ImGui::Checkbox("Draw GI Probes", &probePass->drawProbes);
+
+            ImGui::BeginDisabled(!probePass->drawProbes);
+            ImGui::SliderFloat(
+                "Probe Exposure", &probePass->irradianceExposure, 0.1f, 500.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+            ImGui::EndDisabled();
         }
 
         if (auto* ddgiPass = renderer ? renderer->GetRenderFeature<DDGIPass>() : nullptr)

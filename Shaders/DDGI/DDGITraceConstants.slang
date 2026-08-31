@@ -1,7 +1,4 @@
-// Constants shared by every DDGI pass. The trace pass and the update passes are fed from the same C++
-// struct (Wild::DDGIRootConstants), so the ray directions the update passes rebuild are by construction
-// the ones the trace pass used and no per-pass copy can drift.
-cbuffer DDGIConstants : register(b0) {
+cbuffer DDGITraceConstants : register(b0) {
     column_major float4x4 inverseView;
 
     float4 randomRotation; // quaternion (xyz axis*sin(half), w = cos(half))
@@ -19,15 +16,10 @@ cbuffer DDGIConstants : register(b0) {
     uint environmentView;
 
     uint numPointLights;
-    uint IrradianceView;
-    uint DistanceView;
-    float hysteresis;
 
-    // Descriptor heap slots of the ping-pong irradiance pair the update pass runs on this frame. These are raw
-    // heap indices for ResourceDescriptorHeap, not the table-relative indices IrradianceView / DistanceView use.
-    uint irradianceReadView;
-    uint irradianceWriteView;
-    uint2 ddgiPadding;
+    uint irradianceView;
+    uint distanceView;
+    uint tracePadding;
 };
 
 // Stride of a probe's ray range in the ray data buffer, the buffer is sized for the maximum ray count.

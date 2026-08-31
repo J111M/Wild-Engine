@@ -31,6 +31,9 @@ target_include_directories(Wild PRIVATE
 target_link_libraries(Wild PRIVATE
     "${winpixeventruntime_SOURCE_DIR}/bin/${PIX_ARCH}/WinPixEventRuntime.lib"
 )
+
+target_compile_definitions(Wild PRIVATE USE_PIX)
+
 set(PIX_DLL "${winpixeventruntime_SOURCE_DIR}/bin/${PIX_ARCH}/WinPixEventRuntime.dll" PARENT_SCOPE)
 
 # DirectX 12 Agility SDK

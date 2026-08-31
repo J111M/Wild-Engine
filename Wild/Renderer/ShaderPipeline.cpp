@@ -2,8 +2,6 @@
 
 namespace Wild
 {
-    // `import Foo.Bar` is resolved against these roots, unlike `#include` which is relative to the
-    // including file. The shader folder is copied next to the executable by the build.
     static const char* const SHADER_SEARCH_PATHS[] = {"Shaders", SHADER_SOURCE_DIR};
 
     Shader::Shader(const std::string& shaderPath)
@@ -56,7 +54,8 @@ namespace Wild
         // Slang reports warnings through the same blob as errors, only a null module means the load failed.
         if (!module)
         {
-            WD_ERROR("Shader: '{}' could not be loaded: {}", shaderPath.c_str(),
+            WD_ERROR("Shader: '{}' could not be loaded: {}",
+                     shaderPath.c_str(),
                      diagnostics ? (const char*)diagnostics->getBufferPointer() : "no diagnostics available");
             return;
         }
@@ -87,7 +86,18 @@ namespace Wild
             return;
         }
 
-        if (SLANG_FAILED(program->getEntryPointCode(0, 0, &m_shaderBlob, &diagnostics)))
+        ComPtr<slang::IComponentType> linkedProgram;
+        if (SLANG_FAILED(program->link(&linkedProgram, &diagnostics)))
+        {
+            WD_ERROR("Failed to link slang program for shader: '{}'", shaderPath.c_str());
+            if (diagnostics && diagnostics->getBufferSize() > 0)
+            {
+                WD_ERROR("Diagnostics: {}", (const char*)diagnostics->getBufferPointer());
+            }
+            return;
+        }
+
+        if (SLANG_FAILED(linkedProgram->getEntryPointCode(0, 0, &m_shaderBlob, &diagnostics)))
         {
             WD_ERROR("Failed to get entry point code for shader: '{}'", shaderPath.c_str());
             if (diagnostics && diagnostics->getBufferSize() > 0)
@@ -125,7 +135,8 @@ namespace Wild
         // Slang reports warnings through the same blob as errors, only a null module means the load failed.
         if (!module)
         {
-            WD_ERROR("Shader: '{}' could not be loaded: {}", shaderPath.c_str(),
+            WD_ERROR("Shader: '{}' could not be loaded: {}",
+                     shaderPath.c_str(),
                      diagnostics ? (const char*)diagnostics->getBufferPointer() : "no diagnostics available");
             return;
         }

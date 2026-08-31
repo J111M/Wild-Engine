@@ -168,11 +168,9 @@ namespace Wild
 
         auto gfxContext = engine.GetGfxContext();
 
-#ifdef DEBUG
+        // Debug event
         std::wstring wstringPassName(passName.begin(), passName.end());
-        // m_commandList->BeginEvent(1, wstringPassName.c_str(), (wstringPassName.size() + 1) * sizeof(wchar_t));
         PIXBeginEvent(m_commandList.Get(), static_cast<UINT32>(GetPassColor(passName)), wstringPassName.c_str());
-#endif // DEBUG
 
         m_commandList->SetGraphicsRootSignature(m_pipelineState->GetRootSignature().Get());
 
@@ -232,11 +230,9 @@ namespace Wild
             return;
         }
 
-#ifdef DEBUG
+        // Debug event
         std::wstring wstringPassName(passName.begin(), passName.end());
-        // m_commandList->BeginEvent(1, wstringPassName.c_str(), (wstringPassName.size() + 1) * sizeof(wchar_t));
         PIXBeginEvent(m_commandList.Get(), static_cast<UINT32>(GetPassColor(passName)), wstringPassName.c_str());
-#endif // DEBUG
 
         m_frameInFlight = true;
         m_pipelineIsSet = false;
@@ -249,10 +245,8 @@ namespace Wild
 
     void CommandList::EndRender()
     {
-#ifdef DEBUG
+        // Debug event
         PIXEndEvent(m_commandList.Get());
-        // m_commandList->EndEvent();
-#endif // DEBUG
 
         if (!m_frameInFlight) WD_WARN("Begin render was never called.");
 

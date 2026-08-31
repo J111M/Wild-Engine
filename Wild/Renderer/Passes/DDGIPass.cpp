@@ -12,6 +12,42 @@ namespace Wild
 {
     DDGIPass::DDGIPass() {}
 
+    std::shared_ptr<GPUBuffer> DDGIPass::CreateConstantBuffer(size_t size, const std::string& name)
+    {
+        BufferDesc desc{};
+
+        // The CBV descriptor is built from this size and D3D12 requires it to be a multiple of 256
+        desc.size = (size + 255) & ~static_cast<size_t>(255);
+        desc.usage = BufferUsage::Constant;
+        desc.access = MemoryAccess::CpuToGpu;
+        desc.name = name;
+
+        return std::make_shared<GPUBuffer>(desc);
+    }
+
+    void DDGIPass::FillUpdateConstants(const DDGIPassData& ddgiData, const ProbeSystem& probeSystem)
+    {
+        m_updateRc.probeCounts = glm::ivec4(probeSystem.GetCounts(), static_cast<int32_t>(ProbeSystem::MAX_RAYS_PER_PROBE));
+
+        m_updateRc.probeMaxRayDistance = glm::length(probeSystem.GetSpacing()) * 1.5f;
+
+        const uint32_t readIndex = ddgiData.frameParity;
+        const uint32_t writeIndex = ddgiData.frameParity ^ 1u;
+
+        // Raw View() indices, the update shaders resolve them through ResourceDescriptorHeap rather than a table
+        auto irradianceReadSrv = ddgiData.iradianceTexture[readIndex]->GetSrv();
+        auto irradianceWriteUav = ddgiData.iradianceTexture[writeIndex]->GetUav();
+
+        m_updateRc.irradianceReadView = irradianceReadSrv ? irradianceReadSrv->View() : INVALID_HEAP_INDEX;
+        m_updateRc.irradianceWriteView = irradianceWriteUav ? irradianceWriteUav->View() : INVALID_HEAP_INDEX;
+
+        auto distanceReadSrv = ddgiData.visibilityTexture[readIndex]->GetSrv();
+        auto distanceWriteUav = ddgiData.visibilityTexture[writeIndex]->GetUav();
+
+        m_updateRc.distanceReadView = distanceReadSrv ? distanceReadSrv->View() : INVALID_HEAP_INDEX;
+        m_updateRc.distanceWriteView = distanceWriteUav ? distanceWriteUav->View() : INVALID_HEAP_INDEX;
+    }
+
     void DDGIPass::Add(Renderer& renderer, RenderGraph& rg)
     {
         AddProbeTracePass(renderer, rg);
@@ -24,15 +60,15 @@ namespace Wild
         auto ecs = engine.GetECS();
 
         Camera* camera = GetActiveCamera();
-        if (camera) m_ddgiRc.inverseView = glm::inverse(camera->GetView());
+        if (camera) m_traceRc.inverseView = glm::inverse(camera->GetView());
 
         // Use the first directional light for now
         auto view = ecs->View<DirectionalLight>();
         for (auto entity : view)
         {
             auto& directionalLight = ecs->GetComponent<DirectionalLight>(entity);
-            m_ddgiRc.lightDirection = glm::vec4(directionalLight.direction, 0.0f);
-            m_ddgiRc.lightColorIntensity = directionalLight.colorIntensity;
+            m_traceRc.lightDirection = glm::vec4(directionalLight.direction, 0.0f);
+            m_traceRc.lightColorIntensity = directionalLight.colorIntensity;
             break;
         }
 
@@ -46,15 +82,20 @@ namespace Wild
 
                 glm::vec3 axis = glm::normalize(glm::vec3(axisDist(rng), axisDist(rng), axisDist(rng)));
                 glm::quat rotation = glm::angleAxis(angleDist(rng), axis);
-                m_ddgiRc.randomRotation = glm::vec4(rotation.x, rotation.y, rotation.z, rotation.w);
+                m_traceRc.randomRotation = glm::vec4(rotation.x, rotation.y, rotation.z, rotation.w);
             }
-            else { m_ddgiRc.randomRotation = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); }
+            else { m_traceRc.randomRotation = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); }
         }
 
-        m_ddgiRc.raysPerProbe = static_cast<uint32_t>(m_raysPerProbe);
-        m_ddgiRc.maxRayDistance = m_maxRayDistance;
-        m_ddgiRc.intensity = m_intensity;
-        m_ddgiRc.hysteresis = m_hysteresis;
+        m_traceRc.raysPerProbe = static_cast<uint32_t>(m_raysPerProbe);
+        m_traceRc.maxRayDistance = m_maxRayDistance;
+        m_traceRc.intensity = m_intensity;
+
+        m_updateRc.randomRotation = m_traceRc.randomRotation;
+        m_updateRc.raysPerProbe = m_traceRc.raysPerProbe;
+        m_updateRc.hysteresis = m_hysteresis;
+
+        if (enabled) m_frameParity ^= 1u;
 
         engine.GetImGui()->AddPanel("DDGI Settings", [this]() {
             ImGui::Checkbox("Enabled", &enabled);
@@ -71,6 +112,8 @@ namespace Wild
     {
         DDGIPassData* passData = rg.AllocatePassData<DDGIPassData>();
 
+        passData->frameParity = m_frameParity;
+
         auto probeSystem = renderer.GetSystems().GetSystem<ProbeSystem>();
 
         // if (!probeSystem) WD_FATAL("Probe system doesn't exist");
@@ -82,6 +125,8 @@ namespace Wild
             desc.width = probeCounts.x * 8;
             desc.height = probeCounts.z * 8;
             desc.depthOrArray = probeCounts.y;
+
+            desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
 
@@ -99,6 +144,7 @@ namespace Wild
             desc.width = probeCounts.x * 16;
             desc.height = probeCounts.z * 16;
             desc.depthOrArray = probeCounts.y;
+            desc.format = DXGI_FORMAT_R32G32_FLOAT;
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
 
@@ -119,52 +165,44 @@ namespace Wild
                 auto* probeSystem = renderer.GetSystems().TryGetSystem<ProbeSystem>();
                 if (!probeSystem || probeSystem->GetProbeCount() == 0) return;
 
-                m_ddgiRc.probeOrigin = glm::vec4(probeSystem->GetOrigin(), 0.0f);
-                m_ddgiRc.probeSpacing = glm::vec4(probeSystem->GetSpacing(), 0.0f);
-                m_ddgiRc.probeCounts =
+                // SampleDDGIIrradiance resolves both probe atlases straight from the descriptor heap
+                if (!engine.GetGfxContext()->GetCapabilities().CheckResourceBindingSupport(ResourceBindingSupport::Tier3))
+                {
+                    static bool bindingTierWarned = false;
+                    if (!bindingTierWarned)
+                    {
+                        WD_WARN("DDGI probe trace pass needs resource binding tier 3, skipping.");
+                        bindingTierWarned = true;
+                    }
+                    return;
+                }
+
+                m_traceRc.probeOrigin = glm::vec4(probeSystem->GetOrigin(), 0.0f);
+                m_traceRc.probeSpacing = glm::vec4(probeSystem->GetSpacing(), 0.0f);
+                m_traceRc.probeCounts =
                     glm::ivec4(probeSystem->GetCounts(), static_cast<int32_t>(ProbeSystem::MAX_RAYS_PER_PROBE));
 
-                if (renderer.environmentMap) m_ddgiRc.environmentView = renderer.environmentMap->GetSrv()->BindlessView();
+                if (renderer.environmentMap) m_traceRc.environmentView = renderer.environmentMap->GetSrv()->BindlessView();
 
                 auto& lightSystem = renderer.GetSystems().GetSystem<LightSystem>();
-                m_ddgiRc.numPointLights = lightSystem.GetPointLightCount();
+                m_traceRc.numPointLights = lightSystem.GetPointLightCount();
 
-                // TODO 1 texture for reading and the other for read write
-                passData.iradianceTexture[0]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                passData.visibilityTexture[0]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                // Sample the half the update passes wrote last frame, which is the half they read this frame. The
+                // other half is only ever a UAV within a frame, so the two states never fight over one texture.
+                const uint32_t historyIndex = passData.frameParity;
 
-                m_ddgiRc.irradianceView = passData.iradianceTexture[0]->GetSrv()->BindlessView();
-                m_ddgiRc.distanceView = passData.visibilityTexture[0]->GetSrv()->BindlessView();
+                passData.iradianceTexture[historyIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                passData.visibilityTexture[historyIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-                // Heap slots of the ping-pong pair the update pass runs on. Filled in here because this is the
-                // first DDGI pass to execute and the only one holding the pass data. Raw View() indices, the
-                // update shader resolves them through ResourceDescriptorHeap rather than a descriptor table.
+                m_traceRc.irradianceView = passData.iradianceTexture[historyIndex]->GetSrv()->View();
+                m_traceRc.distanceView = passData.visibilityTexture[historyIndex]->GetSrv()->View();
+
+                if (!m_traceConstantBuffer)
                 {
-                    const uint32_t readIndex = passData.frameParity;
-                    const uint32_t writeIndex = passData.frameParity ^ 1u;
-
-                    auto readSrv = passData.iradianceTexture[readIndex]->GetSrv();
-                    auto writeUav = passData.iradianceTexture[writeIndex]->GetUav();
-
-                    m_ddgiRc.irradianceReadView = readSrv ? readSrv->View() : INVALID_HEAP_INDEX;
-                    m_ddgiRc.irradianceWriteView = writeUav ? writeUav->View() : INVALID_HEAP_INDEX;
+                    m_traceConstantBuffer = CreateConstantBuffer(sizeof(DDGITraceConstants), "DDGI trace constants");
                 }
 
-                // Every DDGI pass reads these constants from the same buffer and they all record into one command
-                // list, so the GPU only ever observes the last CPU write. It is filled and uploaded once here,
-                // in the pass the graph runs first, and the update passes only bind it.
-                if (!m_ddgiConstantBuffer)
-                {
-                    BufferDesc constantsDesc{};
-                    constantsDesc.size = sizeof(DDGIRootConstants);
-                    constantsDesc.usage = BufferUsage::Constant;
-                    constantsDesc.access = MemoryAccess::CpuToGpu;
-                    constantsDesc.name = "DDGI constants";
-
-                    m_ddgiConstantBuffer = std::make_shared<GPUBuffer>(constantsDesc);
-                }
-
-                m_ddgiConstantBuffer->Allocate(&m_ddgiRc, sizeof(DDGIRootConstants));
+                m_traceConstantBuffer->Allocate(&m_traceRc, sizeof(DDGITraceConstants));
 
                 PipelineStateSettings settings{};
 
@@ -178,8 +216,8 @@ namespace Wild
 
                 std::vector<Uniform> uniforms;
 
-                Uniform ddgiConstants{0, 0, RootParams::RootResourceType::ConstantBufferView};
-                uniforms.emplace_back(ddgiConstants);
+                Uniform traceConstants{0, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(traceConstants);
 
                 Uniform accelerationStructure{0, 0, RootParams::RootResourceType::ShaderResourceView};
                 uniforms.emplace_back(accelerationStructure);
@@ -215,6 +253,12 @@ namespace Wild
                 Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
                 uniforms.emplace_back(staticSampler);
 
+                Uniform clampSampler{1, 0, RootParams::RootResourceType::StaticSampler};
+                clampSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                clampSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                clampSampler.samplerState.addressModeW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                uniforms.emplace_back(clampSampler);
+
 
                 auto& pipeline = renderer.GetOrCreatePipeline(
                     "Dynamic Diffuse Global Illumination Pass", PipelineStateType::Raytracing, settings, uniforms);
@@ -222,7 +266,8 @@ namespace Wild
                 list.SetPipelineState(pipeline);
                 list.BeginRender("DDGI probe trace pass");
 
-                list.SetConstantBufferView(0, m_ddgiConstantBuffer.get());
+
+                list.SetConstantBufferView(0, m_traceConstantBuffer.get());
                 list.GetList()->SetComputeRootShaderResourceView(1, engine.GetAccelerationStructureManager()->GetTLASAddress());
                 list.SetShaderResourceView(2, engine.GetAccelerationStructureManager()->GetMeshIdBuffer().get());
                 list.SetShaderResourceView(3, probeSystem->GetProbeBuffer().get());
@@ -274,10 +319,12 @@ namespace Wild
                     return;
                 }
 
-                // The trace pass fills these in and must have run to upload the constants. An invalid index means
-                // the texture had no usable view, never fall back to heap slot 0 since nothing is allocated there.
-                if (!m_ddgiConstantBuffer || m_ddgiRc.irradianceReadView == INVALID_HEAP_INDEX ||
-                    m_ddgiRc.irradianceWriteView == INVALID_HEAP_INDEX)
+                FillUpdateConstants(*ddgiData, *probeSystem);
+
+                // An invalid index means the texture had no usable view, never fall back to heap slot 0 since
+                // nothing is allocated there.
+                if (m_updateRc.irradianceReadView == INVALID_HEAP_INDEX ||
+                    m_updateRc.irradianceWriteView == INVALID_HEAP_INDEX)
                 {
                     static bool viewsWarned = false;
                     if (!viewsWarned)
@@ -294,9 +341,13 @@ namespace Wild
                 ddgiData->iradianceTexture[readIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 ddgiData->iradianceTexture[writeIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-                // Kept in sync with the trace pass, which is the pass that uploads the shared constant buffer
-                m_ddgiRc.probeCounts =
-                    glm::ivec4(probeSystem->GetCounts(), static_cast<int32_t>(ProbeSystem::MAX_RAYS_PER_PROBE));
+                if (!m_irradianceConstantBuffer)
+                {
+                    m_irradianceConstantBuffer =
+                        CreateConstantBuffer(sizeof(DDGIUpdateConstants), "DDGI update irradiance constants");
+                }
+
+                m_irradianceConstantBuffer->Allocate(&m_updateRc, sizeof(DDGIUpdateConstants));
 
                 PipelineStateSettings settings{};
                 settings.ShaderState.ComputeShader =
@@ -304,8 +355,8 @@ namespace Wild
 
                 std::vector<Uniform> uniforms;
 
-                Uniform ddgiConstants{0, 0, RootParams::RootResourceType::ConstantBufferView};
-                uniforms.emplace_back(ddgiConstants);
+                Uniform updateConstants{0, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(updateConstants);
 
                 Uniform rayDataBuffer{0, 0, RootParams::RootResourceType::ShaderResourceView};
                 uniforms.emplace_back(rayDataBuffer);
@@ -319,12 +370,14 @@ namespace Wild
                 list.SetPipelineState(pipeline);
                 list.BeginRender("DDGI update irradiance pass");
 
-                list.SetConstantBufferView(0, m_ddgiConstantBuffer.get());
+                list.SetConstantBufferView(0, m_irradianceConstantBuffer.get());
                 list.SetShaderResourceView(1, probeSystem->GetProbeRayDataBuffer().get());
                 list.SetUnorderedAccessView(2, probeSystem->GetProbeIrradianceBuffer().get());
 
-                uint32_t groupCount = (probeSystem->GetProbeCount() + 63) / 64;
-                list.GetList()->Dispatch(groupCount, 1, 1);
+                const glm::ivec3 counts = probeSystem->GetCounts();
+                list.GetList()->Dispatch(static_cast<uint32_t>(counts.x),
+                                         static_cast<uint32_t>(counts.z),
+                                         static_cast<uint32_t>(counts.y));
 
                 list.EndRender();
 
@@ -338,22 +391,58 @@ namespace Wild
 
     void DDGIPass::AddUpdateDistancePass(Renderer& renderer, RenderGraph& rg)
     {
-        rg.AllocatePassData<UpdateIrradiancePassData>();
-        rg.GetPassData<UpdateIrradiancePassData, DDGIPassData>();
+        rg.AllocatePassData<UpdateDistancePassData>();
+        DDGIPassData* ddgiData = rg.GetPassData<UpdateDistancePassData, DDGIPassData>();
 
-        rg.AddPass<UpdateIrradiancePassData>(
-            "DDGI update distance pass", PassType::Compute, [&renderer, this](UpdateIrradiancePassData&, CommandList& list) {
+        rg.AddPass<UpdateDistancePassData>(
+            "DDGI update distance pass",
+            PassType::Compute,
+            [&renderer, ddgiData, this](UpdateDistancePassData&, CommandList& list) {
                 if (!enabled) return;
 
                 auto* probeSystem = renderer.GetSystems().TryGetSystem<ProbeSystem>();
                 if (!probeSystem || probeSystem->GetProbeCount() == 0) return;
 
-                // Kept in sync with the trace pass, which is the pass that uploads the shared constant buffer
-                m_ddgiRc.probeCounts =
-                    glm::ivec4(probeSystem->GetCounts(), static_cast<int32_t>(ProbeSystem::MAX_RAYS_PER_PROBE));
+                // The shader resolves both textures straight from the descriptor heap
+                if (!engine.GetGfxContext()->GetCapabilities().CheckResourceBindingSupport(ResourceBindingSupport::Tier3))
+                {
+                    static bool bindingTierWarned = false;
+                    if (!bindingTierWarned)
+                    {
+                        WD_WARN("DDGI update distance pass needs resource binding tier 3, skipping.");
+                        bindingTierWarned = true;
+                    }
+                    return;
+                }
 
-                // Filled and uploaded by the trace pass, which the graph orders ahead of this one
-                if (!m_ddgiConstantBuffer) return;
+                FillUpdateConstants(*ddgiData, *probeSystem);
+
+                // An invalid index means the texture had no usable view, never fall back to heap slot 0 since
+                // nothing is allocated there.
+                if (m_updateRc.distanceReadView == INVALID_HEAP_INDEX || m_updateRc.distanceWriteView == INVALID_HEAP_INDEX)
+                {
+                    static bool viewsWarned = false;
+                    if (!viewsWarned)
+                    {
+                        WD_WARN("DDGI distance textures have no usable SRV / UAV pair, skipping the update pass.");
+                        viewsWarned = true;
+                    }
+                    return;
+                }
+
+                const uint32_t readIndex = ddgiData->frameParity;
+                const uint32_t writeIndex = ddgiData->frameParity ^ 1u;
+
+                ddgiData->visibilityTexture[readIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                ddgiData->visibilityTexture[writeIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+                if (!m_distanceConstantBuffer)
+                {
+                    m_distanceConstantBuffer =
+                        CreateConstantBuffer(sizeof(DDGIUpdateConstants), "DDGI update distance constants");
+                }
+
+                m_distanceConstantBuffer->Allocate(&m_updateRc, sizeof(DDGIUpdateConstants));
 
                 PipelineStateSettings settings{};
                 settings.ShaderState.ComputeShader =
@@ -361,8 +450,8 @@ namespace Wild
 
                 std::vector<Uniform> uniforms;
 
-                Uniform ddgiConstants{0, 0, RootParams::RootResourceType::ConstantBufferView};
-                uniforms.emplace_back(ddgiConstants);
+                Uniform updateConstants{0, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(updateConstants);
 
                 Uniform rayDataBuffer{0, 0, RootParams::RootResourceType::ShaderResourceView};
                 uniforms.emplace_back(rayDataBuffer);
@@ -376,12 +465,14 @@ namespace Wild
                 list.SetPipelineState(pipeline);
                 list.BeginRender("DDGI update distance pass");
 
-                list.SetConstantBufferView(0, m_ddgiConstantBuffer.get());
+                list.SetConstantBufferView(0, m_distanceConstantBuffer.get());
                 list.SetShaderResourceView(1, probeSystem->GetProbeRayDataBuffer().get());
                 list.SetUnorderedAccessView(2, probeSystem->GetProbeIrradianceBuffer().get());
 
-                uint32_t groupCount = (probeSystem->GetProbeCount() + 63) / 64;
-                list.GetList()->Dispatch(groupCount, 1, 1);
+                const glm::ivec3 counts = probeSystem->GetCounts();
+                list.GetList()->Dispatch(static_cast<uint32_t>(counts.x),
+                                         static_cast<uint32_t>(counts.z),
+                                         static_cast<uint32_t>(counts.y));
 
                 list.EndRender();
 

@@ -266,6 +266,16 @@ namespace Wild
                 }
 
                 m_uavArrayAvailiable = true;
+
+                D3D12_UNORDERED_ACCESS_VIEW_DESC wholeArrayDesc = {};
+                wholeArrayDesc.Format = m_desc.format;
+                wholeArrayDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                wholeArrayDesc.Texture2DArray.MipSlice = 0;
+                wholeArrayDesc.Texture2DArray.FirstArraySlice = 0;
+                wholeArrayDesc.Texture2DArray.ArraySize = m_desc.depthOrArray;
+                wholeArrayDesc.Texture2DArray.PlaneSlice = 0;
+
+                m_uav = std::make_shared<UnorderedAccessView>(m_resource->Handle(), wholeArrayDesc);
             }
             else
             {
@@ -285,9 +295,22 @@ namespace Wild
                 srvDesc.Texture3D.MipLevels = m_desc.mips;
                 break;
             case Wild::TextureType::TEXTURE_2D:
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-                srvDesc.Texture2D.MipLevels = m_desc.mips;
-                srvDesc.Texture2D.MostDetailedMip = 0;
+                if (m_desc.depthOrArray > 1)
+                {
+                    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                    srvDesc.Texture2DArray.MostDetailedMip = 0;
+                    srvDesc.Texture2DArray.MipLevels = m_desc.mips;
+                    srvDesc.Texture2DArray.FirstArraySlice = 0;
+                    srvDesc.Texture2DArray.ArraySize = m_desc.depthOrArray;
+                    srvDesc.Texture2DArray.PlaneSlice = 0;
+                    srvDesc.Texture2DArray.ResourceMinLODClamp = 0.0f;
+                }
+                else
+                {
+                    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+                    srvDesc.Texture2D.MipLevels = m_desc.mips;
+                    srvDesc.Texture2D.MostDetailedMip = 0;
+                }
                 break;
             case Wild::TextureType::TEXTURE_1D:
                 srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;

@@ -1,3 +1,19 @@
+import DDGI.RayTracingUtils;
+
+// Mirrors Wild::ProbeDebugRootConstants. ProbeDebugVert.slang declares only the leading projView and
+// probeScale, so nothing here may be reordered ahead of those two.
+cbuffer RootConstant : register(b0)
+{
+    column_major float4x4 projView;
+
+    float probeScale;
+    uint irradianceView;
+    float irradianceExposure;
+    float rootPadding;
+
+    int4 probeCounts; // xyz = probe grid counts, w unused
+};
+
 struct VSOutput
 {
     float4 position : SV_Position;
@@ -5,15 +21,26 @@ struct VSOutput
     nointerpolation uint instanceId : INSTANCE_ID;
 };
 
-StructuredBuffer<float4> probeIrradiance : register(t1);
+SamplerState linearClampSampler : register(s0);
 
 [shader("fragment")]
 float4 main(VSOutput input) : SV_Target0
 {
-    float3 lightDirection = normalize(float3(0.4f, 0.8f, 0.25f));
-    float shade = 0.35f + 0.65f * saturate(dot(normalize(input.normal), lightDirection));
+    float3 normal = normalize(input.normal);
 
-    float3 irradiance = max(probeIrradiance[input.instanceId].rgb, float3(0.02f, 0.02f, 0.02f));
+    uint3 probeGridCoord = GetProbeGridCoord(input.instanceId, probeCounts.xyz);
+    float3 uv = GetProbeAtlasUV(probeGridCoord, probeCounts.xyz, normal, PROBE_IRRADIANCE_TEXELS);
 
-    return float4(irradiance * shade, 1.0f);
+    // Raw heap slot, the atlas is a Texture2DArray which cannot come through a bindless Texture2D range
+    Texture2DArray<float4> irradianceAtlas = DescriptorHandle<Texture2DArray<float4>>(irradianceView);
+    float3 irradiance = irradianceAtlas.SampleLevel(linearClampSampler, uv, 0).rgb;
+
+    irradiance = pow(max(irradiance, 0.0f), PROBE_IRRADIANCE_GAMMA);
+
+    irradiance *= irradianceExposure;
+    float3 color = irradiance / (1.0f + irradiance);
+
+    color = pow(color, 1.0f / 2.2f);
+
+    return float4(max(color, 0.02f), 1.0f);
 }

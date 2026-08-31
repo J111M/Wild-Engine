@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Renderer/Passes/DDGIPass.hpp"
 #include "Renderer/RenderGraph/RenderGraph.hpp"
 #include "Renderer/Renderer.hpp"
 
@@ -8,8 +9,13 @@ namespace Wild
     struct ProbeDebugRootConstants
     {
         glm::mat4 projView{};
+
         float probeScale = 0.25f;
-        float padding[3]{};
+        uint32_t irradianceView{INVALID_HEAP_INDEX};
+        float irradianceExposure{20.0f};
+        float padding{};
+
+        glm::ivec4 probeCounts{}; // xyz = probe grid counts, w unused
     };
 
     struct ProbeDebugPassData
@@ -28,6 +34,8 @@ namespace Wild
         virtual void Update(const float dt) override;
 
         bool drawProbes = false;
+
+        float irradianceExposure = 20.0f;
 
       private:
         ProbeDebugRootConstants m_rc{};
