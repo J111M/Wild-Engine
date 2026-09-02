@@ -1,4 +1,5 @@
 #include "Renderer/Passes/PbrPass.hpp"
+#include "Renderer/Passes/DDGIPass.hpp"
 #include "Renderer/Passes/DeferredPass.hpp"
 
 #include "Systems/LightSystem.hpp"
@@ -83,6 +84,7 @@ namespace Wild
         auto* passData = rg.AllocatePassData<PbrPassData>();
         auto* deferredData = rg.GetPassData<PbrPassData, DeferredPassData>();
         auto* shadowMapData = rg.GetPassData<PbrPassData, CsmPassData>();
+        auto* ddgiData = rg.GetPassData<PbrPassData, DDGIPassData>();
 
         auto& lightSystem = renderer.GetSystems().GetSystem<LightSystem>();
         passData->pointlights = lightSystem.GetPointLightBuffer();
@@ -104,7 +106,7 @@ namespace Wild
         rg.AddPass<PbrPassData>(
             "Pbr assembly pass",
             PassType::Graphics,
-            [&renderer, deferredData, shadowMapData, this](const PbrPassData& passData, CommandList& list) {
+            [&renderer, deferredData, shadowMapData, ddgiData, this](const PbrPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
                 settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/PbrVert.slang");
                 settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/PbrFrag.slang");
@@ -206,6 +208,7 @@ namespace Wild
                 m_rc.emissiveView = deferredData->emissiveTexture->GetSrv()->BindlessView();
                 m_rc.depthView = deferredData->depthTexture->GetSrv()->BindlessView();
                 m_rc.depthBias = shadowMapData->biasValue;
+                m_rc.probeDataView = ddgiData->probeDataView;
 
                 // Get shader resource view's from the shadowmap depth textures
                 for (size_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)

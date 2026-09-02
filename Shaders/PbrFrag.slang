@@ -2,6 +2,8 @@
 #include "Helper/PbrFormulas.slang"
 #include "ShadowInc.slang"
 
+import DDGI.DDGIProbeData;
+
 cbuffer Constants : register(b0)
 {
     uint emissiveView;
@@ -10,6 +12,7 @@ cbuffer Constants : register(b0)
     uint depthView;
     uint4 shadowMapView;
     float biasValue;
+    uint probeDataView;
 };
 
 cbuffer matrices : register(b1)
@@ -193,6 +196,8 @@ float4 main(VSOutput input) : SV_TARGET0
 
         pointLo += EvaluateDirectBRDF(N, V, pL, albedo.rgb, F0, roughness, metallic) * plColor * attenuation;
     }
+
+    DDGIProbeData probeData = GetDDGIProbeData(probeDataView);
 
     float3 irradiance = float3(0.0f);
     if (irradianceMapView > 0)
