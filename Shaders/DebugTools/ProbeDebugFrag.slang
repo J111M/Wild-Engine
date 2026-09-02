@@ -1,14 +1,13 @@
 import DDGI.RayTracingUtils;
+import DDGI.DDGIProbeData;
 cbuffer RootConstant : register(b0)
 {
     column_major float4x4 projView;
 
     float probeScale;
-    uint irradianceView;
+    uint probeDataView;
     float irradianceExposure;
     float rootPadding;
-
-    int4 probeCounts; // xyz = probe grid counts, w unused
 };
 
 struct VSOutput
@@ -25,11 +24,13 @@ float4 main(VSOutput input) : SV_Target0
 {
     float3 normal = normalize(input.normal);
 
-    uint3 probeGridCoord = GetProbeGridCoord(input.instanceId, probeCounts.xyz);
-    float3 uv = GetProbeAtlasUV(probeGridCoord, probeCounts.xyz, normal, PROBE_IRRADIANCE_TEXELS);
+    DDGIProbeData probeData = GetDDGIProbeData(probeDataView);
+
+    uint3 probeGridCoord = GetProbeGridCoord(input.instanceId, probeData.probeCounts.xyz);
+    float3 uv = GetProbeAtlasUV(probeGridCoord, probeData.probeCounts.xyz, normal, PROBE_IRRADIANCE_TEXELS);
 
     // Raw heap slot, the atlas is a Texture2DArray which cannot come through a bindless Texture2D range
-    Texture2DArray<float4> irradianceAtlas = DescriptorHandle<Texture2DArray<float4>>(irradianceView);
+    Texture2DArray<float4> irradianceAtlas = DescriptorHandle<Texture2DArray<float4>>(probeData.irradianceView);
     float3 irradiance = irradianceAtlas.SampleLevel(linearClampSampler, uv, 0).rgb;
 
     irradiance = pow(max(irradiance, 0.0f), PROBE_IRRADIANCE_GAMMA);

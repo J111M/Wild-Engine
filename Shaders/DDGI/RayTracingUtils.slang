@@ -1,3 +1,5 @@
+import DDGI.DDGIProbeData;
+
 static const float MIN_WEIGHT = 0.0001f;
 
 float2 SignNotZero(float2 v) {
@@ -93,3 +95,112 @@ float3 GetRayDirection(uint rayIndex, uint raysPerProbe, float4 randomRotation) 
 
 float Pow2(float x) { return x * x; }
 float Pow3(float x) { return x * x * x; }
+
+float Min(float3 v)
+{
+    return min(v.x, min(v.y, v.z));
+}
+
+float3 GetProbeLocationFromGridCoord(DDGIProbeData probeData, uint3 gridCoord)
+{
+    return probeData.probeOrigin.xyz + probeData.probeSpacing.xyz * gridCoord;
+}
+
+// The atlas is one 2D slice per probe grid Y plane, so only X and Z scale its 2D footprint. Returns a
+// Texture2DArray sample coordinate, xy the UV within the slice and z the slice index.
+float3 GetProbeUV(DDGIProbeData probeData, uint3 probeGridCoord, float3 direction, uint numProbeInteriorTexels)
+{
+    return GetProbeAtlasUV(probeGridCoord, probeData.probeCounts.xyz, direction, numProbeInteriorTexels);
+}
+
+float3 SampleDDGIIrradiance(DDGIProbeData probeData, SamplerState clampSampler, float3 P, float3 N, float3 Wo) {
+    float3 direction = N;
+    float3 position = P;
+    float volumeWeight = 1.0f;
+
+    float3 relativeCoordinates = (position - probeData.probeOrigin.xyz) / probeData.probeSpacing.xyz;
+    for (uint i = 0; i < 3; ++i)
+    {
+        volumeWeight *= lerp(0, 1, saturate(relativeCoordinates[i]));
+        if (relativeCoordinates[i] > probeData.probeCounts[i] - 2)
+        {
+            float x = saturate(relativeCoordinates[i] - probeData.probeCounts[i] + 2);
+            volumeWeight *= lerp(1, 0, x);
+        }
+    }
+
+    // If weight = 0 than the probes didn't capture any data
+    if (volumeWeight <= 0.0f) return 0.0f;
+
+    const float normalBiasMultiplier = 0.2f;
+    const float viewBiasMultiplier = 0.8f;
+    const float axialDistanceMultiplier = 0.75f;
+    position += (direction * normalBiasMultiplier + -Wo * viewBiasMultiplier) * axialDistanceMultiplier *
+                Min(probeData.probeSpacing.xyz) * 0.2f;
+
+    uint3 baseProbeCoordinates = uint3(floor(relativeCoordinates));
+    float3 baseProbePosition = GetProbeLocationFromGridCoord(probeData, baseProbeCoordinates);
+    float3 alpha = saturate((position - baseProbePosition) / probeData.probeSpacing.xyz);
+
+    float3 sumIrradiance = 0;
+    float sumWeight = 0;
+
+    // Resolved once rather than per adjacent probe.
+    Texture2DArray<float4> irradianceAtlas = DescriptorHandle<Texture2DArray<float4>>(probeData.irradianceView);
+    Texture2DArray<float2> distanceAtlas = DescriptorHandle<Texture2DArray<float2>>(probeData.distanceView);
+
+    for (uint i = 0; i < 8; ++i)
+    {
+        uint3 indexOffset = uint3(i, i >> 1u, i >> 2u) & 1u;
+
+        uint3 probeCoordinates = clamp(baseProbeCoordinates + indexOffset, 0, probeData.probeCounts.xyz - 1);
+        float3 probePosition = GetProbeLocationFromGridCoord(probeData, probeCoordinates.xyz);
+
+        float3 relativeProbePosition = position - probePosition;
+        float3 probeDirection = -normalize(relativeProbePosition);
+
+        float3 trilinear = max(0.001f, lerp(1.0f - alpha, alpha, indexOffset));
+        float trilinearWeight = (trilinear.x * trilinear.y * trilinear.z);
+
+        float weight = 1;
+
+        weight *= saturate(dot(probeDirection, direction));
+
+        float3 distanceUV = GetProbeUV(probeData, probeCoordinates, -probeDirection, PROBE_DISTANCE_TEXELS);
+        float probeDistance = length(relativeProbePosition);
+
+        // The writer normalises by 2 * the accumulated weight, RTXGI's reader undoes that 2 here
+        float2 moments = 2.0f * distanceAtlas.SampleLevel(clampSampler, distanceUV, 0).xy;
+        float variance = abs(Pow2(moments.x) - moments.y);
+        float chebyshev = 1.0f;
+        if (probeDistance > moments.x)
+        {
+            float mD = moments.x - probeDistance;
+            chebyshev = variance / (variance + Pow2(mD));
+            chebyshev = max(Pow3(chebyshev), 0.0);
+        }
+        weight *= max(chebyshev, 0.05f);
+        weight = max(0.000001f, weight);
+
+        const float crushThreshold = 0.2f;
+        if (weight < crushThreshold)
+		{
+			weight *= weight * weight * (1.0f / Pow2(crushThreshold));
+		}
+        weight *= trilinearWeight;
+
+        float3 uv = GetProbeUV(probeData, probeCoordinates, direction, PROBE_IRRADIANCE_TEXELS);
+        float3 irradiance = irradianceAtlas.SampleLevel(clampSampler, uv, 0).rgb;
+        irradiance = pow(irradiance, 2.5f);
+
+        sumIrradiance += irradiance * weight;
+        sumWeight += weight;
+    }
+
+    if (sumWeight == 0) return 0.0f;
+
+    sumIrradiance *= (1.0f / sumWeight);
+    sumIrradiance *= sumIrradiance;
+    sumIrradiance *= PI;
+    return sumIrradiance * volumeWeight;
+}

@@ -1,4 +1,5 @@
 import DDGI.RayTracingUtils;
+import DDGI.DDGIProbeData;
 import DDGI.DDGITraceConstants;
 
 struct RayPayload {
@@ -64,141 +65,37 @@ static const uint VOFS_TANGENT = 64;
 
 [shader("raygeneration")]
 void RayGen() {
+    DDGIProbeData probeData = GetDDGIProbeData(probeDataView);
+
     uint rayIndex = DispatchRaysIndex().x;
     uint probeIndex = DispatchRaysIndex().y;
 
     float3 probePosition = probes[probeIndex].xyz;
-    float3 randomDirection = GetRayDirection(rayIndex, raysPerProbe, randomRotation);
+    float3 randomDirection = GetRayDirection(rayIndex, probeData.raysPerProbe, probeData.randomRotation);
 
     RayDesc ray;
     ray.Origin = probePosition;
     ray.Direction = randomDirection;
     ray.TMin = 0.01f;
-    ray.TMax = maxRayDistance;
+    ray.TMax = probeData.maxRayDistance;
 
     RayPayload payload;
     payload.radiance = float3(0, 0, 0);
-    payload.hitDistance = maxRayDistance;
+    payload.hitDistance = probeData.maxRayDistance;
 
     TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
 
-    uint rayDataIndex = probeIndex * GetMaxRaysPerProbe() + rayIndex;
+    uint rayDataIndex = probeIndex * probeData.GetMaxRaysPerProbe() + rayIndex;
 
     // TODO merge into 1 float4 to reduce shader lookups and storing
     probeRayData[rayDataIndex].radiance = payload.radiance;
     probeRayData[rayDataIndex].hitDistance = payload.hitDistance;
 }
 
-float Min(float3 v)
-{
-    return min(v.x, min(v.y, v.z));
-}
-
-float3 GetProbeLocationFromGridCoord(uint3 gridCoord)
-{
-    return probeOrigin.xyz + probeSpacing.xyz * gridCoord;
-}
-
-// The atlas is one 2D slice per probe grid Y plane, so only X and Z scale its 2D footprint. Returns a
-// Texture2DArray sample coordinate, xy the UV within the slice and z the slice index.
-float3 GetProbeUV(uint3 probeGridCoord, float3 direction, uint numProbeInteriorTexels)
-{
-    return GetProbeAtlasUV(probeGridCoord, probeCounts.xyz, direction, numProbeInteriorTexels);
-}
-
-float3 SampleDDGIIrradiance(float3 P, float3 N, float3 Wo) {
-    float3 direction = N;
-    float3 position = P;
-    float volumeWeight = 1.0f;
-
-    float3 relativeCoordinates = (position - probeOrigin.xyz) / probeSpacing.xyz;
-    for (uint i = 0; i < 3; ++i)
-    {
-        volumeWeight *= lerp(0, 1, saturate(relativeCoordinates[i]));
-        if (relativeCoordinates[i] > probeCounts[i] - 2)
-        {
-            float x = saturate(relativeCoordinates[i] - probeCounts[i] + 2);
-            volumeWeight *= lerp(1, 0, x);
-        }
-    }
-
-    // If weight = 0 than the probes didn't capture any data
-    if (volumeWeight <= 0.0f) return 0.0f;
-
-    const float normalBiasMultiplier = 0.2f;
-    const float viewBiasMultiplier = 0.8f;
-    const float axialDistanceMultiplier = 0.75f;
-    position += (direction * normalBiasMultiplier + -Wo * viewBiasMultiplier) * axialDistanceMultiplier * Min(probeSpacing.xyz) * 0.2f;
-
-    uint3 baseProbeCoordinates = uint3(floor(relativeCoordinates));
-    float3 baseProbePosition = GetProbeLocationFromGridCoord(baseProbeCoordinates);
-    float3 alpha = saturate((position - baseProbePosition) / probeSpacing.xyz);
-
-    float3 sumIrradiance = 0;
-    float sumWeight = 0;
-
-    // Resolved once rather than per adjacent probe.
-    Texture2DArray<float4> irradianceAtlas = DescriptorHandle<Texture2DArray<float4>>(irradianceView);
-    Texture2DArray<float2> distanceAtlas = DescriptorHandle<Texture2DArray<float2>>(distanceView);
-
-    for (uint i = 0; i < 8; ++i)
-    {
-        uint3 indexOffset = uint3(i, i >> 1u, i >> 2u) & 1u;
-
-        uint3 probeCoordinates = clamp(baseProbeCoordinates + indexOffset, 0, probeCounts.xyz - 1);
-        float3 probePosition = GetProbeLocationFromGridCoord(probeCoordinates.xyz);
-
-        float3 relativeProbePosition = position - probePosition;
-        float3 probeDirection = -normalize(relativeProbePosition);
-
-        float3 trilinear = max(0.001f, lerp(1.0f - alpha, alpha, indexOffset));
-        float trilinearWeight = (trilinear.x * trilinear.y * trilinear.z);
-
-        float weight = 1;
-
-        weight *= saturate(dot(probeDirection, direction));
-
-        float3 distanceUV = GetProbeUV(probeCoordinates, -probeDirection, PROBE_DISTANCE_TEXELS);
-        float probeDistance = length(relativeProbePosition);
-
-        // The writer normalises by 2 * the accumulated weight, RTXGI's reader undoes that 2 here
-        float2 moments = 2.0f * distanceAtlas.SampleLevel(linearSamplerClamp, distanceUV, 0).xy;
-        float variance = abs(Pow2(moments.x) - moments.y);
-        float chebyshev = 1.0f;
-        if (probeDistance > moments.x)
-        {
-            float mD = moments.x - probeDistance;
-            chebyshev = variance / (variance + Pow2(mD));
-            chebyshev = max(Pow3(chebyshev), 0.0);
-        }
-        weight *= max(chebyshev, 0.05f);
-        weight = max(0.000001f, weight);
-
-        const float crushThreshold = 0.2f;
-        if (weight < crushThreshold)
-		{
-			weight *= weight * weight * (1.0f / Pow2(crushThreshold));
-		}
-        weight *= trilinearWeight;
-
-        float3 uv = GetProbeUV(probeCoordinates, direction, PROBE_IRRADIANCE_TEXELS);
-        float3 irradiance = irradianceAtlas.SampleLevel(linearSamplerClamp, uv, 0).rgb;
-        irradiance = pow(irradiance, 2.5f);
-
-        sumIrradiance += irradiance * weight;
-        sumWeight += weight;
-    }
-
-    if (sumWeight == 0) return 0.0f;
-
-    sumIrradiance *= (1.0f / sumWeight);
-    sumIrradiance *= sumIrradiance;
-    sumIrradiance *= PI;
-    return sumIrradiance * volumeWeight;
-}
-
 [shader("closesthit")]
 void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes attribs) {
+    DDGIProbeData probeData = GetDDGIProbeData(probeDataView);
+
     MeshInstanceInfo mesh = meshTable[InstanceID()];
 
     ByteAddressBuffer vb = meshBuffers[mesh.vbHandle];
@@ -324,7 +221,8 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
     }
 
     radiance += emissive;
-    radiance += DiffuseBRDF(min(albedo, float3(0.9f)) * SampleDDGIIrradiance(hitPos, normalWS, WorldRayDirection())); // Sample ddgi 
+    radiance += DiffuseBRDF(min(albedo, float3(0.9f)) *
+                            SampleDDGIIrradiance(probeData, linearSamplerClamp, hitPos, normalWS, WorldRayDirection())); // Sample ddgi
    
     payload.radiance = radiance;
     payload.hitDistance = min(RayTCurrent(), payload.hitDistance);
@@ -335,7 +233,7 @@ void Miss(inout RayPayload payload) {
     float3 dir = WorldRayDirection();
     dir.y = -dir.y;
     payload.radiance = (environmentView != 0) ? cubeTextures[NonUniformResourceIndex(environmentView)].SampleLevel(linearSampler, dir, 0).rgb : float3(0, 0, 0);
-    payload.hitDistance = maxRayDistance;
+    payload.hitDistance = GetDDGIProbeData(probeDataView).maxRayDistance;
 }
 
 [shader("miss")]

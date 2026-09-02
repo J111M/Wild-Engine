@@ -59,6 +59,18 @@ namespace Wild
                     return;
                 }
 
+                // TODO improve check
+                if (ddgiData->probeDataView == INVALID_HEAP_INDEX)
+                {
+                    static bool probeDataWarned = false;
+                    if (!probeDataWarned)
+                    {
+                        WD_WARN("Probe debug pass has no DDGI probe data, is DDGI switched off? Skipping.");
+                        probeDataWarned = true;
+                    }
+                    return;
+                }
+
                 PipelineStateSettings settings{};
                 settings.ShaderState.VertexShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/DebugTools/ProbeDebugVert.slang");
@@ -89,8 +101,7 @@ namespace Wild
 
                 list.SetPipelineState(pipeline);
 
-                m_rc.probeCounts = glm::ivec4(probeSystem->GetCounts(), 0);
-                m_rc.irradianceView = irradianceSrv->View();
+                m_rc.probeDataView = ddgiData->probeDataView;
                 m_rc.irradianceExposure = irradianceExposure;
 
                 // A graphics pass reads it, so the trace pass' NON_PIXEL_SHADER_RESOURCE is not enough

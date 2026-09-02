@@ -42,6 +42,8 @@ namespace Wild
 
         uint32_t numPointLights{};
 
+        uint32_t probeDataView{INVALID_HEAP_INDEX};
+
         uint32_t tracePadding{};
     };
 
@@ -55,6 +57,10 @@ namespace Wild
         uint32_t distanceWriteView{INVALID_HEAP_INDEX};
 
         float probeMaxRayDistance{1.0f};
+
+        uint32_t probeDataView{INVALID_HEAP_INDEX};
+
+        glm::uvec2 updatePadding{};
     };
 
     // Double buffering so that the read and writing is done in different frames
@@ -62,6 +68,8 @@ namespace Wild
     {
         // Decides which pingpong buffer part to use
         uint32_t frameParity = 0;
+
+        uint32_t probeDataView = INVALID_HEAP_INDEX;
 
         Texture* iradianceTexture[BACK_BUFFER_COUNT];
         Texture* visibilityTexture[BACK_BUFFER_COUNT];
@@ -95,6 +103,8 @@ namespace Wild
         std::shared_ptr<GPUBuffer> m_irradianceConstantBuffer{};
         std::shared_ptr<GPUBuffer> m_distanceConstantBuffer{};
 
+        std::shared_ptr<GPUBuffer> m_probeDataBuffer{};
+
         DDGIProbeData m_probeData{};
 
         DDGITraceConstants m_traceRc{};
@@ -103,6 +113,10 @@ namespace Wild
         uint32_t m_frameParity{0};
 
         void FillUpdateConstants(const DDGIPassData& ddgiData, const ProbeSystem& probeSystem);
+
+        uint32_t GetOrCreateProbeDataView();
+
+        void UploadProbeData(const ProbeSystem& probeSystem, const DDGIPassData& ddgiData);
 
         static std::shared_ptr<GPUBuffer> CreateConstantBuffer(size_t size, const std::string& name);
 

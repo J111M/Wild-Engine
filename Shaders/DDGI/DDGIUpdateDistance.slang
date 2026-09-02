@@ -1,4 +1,5 @@
 import DDGI.RayTracingUtils;
+import DDGI.DDGIProbeData;
 import DDGI.DDGIUpdateConstants;
 import Helper.Common;
 
@@ -43,10 +44,12 @@ static const uint4 BORDER_OFFSETS[BORDER_TEXELS] =
 [shader("compute")]
 [numthreads(PROBE_DISTANCE_TEXELS, PROBE_DISTANCE_TEXELS, 1)]
 void main(CSInput input) {
+    DDGIProbeData probeData = GetDDGIProbeData(probeDataView);
+
     uint3 probeGridCoords = uint3(input.GroupId.x, input.GroupId.z, input.GroupId.y);
 
-    uint probeIndex = probeGridCoords.x + probeGridCoords.y * probeCounts.x +
-                      probeGridCoords.z * probeCounts.x * probeCounts.y;
+    uint probeIndex = probeGridCoords.x + probeGridCoords.y * probeData.probeCounts.x +
+                      probeGridCoords.z * probeData.probeCounts.x * probeData.probeCounts.y;
 
     uint3 texelLocation = GetProbeTexel(probeGridCoords, PROBE_DISTANCE_TEXELS);
     uint3 cornerTexelLocation = texelLocation - uint3(1, 1, 0);
@@ -63,7 +66,7 @@ void main(CSInput input) {
     float weightedSum = 0;
     float2 result = 0;
 
-    uint remainingRays = raysPerProbe;
+    uint remainingRays = probeData.raysPerProbe;
     uint offset = 0;
 
     while (remainingRays > 0)
@@ -77,9 +80,10 @@ void main(CSInput input) {
         {
             uint rayIndex = offset + input.GroupIndex;
 
-            SharedDepthCache[input.GroupIndex] = probeRayData[probeIndex * GetMaxRaysPerProbe() + rayIndex].hitDistance;
+            SharedDepthCache[input.GroupIndex] = probeRayData[probeIndex * probeData.GetMaxRaysPerProbe() + rayIndex].hitDistance;
             // Rebuilding the raydirection to be the same as the initial trace rotation
-            SharedDirectionCache[input.GroupIndex] = GetRayDirection(rayIndex, raysPerProbe, randomRotation);
+            SharedDirectionCache[input.GroupIndex] =
+                GetRayDirection(rayIndex, probeData.raysPerProbe, probeData.randomRotation);
         }
 
         GroupMemoryBarrierWithGroupSync();
@@ -103,11 +107,11 @@ void main(CSInput input) {
         offset += numRays;
     }
 
-    const float epsilon = 1e-9f * float(raysPerProbe);
+    const float epsilon = 1e-9f * float(probeData.raysPerProbe);
     result *= 1.0f / max(2.0f * weightedSum, epsilon);
 
     // Get blend weight
-    const float historyBlendWeight = saturate(1.0f - hysteresis);
+    const float historyBlendWeight = saturate(1.0f - probeData.hysteresis);
     result = lerp(prevDistance, result, historyBlendWeight);
 
     newDistance[texelLocation] = result;

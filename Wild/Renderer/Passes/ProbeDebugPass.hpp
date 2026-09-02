@@ -11,11 +11,9 @@ namespace Wild
         glm::mat4 projView{};
 
         float probeScale = 0.25f;
-        uint32_t irradianceView{INVALID_HEAP_INDEX};
+        uint32_t probeDataView{INVALID_HEAP_INDEX};
         float irradianceExposure{20.0f};
         float padding{};
-
-        glm::ivec4 probeCounts{}; // xyz = probe grid counts, w unused
     };
 
     struct ProbeDebugPassData

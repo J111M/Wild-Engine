@@ -25,6 +25,34 @@ namespace Wild
         return std::make_shared<GPUBuffer>(desc);
     }
 
+    // TODO replace function
+    uint32_t DDGIPass::GetOrCreateProbeDataView()
+    {
+        if (!m_probeDataBuffer) m_probeDataBuffer = CreateConstantBuffer(sizeof(DDGIProbeData), "DDGI probe data");
+
+        auto probeDataCbv = m_probeDataBuffer->GetCBView();
+        return probeDataCbv ? probeDataCbv->View() : INVALID_HEAP_INDEX;
+    }
+
+    void DDGIPass::UploadProbeData(const ProbeSystem& probeSystem, const DDGIPassData& ddgiData)
+    {
+        m_probeData.probeOrigin = glm::vec4(probeSystem.GetOrigin(), 0.0f);
+        m_probeData.probeSpacing = glm::vec4(probeSystem.GetSpacing(), 0.0f);
+        m_probeData.probeCounts = glm::ivec4(probeSystem.GetCounts(), static_cast<int32_t>(ProbeSystem::MAX_RAYS_PER_PROBE));
+
+        const uint32_t historyIndex = ddgiData.frameParity;
+
+        auto irradianceSrv = ddgiData.iradianceTexture[historyIndex]->GetSrv();
+        auto distanceSrv = ddgiData.visibilityTexture[historyIndex]->GetSrv();
+
+        m_probeData.irradianceView = irradianceSrv ? irradianceSrv->View() : INVALID_HEAP_INDEX;
+        m_probeData.distanceView = distanceSrv ? distanceSrv->View() : INVALID_HEAP_INDEX;
+
+        m_probeDataBuffer->Allocate(&m_probeData, sizeof(DDGIProbeData));
+    }
+
+
+    // TODO replace function
     void DDGIPass::FillUpdateConstants(const DDGIPassData& ddgiData, const ProbeSystem& probeSystem)
     {
         // TODO modify max ray distance
@@ -46,7 +74,7 @@ namespace Wild
         m_updateRc.distanceReadView = distanceReadSrv ? distanceReadSrv->View() : INVALID_HEAP_INDEX;
         m_updateRc.distanceWriteView = distanceWriteUav ? distanceWriteUav->View() : INVALID_HEAP_INDEX;
 
-        m_probeData.probeCounts = glm::ivec4(probeSystem.GetCounts(), static_cast<int32_t>(ProbeSystem::MAX_RAYS_PER_PROBE));
+        m_updateRc.probeDataView = ddgiData.probeDataView;
     }
 
     void DDGIPass::Add(Renderer& renderer, RenderGraph& rg)
@@ -115,6 +143,8 @@ namespace Wild
 
         passData->frameParity = m_frameParity;
 
+        passData->probeDataView = enabled ? GetOrCreateProbeDataView() : INVALID_HEAP_INDEX;
+
         auto probeSystem = renderer.GetSystems().GetSystem<ProbeSystem>();
 
         // if (!probeSystem) WD_FATAL("Probe system doesn't exist");
@@ -178,10 +208,16 @@ namespace Wild
                     return;
                 }
 
-                m_probeData.probeOrigin = glm::vec4(probeSystem->GetOrigin(), 0.0f);
-                m_probeData.probeSpacing = glm::vec4(probeSystem->GetSpacing(), 0.0f);
-                m_probeData.probeCounts =
-                    glm::ivec4(probeSystem->GetCounts(), static_cast<int32_t>(ProbeSystem::MAX_RAYS_PER_PROBE));
+                if (passData.probeDataView == INVALID_HEAP_INDEX)
+                {
+                    static bool probeDataWarned = false;
+                    if (!probeDataWarned)
+                    {
+                        WD_WARN("DDGI probe data constant buffer has no descriptor heap slot, skipping the trace pass.");
+                        probeDataWarned = true;
+                    }
+                    return;
+                }
 
                 if (renderer.environmentMap) m_traceRc.environmentView = renderer.environmentMap->GetSrv()->BindlessView();
 
@@ -195,8 +231,9 @@ namespace Wild
                 passData.iradianceTexture[historyIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 passData.visibilityTexture[historyIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-                m_probeData.irradianceView = passData.iradianceTexture[historyIndex]->GetSrv()->View();
-                m_probeData.distanceView = passData.visibilityTexture[historyIndex]->GetSrv()->View();
+                UploadProbeData(*probeSystem, passData);
+
+                m_traceRc.probeDataView = passData.probeDataView;
 
                 if (!m_traceConstantBuffer)
                 {
