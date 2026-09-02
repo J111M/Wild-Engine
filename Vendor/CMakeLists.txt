@@ -105,7 +105,12 @@ target_include_directories(Wild PRIVATE "${joltphysics_SOURCE_DIR}")
 target_include_directories(Wild PRIVATE "./stb/")
 
 # spdlog
-FetchContent_Declare(spdlog GIT_REPOSITORY https://github.com/gabime/spdlog.git GIT_TAG v1.11.0)
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG v1.15.3
+    GIT_SHALLOW TRUE
+)
 
 FetchContent_MakeAvailable(spdlog)
 
