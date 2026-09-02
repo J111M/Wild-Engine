@@ -1,7 +1,4 @@
 import DDGI.RayTracingUtils;
-
-// Mirrors Wild::ProbeDebugRootConstants. ProbeDebugVert.slang declares only the leading projView and
-// probeScale, so nothing here may be reordered ahead of those two.
 cbuffer RootConstant : register(b0)
 {
     column_major float4x4 projView;

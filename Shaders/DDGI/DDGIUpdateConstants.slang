@@ -6,16 +6,12 @@ cbuffer DDGIUpdateConstants : register(b0) {
     uint raysPerProbe;
     float hysteresis;
 
-    // Descriptor heap slots of the ping-pong pairs the update passes run on this frame. These are raw heap
-    // indices for ResourceDescriptorHeap, not the table relative indices the trace pass' views use.
     uint irradianceReadView;
     uint irradianceWriteView;
 
     uint distanceReadView;
     uint distanceWriteView;
 
-    // Ceiling on the hit distance the distance pass stores. RTXGI scales this off the probe spacing rather than
-    // the ray length: the second moment is a distance squared, so a raw maxRayDistance would dominate the blend.
     float probeMaxRayDistance;
     uint updatePadding;
 };

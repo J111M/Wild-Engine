@@ -27,8 +27,7 @@ namespace Wild
 
     void DDGIPass::FillUpdateConstants(const DDGIPassData& ddgiData, const ProbeSystem& probeSystem)
     {
-        m_updateRc.probeCounts = glm::ivec4(probeSystem.GetCounts(), static_cast<int32_t>(ProbeSystem::MAX_RAYS_PER_PROBE));
-
+        // TODO modify max ray distance
         m_updateRc.probeMaxRayDistance = glm::length(probeSystem.GetSpacing()) * 1.5f;
 
         const uint32_t readIndex = ddgiData.frameParity;
@@ -46,6 +45,8 @@ namespace Wild
 
         m_updateRc.distanceReadView = distanceReadSrv ? distanceReadSrv->View() : INVALID_HEAP_INDEX;
         m_updateRc.distanceWriteView = distanceWriteUav ? distanceWriteUav->View() : INVALID_HEAP_INDEX;
+
+        m_probeData.probeCounts = glm::ivec4(probeSystem.GetCounts(), static_cast<int32_t>(ProbeSystem::MAX_RAYS_PER_PROBE));
     }
 
     void DDGIPass::Add(Renderer& renderer, RenderGraph& rg)
@@ -82,18 +83,18 @@ namespace Wild
 
                 glm::vec3 axis = glm::normalize(glm::vec3(axisDist(rng), axisDist(rng), axisDist(rng)));
                 glm::quat rotation = glm::angleAxis(angleDist(rng), axis);
-                m_traceRc.randomRotation = glm::vec4(rotation.x, rotation.y, rotation.z, rotation.w);
+                m_probeData.randomRotation = glm::vec4(rotation.x, rotation.y, rotation.z, rotation.w);
             }
-            else { m_traceRc.randomRotation = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); }
+            else
+            {
+                m_probeData.randomRotation = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            }
         }
 
-        m_traceRc.raysPerProbe = static_cast<uint32_t>(m_raysPerProbe);
-        m_traceRc.maxRayDistance = m_maxRayDistance;
-        m_traceRc.intensity = m_intensity;
-
-        m_updateRc.randomRotation = m_traceRc.randomRotation;
-        m_updateRc.raysPerProbe = m_traceRc.raysPerProbe;
-        m_updateRc.hysteresis = m_hysteresis;
+        m_probeData.raysPerProbe = static_cast<uint32_t>(m_raysPerProbe);
+        m_probeData.maxRayDistance = m_maxRayDistance;
+        m_probeData.intensity = m_intensity;
+        m_probeData.hysteresis = m_hysteresis;
 
         if (enabled) m_frameParity ^= 1u;
 
@@ -177,9 +178,9 @@ namespace Wild
                     return;
                 }
 
-                m_traceRc.probeOrigin = glm::vec4(probeSystem->GetOrigin(), 0.0f);
-                m_traceRc.probeSpacing = glm::vec4(probeSystem->GetSpacing(), 0.0f);
-                m_traceRc.probeCounts =
+                m_probeData.probeOrigin = glm::vec4(probeSystem->GetOrigin(), 0.0f);
+                m_probeData.probeSpacing = glm::vec4(probeSystem->GetSpacing(), 0.0f);
+                m_probeData.probeCounts =
                     glm::ivec4(probeSystem->GetCounts(), static_cast<int32_t>(ProbeSystem::MAX_RAYS_PER_PROBE));
 
                 if (renderer.environmentMap) m_traceRc.environmentView = renderer.environmentMap->GetSrv()->BindlessView();
@@ -194,8 +195,8 @@ namespace Wild
                 passData.iradianceTexture[historyIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 passData.visibilityTexture[historyIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-                m_traceRc.irradianceView = passData.iradianceTexture[historyIndex]->GetSrv()->View();
-                m_traceRc.distanceView = passData.visibilityTexture[historyIndex]->GetSrv()->View();
+                m_probeData.irradianceView = passData.iradianceTexture[historyIndex]->GetSrv()->View();
+                m_probeData.distanceView = passData.visibilityTexture[historyIndex]->GetSrv()->View();
 
                 if (!m_traceConstantBuffer)
                 {
@@ -259,13 +260,11 @@ namespace Wild
                 clampSampler.samplerState.addressModeW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
                 uniforms.emplace_back(clampSampler);
 
-
                 auto& pipeline = renderer.GetOrCreatePipeline(
                     "Dynamic Diffuse Global Illumination Pass", PipelineStateType::Raytracing, settings, uniforms);
 
                 list.SetPipelineState(pipeline);
                 list.BeginRender("DDGI probe trace pass");
-
 
                 list.SetConstantBufferView(0, m_traceConstantBuffer.get());
                 list.GetList()->SetComputeRootShaderResourceView(1, engine.GetAccelerationStructureManager()->GetTLASAddress());
@@ -323,8 +322,7 @@ namespace Wild
 
                 // An invalid index means the texture had no usable view, never fall back to heap slot 0 since
                 // nothing is allocated there.
-                if (m_updateRc.irradianceReadView == INVALID_HEAP_INDEX ||
-                    m_updateRc.irradianceWriteView == INVALID_HEAP_INDEX)
+                if (m_updateRc.irradianceReadView == INVALID_HEAP_INDEX || m_updateRc.irradianceWriteView == INVALID_HEAP_INDEX)
                 {
                     static bool viewsWarned = false;
                     if (!viewsWarned)
@@ -375,9 +373,8 @@ namespace Wild
                 list.SetUnorderedAccessView(2, probeSystem->GetProbeIrradianceBuffer().get());
 
                 const glm::ivec3 counts = probeSystem->GetCounts();
-                list.GetList()->Dispatch(static_cast<uint32_t>(counts.x),
-                                         static_cast<uint32_t>(counts.z),
-                                         static_cast<uint32_t>(counts.y));
+                list.GetList()->Dispatch(
+                    static_cast<uint32_t>(counts.x), static_cast<uint32_t>(counts.z), static_cast<uint32_t>(counts.y));
 
                 list.EndRender();
 
@@ -470,9 +467,8 @@ namespace Wild
                 list.SetUnorderedAccessView(2, probeSystem->GetProbeIrradianceBuffer().get());
 
                 const glm::ivec3 counts = probeSystem->GetCounts();
-                list.GetList()->Dispatch(static_cast<uint32_t>(counts.x),
-                                         static_cast<uint32_t>(counts.z),
-                                         static_cast<uint32_t>(counts.y));
+                list.GetList()->Dispatch(
+                    static_cast<uint32_t>(counts.x), static_cast<uint32_t>(counts.z), static_cast<uint32_t>(counts.y));
 
                 list.EndRender();
 
