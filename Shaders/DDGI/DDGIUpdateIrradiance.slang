@@ -56,6 +56,8 @@ void main(CSInput input) {
     RWTexture2DArray<float4> newIrradiance = DescriptorHandle<RWTexture2DArray<float4>>(irradianceWriteView);
 
     float3 prevRadiance = irradianceHistory[texelLocation].rgb;
+    bool invalidHistory = any(isnan(prevRadiance)) || any(isinf(prevRadiance)) || any(prevRadiance < 0.0f);
+    prevRadiance = invalidHistory ? float3(0, 0, 0) : prevRadiance;
 
     float3 probeDirection = OctNormalDecode(((input.GroupThreadId.xy + 0.5f) / (float)PROBE_IRRADIANCE_TEXELS) * 2 - 1);
 
@@ -78,7 +80,9 @@ void main(CSInput input) {
         {
             uint rayIndex = offset + input.GroupIndex;
             
-            SharedRadianceCache[input.GroupIndex] = probeRayData[probeIndex * probeData.GetMaxRaysPerProbe() + rayIndex].radiance;
+            float3 rayRadiance = probeRayData[probeIndex * probeData.GetMaxRaysPerProbe() + rayIndex].radiance;
+            bool invalidRay = any(isnan(rayRadiance)) || any(isinf(rayRadiance));
+            SharedRadianceCache[input.GroupIndex] = invalidRay ? float3(0, 0, 0) : max(rayRadiance, float3(0, 0, 0));
             // Rebuilding the raydirection to be the same as the initial trace rotation
             SharedDirectionCache[input.GroupIndex] =
                 GetRayDirection(rayIndex, probeData.raysPerProbe, probeData.randomRotation);
@@ -103,10 +107,9 @@ void main(CSInput input) {
     const float epsilon = 1e-9f * float(probeData.raysPerProbe);
     result *= 1.0f / max(2.0f * weightedSum, epsilon);
 
-    result = pow(result, rcp(5.0f));
+    result = pow(max(result, float3(0, 0, 0)), rcp(5.0f));
 
-    // Get blend weight
-    const float historyBlendWeight = saturate(1.0f - probeData.hysteresis);
+    const float historyBlendWeight = invalidHistory ? 1.0f : saturate(1.0f - probeData.hysteresis);
     result = lerp(prevRadiance, result, historyBlendWeight);
 
     newIrradiance[texelLocation] = float4(result, 1);

@@ -123,6 +123,8 @@ namespace Wild
         m_probeData.maxRayDistance = m_maxRayDistance;
         m_probeData.intensity = m_intensity;
         m_probeData.hysteresis = m_hysteresis;
+        m_probeData.normalBias = m_normalBias;
+        m_probeData.viewBias = m_viewBias;
 
         if (enabled) m_frameParity ^= 1u;
 
@@ -132,6 +134,8 @@ namespace Wild
             ImGui::SliderFloat("Hysteresis", &m_hysteresis, 0.0f, 0.99f);
             ImGui::SliderFloat("Max Ray Distance", &m_maxRayDistance, 1.0f, 5000.0f);
             ImGui::SliderFloat("Intensity", &m_intensity, 0.0f, 5.0f);
+            ImGui::SliderFloat("Normal Bias", &m_normalBias, 0.0f, 0.5f);
+            ImGui::SliderFloat("View Bias", &m_viewBias, 0.0f, 0.5f);
             ImGui::Checkbox("Random Ray Rotation", &m_randomRayRotation);
             ImGui::Checkbox("Freeze Updates", &m_freezeUpdates);
         });

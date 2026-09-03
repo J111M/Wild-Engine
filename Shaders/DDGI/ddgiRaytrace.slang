@@ -63,6 +63,27 @@ static const uint VOFS_NORMAL = 32;
 static const uint VOFS_UV = 48;
 static const uint VOFS_TANGENT = 64;
 
+static const float SHADOW_RAY_NORMAL_OFFSET = 0.02f;
+static const float SHADOW_RAY_TMIN = 0.01f;
+static const float BACKFACE_DISTANCE_SCALE = 0.2f;
+
+bool TraceShadowRay(float3 origin, float3 direction, float maxDistance) {
+    ShadowPayload shadowPayload;
+    shadowPayload.occluded = 1;
+
+    RayDesc ray;
+    ray.Origin = origin;
+    ray.Direction = direction;
+    ray.TMin = SHADOW_RAY_TMIN;
+    ray.TMax = maxDistance;
+
+    TraceRay(tlas,
+             RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
+             0xFF, 0, 0, 1, ray, shadowPayload);
+
+    return shadowPayload.occluded == 0;
+}
+
 [shader("raygeneration")]
 void RayGen() {
     DDGIProbeData probeData = GetDDGIProbeData(probeDataView);
@@ -87,9 +108,16 @@ void RayGen() {
 
     uint rayDataIndex = probeIndex * probeData.GetMaxRaysPerProbe() + rayIndex;
 
-    // TODO merge into 1 float4 to reduce shader lookups and storing
-    probeRayData[rayDataIndex].radiance = payload.radiance;
-    probeRayData[rayDataIndex].hitDistance = payload.hitDistance;
+    float3 radiance = payload.radiance;
+    bool invalidRadiance = any(isnan(radiance)) || any(isinf(radiance));
+    radiance = invalidRadiance ? float3(0, 0, 0) : max(radiance, float3(0, 0, 0));
+
+    float hitDistance = payload.hitDistance;
+    bool invalidDistance = isnan(hitDistance) || isinf(hitDistance);
+    hitDistance = invalidDistance ? probeData.maxRayDistance : hitDistance;
+
+    probeRayData[rayDataIndex].radiance = radiance;
+    probeRayData[rayDataIndex].hitDistance = hitDistance;
 }
 
 [shader("closesthit")]
@@ -107,7 +135,6 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
     uint v1 = tri.y * VERTEX_STRIDE;
     uint v2 = tri.z * VERTEX_STRIDE;
 
-    // Barycentrics
     float3 b = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y,
                       attribs.barycentrics.x,
                       attribs.barycentrics.y);
@@ -120,118 +147,69 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
     float2 uv1 = asfloat(vb.Load2(v1 + VOFS_UV));
     float2 uv2 = asfloat(vb.Load2(v2 + VOFS_UV));
 
-    float3 normalOS = n0 * b.x + n1 * b.y + n2 * b.z;
+    float3 normalOS = normalize(n0 * b.x + n1 * b.y + n2 * b.z);
     float2 uv = uv0 * b.x + uv1 * b.y + uv2 * b.z;
 
-    float3 normalWS = normalize(mul(normalOS, (float3x3)WorldToObject4x3()));
+    float3 normalWS = normalize(mul((float3x3)WorldToObject4x3(), normalOS));
 
-    // World hit position TODO possibly change to use reconstructed worldspace from the buffer to avoid self intersection
     float3 hitPos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
 
-    // Backface hits are discarded by the blend pass (negative distance) - don't waste a shadow ray on them.
     if (dot(normalWS, WorldRayDirection()) > 0.0) {
         payload.radiance = float3(0, 0, 0);
-        payload.hitDistance = -max(RayTCurrent(), 0.01);
+        payload.hitDistance = -max(RayTCurrent() * BACKFACE_DISTANCE_SCALE, 0.01f);
         return;
     }
 
     float3 albedo = (mesh.albedoView != 0)
         ? textures[NonUniformResourceIndex(mesh.albedoView)].SampleLevel(linearSampler, uv, 0).rgb
-    : float3(1, 1, 1);
+        : float3(1, 1, 1);
 
     float3 emissive = (mesh.emissiveView != 0)
         ? textures[NonUniformResourceIndex(mesh.emissiveView)].SampleLevel(linearSampler, uv, 0).rgb
-    : float3(0, 0, 0);
+        : float3(0, 0, 0);
     emissive *= mesh.emissiveStrength;
 
-    float3 radiance = float3(0.0f);
+    float3 diffuse = DiffuseBRDF(albedo);
+    float3 shadowOrigin = hitPos + normalWS * SHADOW_RAY_NORMAL_OFFSET;
 
-    // Directional light TODO make the approach cleaner
+    float3 radiance = emissive;
+
     {
-
-        float3 lightDirWS = normalize(mul(lightDirection.xyz, (float3x3)inverseView));
-        float3 L = normalize(-lightDirWS);
-
+        float3 L = -normalize(lightDirection.xyz);
         float NdotL = saturate(dot(normalWS, L));
-        if (NdotL > 0.0) {
-            ShadowPayload shadowPayload;
-            shadowPayload.occluded = 1;
 
-            RayDesc ray;
-            ray.Origin = hitPos;
-            ray.Direction = L;
-            ray.TMin = 1e-1f;
-            ray.TMax = 1e27f;
-
-            TraceRay(tlas,
-                     RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
-                     0xFF, 0, 0, 1, ray, shadowPayload);
-
-            float visibility = (shadowPayload.occluded != 0) ? 0.0 : 1.0;
-
-            if (visibility > 0) {
-                float3 diffuse = saturate(dot(L, normalWS * DiffuseBRDF(albedo)));
-                radiance += diffuse * (lightColorIntensity.rgb * lightColorIntensity.a);
-            }
+        if (NdotL > 0.0 && TraceShadowRay(shadowOrigin, L, 1e27f)) {
+            radiance += diffuse * NdotL * lightColorIntensity.rgb * lightColorIntensity.a;
         }
     }
 
-    // Trace light visibility and data for light types
-    for (uint i = 0; i < numPointLights; i++) {
-        bool visibility = false;
-
-        float3 toLight = pointLights[i].lightPosition.xyz - hitPos;
+    uint lightCount = min(numPointLights, MAX_POINT_LIGHTS);
+    for (uint i = 0; i < lightCount; i++) {
+        float3 toLight = pointLights[i].lightPosition.xyz - shadowOrigin;
         float lightDistance = length(toLight);
-        float3 lightDir = toLight / lightDistance;
+        if (lightDistance <= 1e-4f) continue;
 
-        // Transform the light direction and position to world space
-        lightDir = mul(lightDir, (float3x3)inverseView);
-        float3 lightPosition = mul(float4(pointLights[i].lightPosition.xyz, 1.0f), inverseView).xyz;
+        float3 L = toLight / lightDistance;
 
-        // Cull the light if the angle to the light is smaller than 0
-        float NdotL = saturate(dot(normalWS, lightDir));
+        float NdotL = saturate(dot(normalWS, L));
         if (NdotL <= 0.0) continue;
 
-        // World space calculation
-        float3 direction = lightPosition - hitPos;
-        float maxT = length(direction);
+        if (!TraceShadowRay(shadowOrigin, L, lightDistance)) continue;
 
-        ShadowPayload shadowPayload;
-        shadowPayload.occluded = 1;
-
-        RayDesc ray;
-        ray.Origin = hitPos;
-        ray.Direction = normalize(direction);
-        ray.TMin = 1e-1f;
-        ray.TMax = maxT;
-
-        TraceRay(tlas,
-                 RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
-                 0xFF, 0, 0, 1, ray, shadowPayload);
-
-        visibility = (shadowPayload.occluded == 0);
-        if (!visibility) continue;
-
-        float3 L = mul(lightDir, (float3x3)inverseView);
-        L = normalize(-L);
-
-        float3 diffuse = saturate(dot(L, normalWS * DiffuseBRDF(albedo)));
-        radiance += diffuse * (pointLights[i].colorIntensity.rgb * lightColorIntensity.a);
-
+        float attenuation = pointLights[i].colorIntensity.w / (lightDistance * lightDistance);
+        radiance += diffuse * NdotL * pointLights[i].colorIntensity.rgb * attenuation;
     }
 
-    radiance += emissive;
-    radiance += DiffuseBRDF(min(albedo, float3(0.9f)) *
-                            SampleDDGIIrradiance(probeData, linearSamplerClamp, hitPos, normalWS, WorldRayDirection())); // Sample ddgi
-   
+    radiance += DiffuseBRDF(min(albedo, float3(0.9f))) *
+                SampleDDGIIrradiance(probeData, linearSamplerClamp, hitPos, normalWS, WorldRayDirection());
+
     payload.radiance = radiance;
-    payload.hitDistance = min(RayTCurrent(), payload.hitDistance);
+    payload.hitDistance = RayTCurrent();
 }
 
 [shader("miss")]
 void Miss(inout RayPayload payload) {
     float3 dir = WorldRayDirection();
-    dir.y = -dir.y;
     payload.radiance = (environmentView != 0) ? cubeTextures[NonUniformResourceIndex(environmentView)].SampleLevel(linearSampler, dir, 0).rgb : float3(0, 0, 0);
     payload.hitDistance = GetDDGIProbeData(probeDataView).maxRayDistance;
 }

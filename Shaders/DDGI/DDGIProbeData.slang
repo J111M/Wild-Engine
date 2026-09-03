@@ -15,6 +15,9 @@ struct DDGIProbeData
     uint irradianceView;
     uint distanceView;
 
+    float normalBias;
+    float viewBias;
+
     uint GetMaxRaysPerProbe() { return uint(probeCounts.w); }
 
     uint GetProbeCount() { return uint(probeCounts.x * probeCounts.y * probeCounts.z); }

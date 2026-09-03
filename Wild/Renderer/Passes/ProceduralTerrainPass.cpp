@@ -215,7 +215,7 @@ namespace Wild
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
             desc.height = engine.GetGfxContext()->GetHeight();
-            desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            desc.format = DXGI_FORMAT_R16G16B16A16_UNORM;
             desc.name = "Normal render target";
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::renderTarget | TextureDesc::shaderResource);
@@ -256,7 +256,7 @@ namespace Wild
                 settings.DepthStencilState.DepthEnable = true;
 
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Albedo
-                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Normal
+                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_UNORM); // Normal
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Emissive
 
                 // Setting up the input layout

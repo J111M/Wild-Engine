@@ -29,6 +29,7 @@ namespace Wild
     {
         glm::vec3 cameraPosition{};
         glm::vec4 lightDirectionIntensity = glm::vec4(-0.3, 14.0, -2.5, 1.0f);
+        glm::vec4 lightColorIntensity = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
         uint32_t viewMode = 0;
         uint32_t numOfPointLights{};
     };

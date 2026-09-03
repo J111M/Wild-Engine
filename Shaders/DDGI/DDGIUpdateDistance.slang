@@ -60,6 +60,8 @@ void main(CSInput input) {
     RWTexture2DArray<float2> newDistance = DescriptorHandle<RWTexture2DArray<float2>>(distanceWriteView);
 
     float2 prevDistance = distanceHistory[texelLocation];
+    bool invalidHistory = any(isnan(prevDistance)) || any(isinf(prevDistance)) || any(prevDistance < 0.0f);
+    prevDistance = invalidHistory ? float2(0, 0) : prevDistance;
 
     float3 probeDirection = OctNormalDecode(((input.GroupThreadId.xy + 0.5f) / (float)PROBE_DISTANCE_TEXELS) * 2 - 1);
 
@@ -80,7 +82,9 @@ void main(CSInput input) {
         {
             uint rayIndex = offset + input.GroupIndex;
 
-            SharedDepthCache[input.GroupIndex] = probeRayData[probeIndex * probeData.GetMaxRaysPerProbe() + rayIndex].hitDistance;
+            float rayDepth = probeRayData[probeIndex * probeData.GetMaxRaysPerProbe() + rayIndex].hitDistance;
+            bool invalidRay = isnan(rayDepth) || isinf(rayDepth);
+            SharedDepthCache[input.GroupIndex] = invalidRay ? probeMaxRayDistance : rayDepth;
             // Rebuilding the raydirection to be the same as the initial trace rotation
             SharedDirectionCache[input.GroupIndex] =
                 GetRayDirection(rayIndex, probeData.raysPerProbe, probeData.randomRotation);
@@ -110,9 +114,8 @@ void main(CSInput input) {
     const float epsilon = 1e-9f * float(probeData.raysPerProbe);
     result *= 1.0f / max(2.0f * weightedSum, epsilon);
 
-    // Get blend weight
-    const float historyBlendWeight = saturate(1.0f - probeData.hysteresis);
-    result = lerp(prevDistance, result, historyBlendWeight);
+    const float historyBlendWeight = invalidHistory ? 1.0f : saturate(1.0f - probeData.hysteresis);
+    result = (weightedSum > MIN_WEIGHT || invalidHistory) ? lerp(prevDistance, result, historyBlendWeight) : prevDistance;
 
     newDistance[texelLocation] = result;
 

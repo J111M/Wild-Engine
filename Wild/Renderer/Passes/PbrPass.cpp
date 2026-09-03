@@ -73,6 +73,7 @@ namespace Wild
             auto& directionalLight = ecs->GetComponent<DirectionalLight>(entity);
 
             m_pbrData.lightDirectionIntensity = glm::vec4(directionalLight.direction, directionalLight.colorIntensity.a);
+            m_pbrData.lightColorIntensity = directionalLight.colorIntensity;
             break;
         }
 
@@ -176,6 +177,12 @@ namespace Wild
                 // shadowSampler.samplerState.borderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
                 uniforms.emplace_back(shadowSampler);
 
+                Uniform gbufferSampler{2, 0, RootParams::RootResourceType::StaticSampler};
+                gbufferSampler.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                gbufferSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+                gbufferSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                uniforms.emplace_back(gbufferSampler);
+
                 // DDGI probe irradiance structured buffer
                 Uniform probeIrradianceUni{0, 2, RootParams::RootResourceType::ShaderResourceView};
                 probeIrradianceUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
@@ -202,6 +209,12 @@ namespace Wild
                 deferredData->normalMetallicTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 deferredData->emissiveTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 deferredData->depthTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+                if (ddgiData->probeDataView != INVALID_HEAP_INDEX)
+                {
+                    ddgiData->iradianceTexture[ddgiData->frameParity]->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                    ddgiData->visibilityTexture[ddgiData->frameParity]->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                }
 
                 m_rc.albedoView = deferredData->albedoRoughnessTexture->GetSrv()->BindlessView();
                 m_rc.normalView = deferredData->normalMetallicTexture->GetSrv()->BindlessView();

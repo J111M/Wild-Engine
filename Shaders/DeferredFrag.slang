@@ -59,8 +59,7 @@ PSOut main(PSInput input)
         normal.xyz = normalize(mul((normal.xyz), TBN));
     }
     else {
-        normal.xyz = mul((float3x3)invTransposeModel, input.normal.xyz);
-        normal.xyz = normalize(normal.xyz * 2.0 - 1.0);
+        normal.xyz = normalize(mul((float3x3)invTransposeModel, input.normal.xyz));
     }
 
     float4 emissive = float4(0, 0, 0, 0);

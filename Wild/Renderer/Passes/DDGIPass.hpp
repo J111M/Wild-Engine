@@ -29,6 +29,9 @@ namespace Wild
 
         uint32_t irradianceView{};
         uint32_t distanceView{};
+
+        float normalBias{0.1f};
+        float viewBias{0.1f};
     };
 
     struct DDGITraceConstants
@@ -124,6 +127,8 @@ namespace Wild
         float m_hysteresis = 0.97f;
         float m_maxRayDistance = 1000.0f;
         float m_intensity = 1.0f;
+        float m_normalBias = 0.1f;
+        float m_viewBias = 0.1f;
 
         bool m_randomRayRotation = true;
         bool m_freezeUpdates = false;
