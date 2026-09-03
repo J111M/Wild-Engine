@@ -35,6 +35,9 @@ struct MeshInstanceInfo {
     float roughness;
     float metallic;
     float emissiveStrength;
+
+    float3 emissiveFactor;
+    float meshPadding;
 };
 
 StructuredBuffer<MeshInstanceInfo> meshTable : register(t1, space0);
@@ -161,13 +164,13 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
     }
 
     float3 albedo = (mesh.albedoView != 0)
-        ? textures[NonUniformResourceIndex(mesh.albedoView)].SampleLevel(linearSampler, uv, 0).rgb
+        ? pow(textures[NonUniformResourceIndex(mesh.albedoView)].SampleLevel(linearSampler, uv, 0).rgb, 2.2f)
         : float3(1, 1, 1);
 
     float3 emissive = (mesh.emissiveView != 0)
-        ? textures[NonUniformResourceIndex(mesh.emissiveView)].SampleLevel(linearSampler, uv, 0).rgb
-        : float3(0, 0, 0);
-    emissive *= mesh.emissiveStrength;
+        ? pow(textures[NonUniformResourceIndex(mesh.emissiveView)].SampleLevel(linearSampler, uv, 0).rgb, 2.2f)
+        : float3(1, 1, 1);
+    emissive *= mesh.emissiveFactor * mesh.emissiveStrength * emissiveIntensity;
 
     float3 diffuse = DiffuseBRDF(albedo);
     float3 shadowOrigin = hitPos + normalWS * SHADOW_RAY_NORMAL_OFFSET;

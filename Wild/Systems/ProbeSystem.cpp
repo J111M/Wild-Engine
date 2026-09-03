@@ -20,6 +20,8 @@ namespace Wild
     {
         m_origin = origin;
         Generate();
+
+        if (m_probeStructure) m_probeStructure->UploadToGPU(m_probes.data(), m_probes.size() * sizeof(Probe));
     }
 
     void ProbeSystem::AllocateProbes()

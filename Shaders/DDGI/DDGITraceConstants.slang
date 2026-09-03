@@ -9,5 +9,5 @@ cbuffer DDGITraceConstants : register(b0) {
     uint numPointLights;
 
     uint probeDataView;
-    uint tracePadding;
+    float emissiveIntensity;
 };

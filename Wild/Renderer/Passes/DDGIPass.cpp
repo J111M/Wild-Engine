@@ -51,7 +51,6 @@ namespace Wild
         m_probeDataBuffer->Allocate(&m_probeData, sizeof(DDGIProbeData));
     }
 
-
     // TODO replace function
     void DDGIPass::FillUpdateConstants(const DDGIPassData& ddgiData, const ProbeSystem& probeSystem)
     {
@@ -125,17 +124,29 @@ namespace Wild
         m_probeData.hysteresis = m_hysteresis;
         m_probeData.normalBias = m_normalBias;
         m_probeData.viewBias = m_viewBias;
+        m_traceRc.emissiveIntensity = m_emissiveIntensity;
 
         if (enabled) m_frameParity ^= 1u;
 
         engine.GetImGui()->AddPanel("DDGI Settings", [this]() {
             ImGui::Checkbox("Enabled", &enabled);
+
+            if (auto* probeSystem = engine.GetRenderer()->GetSystems().TryGetSystem<ProbeSystem>())
+            {
+                glm::vec3 origin = probeSystem->GetOrigin();
+                if (ImGui::DragFloat3("Volume Origin", &origin.x, 0.25f)) probeSystem->SetOrigin(origin);
+
+                const glm::vec3 extent = probeSystem->GetSpacing() * glm::vec3(probeSystem->GetCounts() - glm::ivec3(1));
+                ImGui::Text("Volume covers %.1f x %.1f x %.1f", extent.x, extent.y, extent.z);
+            }
+
             ImGui::SliderInt("Rays Per Probe", &m_raysPerProbe, 1, static_cast<int>(ProbeSystem::MAX_RAYS_PER_PROBE));
             ImGui::SliderFloat("Hysteresis", &m_hysteresis, 0.0f, 0.99f);
             ImGui::SliderFloat("Max Ray Distance", &m_maxRayDistance, 1.0f, 5000.0f);
             ImGui::SliderFloat("Intensity", &m_intensity, 0.0f, 5.0f);
             ImGui::SliderFloat("Normal Bias", &m_normalBias, 0.0f, 0.5f);
             ImGui::SliderFloat("View Bias", &m_viewBias, 0.0f, 0.5f);
+            ImGui::SliderFloat("Emissive Intensity", &m_emissiveIntensity, 0.0f, 200.0f);
             ImGui::Checkbox("Random Ray Rotation", &m_randomRayRotation);
             ImGui::Checkbox("Freeze Updates", &m_freezeUpdates);
         });

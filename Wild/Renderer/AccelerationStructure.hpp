@@ -35,6 +35,9 @@ namespace Wild
         float roughness{};
         float metallic{};
         float emissiveStrength{};
+
+        float emissiveFactor[3]{};
+        float meshPadding{};
     };
 
     class AccelerationStructureManager : public NonCopyable

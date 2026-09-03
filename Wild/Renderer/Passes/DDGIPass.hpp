@@ -47,7 +47,7 @@ namespace Wild
 
         uint32_t probeDataView{INVALID_HEAP_INDEX};
 
-        uint32_t tracePadding{};
+        float emissiveIntensity{1.0f};
     };
 
     struct DDGIUpdateConstants
@@ -129,6 +129,7 @@ namespace Wild
         float m_intensity = 1.0f;
         float m_normalBias = 0.1f;
         float m_viewBias = 0.1f;
+        float m_emissiveIntensity = 1.0f;
 
         bool m_randomRayRotation = true;
         bool m_freezeUpdates = false;

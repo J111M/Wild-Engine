@@ -315,20 +315,13 @@ float4 main(VSOutput input) : SV_TARGET0
     }
 
     float3 ddgiIrradiance = float3(0.0f, 0.0f, 0.0f);
-    float ddgiWeight = 0.0f;
     if (probeDataView != INVALID_HEAP_INDEX)
     {
         DDGIProbeData probeData = GetDDGIProbeData(probeDataView);
-        ddgiWeight = DDGIVolumeWeight(probeData, positionWS);
         ddgiIrradiance = SampleDDGIIrradiance(probeData, N, V, positionWS);
     }
 
-    float3 irradiance = float3(0.0f);
-    if (irradianceMapView > 0)
-        irradiance = cubeTextures[irradianceMapView].Sample(pointSampler, N).rgb;
-    else { irradiance = float3(0.2f, 0.2f, 0.2f); }
-
-    irradiance = irradiance * (1.0f - ddgiWeight) + ddgiIrradiance / PI;
+    float3 irradiance = ddgiIrradiance / PI;
 
     float3 iblF = FresnelSchlickRough(ndotv, F0, roughness);
     float3 iblkS = iblF;

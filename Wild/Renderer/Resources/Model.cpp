@@ -277,6 +277,8 @@ namespace Wild
         materials.roughness = material.pbrData.roughnessFactor;
         materials.metallic = material.pbrData.metallicFactor;
         materials.emissiveStrength = material.emissiveStrength;
+        materials.emissiveFactor =
+            glm::vec3(material.emissiveFactor[0], material.emissiveFactor[1], material.emissiveFactor[2]);
 
         if (material.pbrData.baseColorTexture.has_value())
         {
@@ -395,6 +397,9 @@ namespace Wild
             if (material.m_occlusion) infoDesc.ambientOcclussionView = material.m_occlusion->GetSrv()->BindlessView();
 
             infoDesc.emissiveStrength = material.emissiveStrength;
+            infoDesc.emissiveFactor[0] = material.emissiveFactor.x;
+            infoDesc.emissiveFactor[1] = material.emissiveFactor.y;
+            infoDesc.emissiveFactor[2] = material.emissiveFactor.z;
             infoDesc.metallic = material.metallic;
             infoDesc.roughness = material.roughness;
 
