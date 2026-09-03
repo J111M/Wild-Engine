@@ -158,7 +158,22 @@ namespace Wild
 
         passData->frameParity = m_frameParity;
 
-        passData->probeDataView = enabled ? GetOrCreateProbeDataView() : INVALID_HEAP_INDEX;
+        const auto& capabilities = engine.GetGfxContext()->GetCapabilities();
+        const bool ddgiSupported =
+            capabilities.SupportsRayTracing() && capabilities.CheckResourceBindingSupport(ResourceBindingSupport::Tier3);
+
+        if (!ddgiSupported)
+        {
+            // 1 time feature support log
+            static bool supportWarned = false;
+            if (!supportWarned)
+            {
+                WD_WARN("DDGI needs ray tracing and resource binding tier 3, falling back to the IBL irradiance map.");
+                supportWarned = true;
+            }
+        }
+
+        passData->probeDataView = (enabled && ddgiSupported) ? GetOrCreateProbeDataView() : INVALID_HEAP_INDEX;
 
         auto probeSystem = renderer.GetSystems().GetSystem<ProbeSystem>();
 
