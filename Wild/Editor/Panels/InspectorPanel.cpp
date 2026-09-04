@@ -67,7 +67,9 @@ namespace Wild
                 TrackFieldEdit();
                 break;
             case ColliderType::ConvexHull:
-            case ColliderType::Mesh: ImGui::TextDisabled("Uses this entity's mesh geometry"); break;
+            case ColliderType::Mesh:
+                ImGui::TextDisabled("Uses this entity's mesh geometry");
+                break;
             }
 
             if (EditorWidgets::DragFloat3Colored("Offset", shape.offset)) rigidBody.bodyDirty = true;
@@ -131,8 +133,10 @@ namespace Wild
             {
                 ImGui::PushID(static_cast<int>(i));
 
-                std::string label = "Collider " + std::to_string(i) + ": " + kColliderTypeNames[static_cast<int>(rigidBody.shapes[i].type)];
-                if (ImGui::TreeNodeEx("ColliderNode", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed, "%s", label.c_str()))
+                std::string label =
+                    "Collider " + std::to_string(i) + ": " + kColliderTypeNames[static_cast<int>(rigidBody.shapes[i].type)];
+                if (ImGui::TreeNodeEx(
+                        "ColliderNode", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed, "%s", label.c_str()))
                 {
                     DrawColliderShape(rigidBody, rigidBody.shapes[i], hasMesh);
 
@@ -315,7 +319,7 @@ namespace Wild
             if (ImGui::Button("Enable Convex Hull Collision on All Children")) AddConvexHullCollisionToChildren(*ecs, selected);
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Adds a Physics Body + Convex Hull collider to every descendant with a mesh\n"
-                                   "(skips any that already have one). Great for a whole imported model.");
+                                  "(skips any that already have one). Great for a whole imported model.");
         }
 
         if (ecs->HasComponent<PointLight>(selected) && ImGui::CollapsingHeader("Point Light", ImGuiTreeNodeFlags_DefaultOpen))
@@ -324,7 +328,7 @@ namespace Wild
 
             ImGui::ColorEdit3("Color", &pointLight.colorIntensity[0]);
             TrackFieldEdit();
-            ImGui::DragFloat("Intensity", &pointLight.colorIntensity.w);
+            ImGui::DragFloat("Intensity", &pointLight.colorIntensity.w, 0.0f, 1000.0f);
             TrackFieldEdit();
         }
 

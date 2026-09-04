@@ -347,8 +347,8 @@ float4 main(VSOutput input) : SV_TARGET0
 
     // envBrdf = max(envBrdf, 0.0f);
 
-    float3 specularIBL =
-        prefilteredReflection * iblF; //(iblF * envBrdf.x + envBrdf.y); // Temporary disabled because the brdf is not correct
+    float3 specularIBL = float3(0.0f);
+        //prefilteredReflection * iblF; //(iblF * envBrdf.x + envBrdf.y); // Temporary disabled because the brdf is not correct
 
     float3 diffuse = albedo.rgb * irradiance;
 
@@ -405,9 +405,9 @@ float4 main(VSOutput input) : SV_TARGET0
     case 2:
         return float4(N.xyz, 1.0f);
     case 3:
-        return float4(float3(roughness), 1.0f);
+        return float4(shadow * Lo + pointLo + albedo.rgb + emissive.rgb, 1.0f);
     case 4:
-        return float4(float3(metallic), 1.0f);
+        return float4(shadow * Lo + pointLo + ((iblkD * (albedo.rgb * cubeTextures[irradianceMapView].Sample(pointSampler, N).rgb) + specularIBL + scatterColor) * ao) + emissive.rgb, 1.0f);
     case 5:
         return float4(ddgiIrradiance, 1.0f);
     case 6:

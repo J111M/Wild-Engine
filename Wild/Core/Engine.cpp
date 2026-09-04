@@ -80,7 +80,7 @@ namespace Wild
                 {
                     auto& camera = m_ecs->GetComponent<Camera>(cameraEntity);
                     camera.Input(*m_window.get(), m_window->GetWidth(), m_window->GetHeight(), deltaTime);
-                    camera.UpdateMatrix(glm::radians(70.0f), m_window->AspectRatio(), 0.1f, 5000.0f);
+                    camera.UpdateMatrix(glm::radians(70.0f), m_window->AspectRatio(), 0.1f, 200.0f);
 
                     if (camera.GetCameraIndex() == 0u) { mainCamera = &camera; }
                 }

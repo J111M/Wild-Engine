@@ -143,7 +143,7 @@ namespace Wild
             ImGui::SliderInt("Rays Per Probe", &m_raysPerProbe, 1, static_cast<int>(ProbeSystem::MAX_RAYS_PER_PROBE));
             ImGui::SliderFloat("Hysteresis", &m_hysteresis, 0.0f, 0.99f);
             ImGui::SliderFloat("Max Ray Distance", &m_maxRayDistance, 1.0f, 5000.0f);
-            ImGui::SliderFloat("Intensity", &m_intensity, 0.0f, 5.0f);
+            ImGui::SliderFloat("Intensity", &m_intensity, 0.0f, 50.0f);
             ImGui::SliderFloat("Normal Bias", &m_normalBias, 0.0f, 0.5f);
             ImGui::SliderFloat("View Bias", &m_viewBias, 0.0f, 0.5f);
             ImGui::SliderFloat("Emissive Intensity", &m_emissiveIntensity, 0.0f, 200.0f);

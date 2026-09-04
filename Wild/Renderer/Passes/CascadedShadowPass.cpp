@@ -252,7 +252,7 @@ namespace Wild
                     nearFar[nf] = nearField;
                 }
 
-                cascadeProjections = glm::perspective(glm::radians(70.0f), camera->GetAspect(), nearFar[0], nearFar[1]);
+                cascadeProjections = glm::perspectiveRH_ZO(camera->GetFOV(), camera->GetAspect(), nearFar[0], nearFar[1]);
                 cascadeFarDistances = nearFar[1];
 
                 const glm::mat4 cascadeViewProj = GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,
@@ -294,80 +294,61 @@ namespace Wild
     {
         const auto cornersWS = GetFrustumCornersWorldSpace(cascadeProj, cameraView);
 
-        // Calculate view frostum center by getting the average.
         glm::vec3 frustumCenter(0.0f);
-
         for (const glm::vec3& v : cornersWS)
         {
             frustumCenter += v;
         }
-
         frustumCenter /= static_cast<float>(cornersWS.size());
 
-        // Frustum bounds
-        glm::vec3 min = glm::vec3(FLT_MAX);
-        glm::vec3 max = glm::vec3(-FLT_MAX);
-
-        glm::vec3 normalizeLightDir = -glm::normalize(lightDir);
-
-        const glm::vec3 lightPos = frustumCenter + normalizeLightDir;
-
-        const glm::mat4 lightView = glm::lookAtRH(lightPos, frustumCenter, glm::vec3(0, 1, 0));
-
-        // Transform the world space corners to light space
-        for (const auto& corner : cornersWS)
+        float radius = 0.0f;
+        for (const glm::vec3& v : cornersWS)
         {
-            const glm::vec3 cornerLS = glm::vec3(lightView * glm::vec4(corner, 1.0f));
-            min = glm::min(min, cornerLS);
-            max = glm::max(max, cornerLS);
+            radius = glm::max(radius, glm::length(v - frustumCenter));
+        }
+        radius = std::ceil(radius * 16.0f) / 16.0f;
+
+        const glm::vec3 L = glm::normalize(lightDir); // direction light travels
+        const glm::vec3 up = (std::abs(L.y) > 0.99f) ? glm::vec3(0, 0, 1) : glm::vec3(0, 1, 0);
+
+        // Pull the light back past the sphere plus m_zMult of caster room.
+        const glm::vec3 lightPos = frustumCenter - L * (radius + m_zMult);
+        const glm::mat4 lightView = glm::lookAtRH(lightPos, frustumCenter, up);
+
+        const float zNear = 0.0f;
+        const float zFar = 2.0f * radius + m_zMult;
+
+        glm::mat4 lightProj = glm::orthoRH_ZO(-radius, radius, -radius, radius, zNear, zFar);
+
+        // Snap the shadow texel grid to stop edge crawl as the camera moves.
+        const float res = static_cast<float>(2048);
+        glm::mat4 shadowMatrix = lightProj * lightView;
+        glm::vec4 origin = shadowMatrix * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        origin *= res * 0.5f;
+        glm::vec4 rounded = glm::round(origin);
+        glm::vec4 offset = (rounded - origin) * 2.0f / res;
+        offset.z = 0.0f;
+        offset.w = 0.0f;
+        lightProj[3] += offset;
+
+        if (m_drawDebugFrustum && !m_lockFrustum)
+        {
+            const glm::vec3 dbgMin(-radius, -radius, -zFar);
+            const glm::vec3 dbgMax(radius, radius, -zNear);
+
+            glm::vec4 wsCenterH = glm::inverse(lightView) * glm::vec4(0.0f, 0.0f, -(zNear + zFar) * 0.5f, 1.0f);
+            glm::vec3 wsCenter = glm::vec3(wsCenterH) / wsCenterH.w;
+
+            m_lightDirDebug.push_back(wsCenter);
+            m_lightDirDebug2.push_back(wsCenter + L * (radius * 0.6f));
+
+            m_minExtents.push_back(dbgMin);
+            m_maxExtents.push_back(dbgMax);
+            m_lightView.push_back(lightView);
+            m_frustumCorners.push_back(cornersWS); // was pushed 8 times
         }
 
-        // Z multiple should be modified according to the scene
-        if (min.z < 0) { min.z *= m_zMult; }
-        else
-        {
-            min.z /= m_zMult;
-        }
-        if (max.z < 0) { max.z /= m_zMult; }
-        else
-        {
-            max.z *= m_zMult;
-        }
-
-        // Set debug line data
-        if (m_drawDebugFrustum)
-        {
-            if (!m_lockFrustum)
-            {
-                glm::vec3 lsCenter = glm::vec3((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f, (min.z + max.z) * 0.5f);
-                glm::vec4 wsCenterH = glm::inverse(lightView) * glm::vec4(lsCenter, 1.0f);
-                glm::vec3 wsCenter = glm::vec3(wsCenterH) / wsCenterH.w;
-
-                glm::vec3 lightDir = glm::normalize(glm::vec3(m_directLight.lightDirectionIntensity.x,
-                                                              m_directLight.lightDirectionIntensity.y,
-                                                              m_directLight.lightDirectionIntensity.z));
-
-                float arrowLen =
-                    glm::length(glm::vec3(max.x - min.x, max.y - min.y, max.z - min.z)) * 0.3f; // scale relative to cascade size
-
-                m_lightDirDebug.push_back(wsCenter);
-                m_lightDirDebug2.push_back(wsCenter + lightDir * arrowLen);
-
-                m_minExtents.push_back(min);
-                m_maxExtents.push_back(max);
-                m_lightView.push_back(lightView);
-
-                for (size_t i = 0; i < cornersWS.size(); i++)
-                {
-                    m_frustumCorners.push_back(cornersWS);
-                }
-            }
-        }
-
-        // Get the cascade depth split for the near and far
-        m_directLight.cascadeSplitDepthRange[cascadeIndex] = max.z - min.z;
-
-        const glm::mat4 lightProj = glm::orthoRH_ZO(min.x, max.x, min.y, max.y, min.z, max.z);
+        m_directLight.cascadeSplitDepthRange[cascadeIndex] = zFar - zNear;
 
         return lightProj * lightView;
     }
