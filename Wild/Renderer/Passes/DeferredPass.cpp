@@ -99,7 +99,7 @@ namespace Wild
             ecs->AddComponent<Model>(entity, "Assets/Models/Sponza/glTF/Sponza.gltf", entity);
             transform.SetScale(glm::vec3(1, 1, 1));
             transform.SetPosition(glm::vec3(70, 1, 70));
-            //transform.SetRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
+            // transform.SetRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
             transform.Name = "Sponza";
         });
 
@@ -136,16 +136,21 @@ namespace Wild
 
     void DeferredPass::IndirectPreparePass(Renderer& renderer, RenderGraph& rg) {}
 
-    void DeferredPass::Add(Renderer& renderer, RenderGraph& rg)
+    void DeferredPass::DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg)
     {
-        auto* passData = rg.AllocatePassData<DeferredPassData>();
-        auto* grassData = rg.GetPassData<DeferredPassData, RenderGrassData>();
+        rg.AddPass<DeferredPassData>("Deferred mesh shader pass",
+                                     PassType::MeshShader,
+                                     [&renderer, this](const DeferredPassData& passData, CommandList& list) {
+                                         PipelineStateSettings settings{};
+                                         settings.ShaderState.MeshShader =
+                                             engine.GetShaderTracker()->GetOrCreateShader("Shaders/DeferredVert.slang");
 
-        passData->albedoRoughnessTexture = grassData->albedoRoughnessTexture;
-        passData->normalMetallicTexture = grassData->normalMetallicTexture;
-        passData->emissiveTexture = grassData->emissiveTexture;
-        passData->depthTexture = grassData->depthTexture;
+                                         settings.DepthStencilState.DepthEnable = true;
+                                     });
+    }
 
+    void DeferredPass::DeferredVertexPass(Renderer& renderer, RenderGraph& rg)
+    {
         rg.AddPass<DeferredPassData>(
             "Deferred pass", PassType::Graphics, [&renderer, this](const DeferredPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
@@ -164,9 +169,9 @@ namespace Wild
                 settings.ShaderState.InputLayout.emplace_back(
                     InputElement("TANGENT", DXGI_FORMAT_R32G32B32A32_FLOAT, sizeof(glm::vec3) * 3 + sizeof(glm::vec2)));
 
-                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Albedo
+                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Albedo
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_UNORM); // Normal
-                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Emissive
+                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Emissive
 
                 std::vector<Uniform> uniforms;
                 Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DeferredRootConstants)};
@@ -244,5 +249,21 @@ namespace Wild
 
                 list.EndRender();
             });
+    }
+
+    void DeferredPass::Add(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<DeferredPassData>();
+        auto* grassData = rg.GetPassData<DeferredPassData, RenderGrassData>();
+
+        passData->albedoRoughnessTexture = grassData->albedoRoughnessTexture;
+        passData->normalMetallicTexture = grassData->normalMetallicTexture;
+        passData->emissiveTexture = grassData->emissiveTexture;
+        passData->depthTexture = grassData->depthTexture;
+
+        if (engine.GetGfxContext()->GetCapabilities().CheckMeshShaderSupport(MeshShaderSupport::Tier1))
+            DeferredMeshShaderPass(renderer, rg);
+        else
+            DeferredVertexPass(renderer, rg);
     }
 } // namespace Wild

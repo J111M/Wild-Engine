@@ -57,6 +57,9 @@ namespace Wild
 
         void IndirectPreparePass(Renderer& renderer, RenderGraph& rg);
 
+        void DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg);
+        void DeferredVertexPass(Renderer& renderer, RenderGraph& rg);
+
       private:
         DeferredRootConstants m_rc;
         std::shared_ptr<PipelineState> m_pipeline{};
