@@ -23,7 +23,7 @@ namespace Wild
         explicit GPUBuffer(const BufferDesc& desc);
         ~GPUBuffer();
 
-        void CreateIndexBuffer(std::vector<uint32_t> indices);
+        void CreateIndexBuffer(const std::vector<uint32_t>& indices);
 
         void Allocate(void* dataSrc, size_t size = 0);
         void UploadToGPU(void* dataSrc, size_t size = 0);
@@ -61,7 +61,8 @@ namespace Wild
         // Srv for bindless raytracing heap
         std::shared_ptr<ShaderResourceView> m_srView;
 
-        void* m_data = nullptr;
+        // Points into the GPU upload heap while the buffer is mapped, this is not CPU owned memory
+        void* m_mappedData = nullptr;
 
         uint32_t m_dataSize{};
 
@@ -101,10 +102,8 @@ namespace Wild
                                                                     D3D12_RESOURCE_STATE_GENERIC_READ,
                                                                     uploadResourceName);
 
-            WriteData((void*)vertices.data(), m_desc.size);
-
             D3D12_SUBRESOURCE_DATA data = {};
-            data.pData = reinterpret_cast<BYTE*>(m_data);
+            data.pData = vertices.data();
             data.RowPitch = m_desc.size;
             data.SlicePitch = m_desc.size;
 

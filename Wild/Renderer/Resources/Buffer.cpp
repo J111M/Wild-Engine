@@ -67,7 +67,7 @@ namespace Wild
         }
     }
 
-    void GPUBuffer::CreateIndexBuffer(std::vector<uint32_t> indices)
+    void GPUBuffer::CreateIndexBuffer(const std::vector<uint32_t>& indices)
     {
         auto gfxContext = engine.GetGfxContext();
         auto bufferAllocator = gfxContext->GetBufferAllocator();
@@ -75,8 +75,6 @@ namespace Wild
         m_desc.stride = sizeof(uint32_t);
         m_desc.size = indices.size() * sizeof(uint32_t);
         m_dataSize = static_cast<uint32_t>(m_desc.size);
-
-        WriteData((void*)indices.data(), m_desc.size);
 
         m_resource = bufferAllocator->CreateBuffer(m_desc);
 
@@ -88,7 +86,7 @@ namespace Wild
                                                                 "Upload resource: " + m_desc.name);
 
         D3D12_SUBRESOURCE_DATA indexData = {};
-        indexData.pData = m_data;
+        indexData.pData = indices.data();
         indexData.RowPitch = m_desc.size;
         indexData.SlicePitch = indexData.RowPitch;
 
@@ -170,7 +168,7 @@ namespace Wild
     void GPUBuffer::Map(CD3DX12_RANGE* readRange)
     {
         m_dataIsMapped = true;
-        m_resource->Handle()->Map(0, readRange, &m_data);
+        m_resource->Handle()->Map(0, readRange, &m_mappedData);
     }
 
     void GPUBuffer::Unmap()
@@ -179,18 +177,23 @@ namespace Wild
         {
             m_resource->Handle()->Unmap(0, nullptr);
             m_dataIsMapped = false;
+            m_mappedData = nullptr;
         }
     }
 
+    // Writes straight into the mapped upload memory, the buffer has to be mapped by the caller
     void GPUBuffer::WriteData(void* dataSrc, size_t size)
     {
         // TODO change to just use 1 standard instead of being able to overwrite it
         if (size > 0) m_desc.size = size;
 
-        // Make sure the pointer has allocated data
-        if (!m_data) m_data = malloc(static_cast<size_t>(m_desc.size));
+        if (!m_dataIsMapped || !m_mappedData)
+        {
+            WD_ERROR("WriteData called on a buffer that is not mapped: {}", m_desc.name);
+            return;
+        }
 
-        if (m_data) { memcpy(m_data, dataSrc, static_cast<size_t>(m_desc.size)); }
+        memcpy(m_mappedData, dataSrc, static_cast<size_t>(m_desc.size));
     }
 
     std::shared_ptr<VertexBufferView> GPUBuffer::GetVBView() const
