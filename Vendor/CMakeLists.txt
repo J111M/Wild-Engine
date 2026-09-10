@@ -13,6 +13,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(fastgltf)
 target_link_libraries(Wild PRIVATE fastgltf)
 
+# meshoptimizer
+FetchContent_Declare(
+    meshoptimizer
+    GIT_REPOSITORY https://github.com/zeux/meshoptimizer.git
+    GIT_TAG v1.2
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(meshoptimizer)
+target_link_libraries(Wild PRIVATE meshoptimizer)
+
 # Pix debugging
 FetchContent_Declare(
     WinPixEventRuntime
