@@ -171,5 +171,7 @@ namespace Wild
 
         // 3 grass lod's total
         uint32_t m_lodAmount = 3;
+
+        bool m_grassPassEnabled = false;
     };
 } // namespace Wild

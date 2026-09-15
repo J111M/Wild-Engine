@@ -104,6 +104,8 @@ namespace Wild
         bool m_shouldGenerateChunks = true;
         bool m_keepGeneratingTerrain = false;
 
+        bool m_pcgPassEnabled = false;
+
         // TODO remove temp value
         int tempChunkID = 0;
 

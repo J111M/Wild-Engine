@@ -229,36 +229,39 @@ namespace Wild
 
         rg.AddPass<ClearCounterData>(
             "Clear counter pass", PassType::Compute, [&renderer, this](ClearCounterData& countData, CommandList& list) {
-                auto context = engine.GetGfxContext();
-                UINT frameIndex = context->GetBackBufferIndex();
+                if (m_grassPassEnabled)
+                {
+                    auto context = engine.GetGfxContext();
+                    UINT frameIndex = context->GetBackBufferIndex();
 
-                // Set all uav buffers to the correct state
-                m_culledInstancesBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-                m_instanceCountBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-                m_drawCommandsBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                    // Set all uav buffers to the correct state
+                    m_culledInstancesBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                    m_instanceCountBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                    m_drawCommandsBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-                PipelineStateSettings settings{};
-                settings.shaderState.computeShader =
-                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeClearCounter.slang");
+                    PipelineStateSettings settings{};
+                    settings.shaderState.computeShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeClearCounter.slang");
 
-                std::vector<Uniform> uniforms;
-                Uniform instanceCountBuffer{0, 0, RootParams::RootResourceType::UnorderedAccessView};
-                uniforms.emplace_back(instanceCountBuffer);
+                    std::vector<Uniform> uniforms;
+                    Uniform instanceCountBuffer{0, 0, RootParams::RootResourceType::UnorderedAccessView};
+                    uniforms.emplace_back(instanceCountBuffer);
 
-                auto& pipeline =
-                    renderer.GetOrCreatePipeline("Clear counter pass", PipelineStateType::Compute, settings, uniforms);
-                list.SetPipelineState(pipeline);
-                list.BeginRender("Clear counter pass");
+                    auto& pipeline =
+                        renderer.GetOrCreatePipeline("Clear counter pass", PipelineStateType::Compute, settings, uniforms);
+                    list.SetPipelineState(pipeline);
+                    list.BeginRender("Clear counter pass");
 
-                list.SetUnorderedAccessView(0, m_instanceCountBuffer[frameIndex].get());
+                    list.SetUnorderedAccessView(0, m_instanceCountBuffer[frameIndex].get());
 
-                list.GetList()->Dispatch(1, 1, 1);
-                list.EndRender();
+                    list.GetList()->Dispatch(1, 1, 1);
+                    list.EndRender();
 
-                // TODO abstract resource barriers away
-                CD3DX12_RESOURCE_BARRIER uavBarrier =
-                    CD3DX12_RESOURCE_BARRIER::UAV(m_instanceCountBuffer[frameIndex]->GetBuffer());
-                list.GetList()->ResourceBarrier(1, &uavBarrier);
+                    // TODO abstract resource barriers away
+                    CD3DX12_RESOURCE_BARRIER uavBarrier =
+                        CD3DX12_RESOURCE_BARRIER::UAV(m_instanceCountBuffer[frameIndex]->GetBuffer());
+                    list.GetList()->ResourceBarrier(1, &uavBarrier);
+                }
             });
     }
 
@@ -277,60 +280,63 @@ namespace Wild
 
         rg.AddPass<GrassCullData>(
             "Grass culling pass", PassType::Compute, [&renderer, this](GrassCullData& cullingData, CommandList& list) {
-                auto context = engine.GetGfxContext();
+                if (m_grassPassEnabled)
+                {
+                    auto context = engine.GetGfxContext();
 
-                PipelineStateSettings settings{};
-                settings.shaderState.computeShader =
-                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeGrassCulling.slang");
+                    PipelineStateSettings settings{};
+                    settings.shaderState.computeShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeGrassCulling.slang");
 
-                std::vector<Uniform> uniforms;
+                    std::vector<Uniform> uniforms;
 
-                // Per frame frustum data
-                Uniform frustumData{0, 0, RootParams::RootResourceType::ConstantBufferView};
-                uniforms.emplace_back(frustumData);
+                    // Per frame frustum data
+                    Uniform frustumData{0, 0, RootParams::RootResourceType::ConstantBufferView};
+                    uniforms.emplace_back(frustumData);
 
-                // Grass instance data
-                Uniform grassInstanceData{0, 0, RootParams::RootResourceType::ShaderResourceView};
-                uniforms.emplace_back(grassInstanceData);
+                    // Grass instance data
+                    Uniform grassInstanceData{0, 0, RootParams::RootResourceType::ShaderResourceView};
+                    uniforms.emplace_back(grassInstanceData);
 
-                // Culled read write data
-                Uniform cullingDataBuffer{0, 0, RootParams::RootResourceType::UnorderedAccessView};
-                uniforms.emplace_back(cullingDataBuffer);
+                    // Culled read write data
+                    Uniform cullingDataBuffer{0, 0, RootParams::RootResourceType::UnorderedAccessView};
+                    uniforms.emplace_back(cullingDataBuffer);
 
-                // Byte adress buffer for instance count
-                Uniform instanceCounter{1, 0, RootParams::RootResourceType::UnorderedAccessView};
-                uniforms.emplace_back(instanceCounter);
+                    // Byte adress buffer for instance count
+                    Uniform instanceCounter{1, 0, RootParams::RootResourceType::UnorderedAccessView};
+                    uniforms.emplace_back(instanceCounter);
 
-                auto& pipeline =
-                    renderer.GetOrCreatePipeline("Grass culling pass", PipelineStateType::Compute, settings, uniforms);
+                    auto& pipeline =
+                        renderer.GetOrCreatePipeline("Grass culling pass", PipelineStateType::Compute, settings, uniforms);
 
-                list.SetPipelineState(pipeline);
-                list.BeginRender("Grass culling pass");
+                    list.SetPipelineState(pipeline);
+                    list.BeginRender("Grass culling pass");
 
-                UINT frameIndex = context->GetBackBufferIndex();
+                    UINT frameIndex = context->GetBackBufferIndex();
 
-                // Set frame data
-                list.SetConstantBufferView(0, m_frustumBuffer[frameIndex].get());
-                list.SetShaderResourceView(1, m_perBladeDataBuffer.get());
-                list.SetUnorderedAccessView(2, m_culledInstancesBuffer[frameIndex].get());
-                list.SetUnorderedAccessView(3, m_instanceCountBuffer[frameIndex].get());
+                    // Set frame data
+                    list.SetConstantBufferView(0, m_frustumBuffer[frameIndex].get());
+                    list.SetShaderResourceView(1, m_perBladeDataBuffer.get());
+                    list.SetUnorderedAccessView(2, m_culledInstancesBuffer[frameIndex].get());
+                    list.SetUnorderedAccessView(3, m_instanceCountBuffer[frameIndex].get());
 
-                list.GetList()->Dispatch(((MAXGRASSBLADES + 63) / 64), 1, 1);
+                    list.GetList()->Dispatch(((MAXGRASSBLADES + 63) / 64), 1, 1);
 
-                list.EndRender();
+                    list.EndRender();
 
-                D3D12_RESOURCE_BARRIER barriers[1] = {};
+                    D3D12_RESOURCE_BARRIER barriers[1] = {};
 
-                // Barrier for instance count buffer and culled instances
-                barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-                barriers[0].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-                barriers[0].UAV.pResource = m_instanceCountBuffer[frameIndex]->GetBuffer();
+                    // Barrier for instance count buffer and culled instances
+                    barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                    barriers[0].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+                    barriers[0].UAV.pResource = m_instanceCountBuffer[frameIndex]->GetBuffer();
 
-                list.GetList()->ResourceBarrier(1, barriers);
+                    list.GetList()->ResourceBarrier(1, barriers);
 
-                m_culledInstancesBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    m_culledInstancesBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-                cullingData.CulledBuffer = m_culledInstancesBuffer[frameIndex];
+                    cullingData.CulledBuffer = m_culledInstancesBuffer[frameIndex];
+                }
             });
     }
 
@@ -346,35 +352,38 @@ namespace Wild
             "Indirect command creation pass",
             PassType::Compute,
             [&renderer, this](const IndirectCommandsData& indirectCmds, CommandList& list) {
-                auto context = engine.GetGfxContext();
+                if (m_grassPassEnabled)
+                {
+                    auto context = engine.GetGfxContext();
 
-                PipelineStateSettings settings{};
-                settings.shaderState.computeShader =
-                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeIndirectCommands.slang");
+                    PipelineStateSettings settings{};
+                    settings.shaderState.computeShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeIndirectCommands.slang");
 
-                std::vector<Uniform> uniforms;
-                Uniform instanceCountBuffer{0, 0, RootParams::RootResourceType::UnorderedAccessView};
-                uniforms.emplace_back(instanceCountBuffer);
+                    std::vector<Uniform> uniforms;
+                    Uniform instanceCountBuffer{0, 0, RootParams::RootResourceType::UnorderedAccessView};
+                    uniforms.emplace_back(instanceCountBuffer);
 
-                Uniform drawCommandBuffer{1, 0, RootParams::RootResourceType::UnorderedAccessView};
-                uniforms.emplace_back(drawCommandBuffer);
+                    Uniform drawCommandBuffer{1, 0, RootParams::RootResourceType::UnorderedAccessView};
+                    uniforms.emplace_back(drawCommandBuffer);
 
-                auto& pipeline = renderer.GetOrCreatePipeline(
-                    "Indirect command creation pass", PipelineStateType::Compute, settings, uniforms);
+                    auto& pipeline = renderer.GetOrCreatePipeline(
+                        "Indirect command creation pass", PipelineStateType::Compute, settings, uniforms);
 
-                list.SetPipelineState(pipeline);
-                list.BeginRender("Draw command creation pass");
+                    list.SetPipelineState(pipeline);
+                    list.BeginRender("Draw command creation pass");
 
-                int frameIndex = context->GetBackBufferIndex();
-                list.SetUnorderedAccessView(0, m_instanceCountBuffer[frameIndex].get());
-                list.SetUnorderedAccessView(1, m_drawCommandsBuffer[frameIndex].get());
+                    int frameIndex = context->GetBackBufferIndex();
+                    list.SetUnorderedAccessView(0, m_instanceCountBuffer[frameIndex].get());
+                    list.SetUnorderedAccessView(1, m_drawCommandsBuffer[frameIndex].get());
 
-                list.GetList()->Dispatch(1, 1, 1);
+                    list.GetList()->Dispatch(1, 1, 1);
 
-                list.EndRender();
+                    list.EndRender();
 
-                m_instanceCountBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-                m_drawCommandsBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+                    m_instanceCountBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+                    m_drawCommandsBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+                }
             });
     }
 
@@ -391,116 +400,124 @@ namespace Wild
 
         rg.AddPass<RenderGrassData>(
             "Grass render pass", PassType::Graphics, [&renderer, this](const RenderGrassData& grassData, CommandList& list) {
-                PipelineStateSettings settings{};
-                settings.shaderState.vertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/VertGrass.slang");
-                settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/FragGrass.slang");
-                settings.depthStencilState.depthEnable = true;
-
-                settings.shaderState.inputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
-                settings.shaderState.inputLayout.emplace_back(InputElement("COORDS", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3)));
-                settings.shaderState.inputLayout.emplace_back(
-                    InputElement("SWAY", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3) + sizeof(float)));
-
-                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Albedo
-                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_UNORM); // Normal
-                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Emissive
-
-                settings.rasterizerState.cullMode = CullMode::None;
-
-                std::vector<Uniform> uniforms;
-
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(GrassRootConstants)};
-                uniforms.emplace_back(rootConstant);
-
-                Uniform grassBladeData{0, 0, RootParams::RootResourceType::ShaderResourceView, 0, D3D12_SHADER_VISIBILITY_VERTEX};
-                uniforms.emplace_back(grassBladeData);
-
-                Uniform sceneData{1, 0, RootParams::RootResourceType::ConstantBufferView, 0};
-                uniforms.emplace_back(sceneData);
-
-                Uniform culledInstanceData{1, 0, RootParams::RootResourceType::ShaderResourceView};
-                uniforms.emplace_back(culledInstanceData);
-
-                Uniform bindlessUni{0, 0, RootParams::RootResourceType::DescriptorTable};
-                CD3DX12_DESCRIPTOR_RANGE srvRange{};
-                srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-                              UINT_MAX,
-                              2,
-                              0,
-                              D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
-                bindlessUni.ranges.emplace_back(srvRange);
-
-                uniforms.emplace_back(bindlessUni);
-
-                Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
-                staticSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                staticSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                uniforms.emplace_back(staticSampler);
-
-                auto& pipeline =
-                    renderer.GetOrCreatePipeline("Grass render pass", PipelineStateType::Graphics, settings, uniforms);
-
-                auto ecs = engine.GetECS();
-
-                Camera* camera = GetActiveCamera();
-
-                list.SetPipelineState(pipeline);
-                list.BeginRender({grassData.albedoRoughnessTexture, grassData.normalMetallicTexture, grassData.emissiveTexture},
-                                 {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
-                                 {grassData.depthTexture},
-                                 DSClearOperation::Store,
-                                 "Grass Pass");
-
-                auto& gfxContext = engine.GetGfxContext();
-                UINT frameIndex = gfxContext->GetBackBufferIndex();
-
-                auto& transform = engine.GetECS()->GetComponent<Transform>(m_chunkEntity);
-                if (camera)
+                if (m_grassPassEnabled)
                 {
-                    m_rc.matrix = camera->GetProjection() * camera->GetView() * transform.GetWorldMatrix();
-                    m_rc.invMatrix = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
-                }
-                m_rc.bladeId = 0;
+                    PipelineStateSettings settings{};
+                    settings.shaderState.vertexShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/VertGrass.slang");
+                    settings.shaderState.fragShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/FragGrass.slang");
+                    settings.depthStencilState.depthEnable = true;
 
-                m_rc.terrainView = 0;
+                    settings.shaderState.inputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+                    settings.shaderState.inputLayout.emplace_back(
+                        InputElement("COORDS", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3)));
+                    settings.shaderState.inputLayout.emplace_back(
+                        InputElement("SWAY", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3) + sizeof(float)));
 
-                bool first = false;
-                for (auto [entity, chunk, transform] : ecs->GetRegistry().view<TerrainChunk, Transform>().each())
-                {
-                    if (!first)
+                    settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Albedo
+                    settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_UNORM); // Normal
+                    settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Emissive
+
+                    settings.rasterizerState.cullMode = CullMode::None;
+
+                    std::vector<Uniform> uniforms;
+
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(GrassRootConstants)};
+                    uniforms.emplace_back(rootConstant);
+
+                    Uniform grassBladeData{
+                        0, 0, RootParams::RootResourceType::ShaderResourceView, 0, D3D12_SHADER_VISIBILITY_VERTEX};
+                    uniforms.emplace_back(grassBladeData);
+
+                    Uniform sceneData{1, 0, RootParams::RootResourceType::ConstantBufferView, 0};
+                    uniforms.emplace_back(sceneData);
+
+                    Uniform culledInstanceData{1, 0, RootParams::RootResourceType::ShaderResourceView};
+                    uniforms.emplace_back(culledInstanceData);
+
+                    Uniform bindlessUni{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE srvRange{};
+                    srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                                  UINT_MAX,
+                                  2,
+                                  0,
+                                  D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE); // Flag for bindles
+                    bindlessUni.ranges.emplace_back(srvRange);
+
+                    uniforms.emplace_back(bindlessUni);
+
+                    Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
+                    staticSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                    staticSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                    uniforms.emplace_back(staticSampler);
+
+                    auto& pipeline =
+                        renderer.GetOrCreatePipeline("Grass render pass", PipelineStateType::Graphics, settings, uniforms);
+
+                    auto ecs = engine.GetECS();
+
+                    Camera* camera = GetActiveCamera();
+
+                    list.SetPipelineState(pipeline);
+                    list.BeginRender(
+                        {grassData.albedoRoughnessTexture, grassData.normalMetallicTexture, grassData.emissiveTexture},
+                        {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
+                        {grassData.depthTexture},
+                        DSClearOperation::Store,
+                        "Grass Pass");
+
+                    auto& gfxContext = engine.GetGfxContext();
+                    UINT frameIndex = gfxContext->GetBackBufferIndex();
+
+                    auto& transform = engine.GetECS()->GetComponent<Transform>(m_chunkEntity);
+                    if (camera)
                     {
-                        m_rc.terrainView = chunk.heightMap->GetSrv()->BindlessView();
-                        first = true;
+                        m_rc.matrix = camera->GetProjection() * camera->GetView() * transform.GetWorldMatrix();
+                        m_rc.invMatrix = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
                     }
-                }
+                    m_rc.bladeId = 0;
 
-                if (m_rc.terrainView > 0)
-                {
-                    list.SetRootConstant<GrassRootConstants>(0, m_rc);
-                    list.SetShaderResourceView(1, m_perBladeDataBuffer.get());
-                    list.SetConstantBufferView(2, m_sceneData[gfxContext->GetBackBufferIndex()].get());
+                    m_rc.terrainView = 0;
 
-                    if (m_culledInstancesBuffer[frameIndex]->GetBuffer())
+                    bool first = false;
+                    for (auto [entity, chunk, transform] : ecs->GetRegistry().view<TerrainChunk, Transform>().each())
                     {
-                        list.SetShaderResourceView(3, m_culledInstancesBuffer[frameIndex].get());
+                        if (!first)
+                        {
+                            m_rc.terrainView = chunk.heightMap->GetSrv()->BindlessView();
+                            first = true;
+                        }
                     }
 
-                    list.SetBindlessHeap(4);
+                    if (m_rc.terrainView > 0)
+                    {
+                        list.SetRootConstant<GrassRootConstants>(0, m_rc);
+                        list.SetShaderResourceView(1, m_perBladeDataBuffer.get());
+                        list.SetConstantBufferView(2, m_sceneData[gfxContext->GetBackBufferIndex()].get());
 
-                    list.GetList()->IASetVertexBuffers(0, 1, &m_grassVertices->GetVBView()->View());
-                    list.GetList()->IASetIndexBuffer(&m_grassIndices->GetIBView()->View());
+                        if (m_culledInstancesBuffer[frameIndex]->GetBuffer())
+                        {
+                            list.SetShaderResourceView(3, m_culledInstancesBuffer[frameIndex].get());
+                        }
 
-                    // Indirect drawing to reduce cpu overhead and picking the correct LOD's. It executes a total of 3 draw
-                    // commands for all LOD's
-                    list.GetList()->ExecuteIndirect(m_commandSignature.Get(),
-                                                    m_lodAmount,
-                                                    m_drawCommandsBuffer[frameIndex]->GetBuffer(),
-                                                    0,
-                                                    m_instanceCountBuffer[frameIndex]->GetBuffer(),
-                                                    0);
+                        list.SetBindlessHeap(4);
+
+                        list.GetList()->IASetVertexBuffers(0, 1, &m_grassVertices->GetVBView()->View());
+                        list.GetList()->IASetIndexBuffer(&m_grassIndices->GetIBView()->View());
+
+                        // Indirect drawing to reduce cpu overhead and picking the correct LOD's. It executes a total of 3 draw
+                        // commands for all LOD's
+                        list.GetList()->ExecuteIndirect(m_commandSignature.Get(),
+                                                        m_lodAmount,
+                                                        m_drawCommandsBuffer[frameIndex]->GetBuffer(),
+                                                        0,
+                                                        m_instanceCountBuffer[frameIndex]->GetBuffer(),
+                                                        0);
+                    }
+
+                    list.EndRender();
                 }
-
-                list.EndRender();
             });
     }
 

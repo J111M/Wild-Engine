@@ -41,7 +41,7 @@ namespace Wild
 
         GenerateOceanPlane(64);
 
-        m_oceanChunkSystem = std::make_unique<OceanChunkSystem>(63.80f, 17, -9);
+        // m_oceanChunkSystem = std::make_unique<OceanChunkSystem>(63.80f, 17, -9);
 
         {
             BufferDesc desc{};
@@ -679,58 +679,61 @@ namespace Wild
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Ocean render pass", PipelineStateType::Graphics, settings, uniforms);
 
-                // Rendering
-                auto ecs = engine.GetECS();
-
-                Camera* camera = GetActiveCamera();
-
-                OceanCameraData cameraData{};
-
-                if (camera)
-                {
-                    glm::vec3 camPos = camera->GetPosition();
-                    if (m_oceanChunkSystem) m_oceanChunkSystem->Update(camPos, camera->GetFrustum(), m_frustumCullingEnabled);
-
-                    cameraData.projViewMatrix = camera->GetProjection() * camera->GetView();
-                    cameraData.invModel = {}; // glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
-
-                    m_oceanRC.cameraPosition = glm::vec4(camPos, 1.0f);
-                }
-
-                m_cameraBuffer->Allocate(&cameraData);
-
-                list.SetPipelineState(pipeline);
-                list.BeginRender({passData.finalTexture},
-                                 {ClearOperation::Store},
-                                 passData.depthTexture,
-                                 DSClearOperation::Store,
-                                 "Ocean render pass");
-
-                m_oceanRC.displacementMapView = fftOceanData->displacementTexture->GetSrv()->BindlessView();
-                m_oceanRC.slopeMapView = fftOceanData->slopeTexture->GetSrv()->BindlessView();
-                if (renderer.irradianceMap) { m_oceanRC.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView(); }
-                if (renderer.specularMap) { m_oceanRC.specularView = renderer.specularMap->GetSrv()->BindlessView(); }
-
                 if (m_oceanChunkSystem)
                 {
-                    for (const auto& chunk : m_oceanChunkSystem->GetOceanChunks())
+                    // Rendering
+                    auto ecs = engine.GetECS();
+
+                    Camera* camera = GetActiveCamera();
+
+                    OceanCameraData cameraData{};
+
+                    if (camera)
                     {
-                        if (!chunk.isVisible) continue;
+                        glm::vec3 camPos = camera->GetPosition();
+                        if (m_oceanChunkSystem) m_oceanChunkSystem->Update(camPos, camera->GetFrustum(), m_frustumCullingEnabled);
 
-                        m_oceanRC.modelMatrix = ecs->GetComponent<Transform>(chunk.entity).GetWorldMatrix();
+                        cameraData.projViewMatrix = camera->GetProjection() * camera->GetView();
+                        cameraData.invModel = {}; // glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
 
-                        list.SetRootConstant<OceanRenderRootConstants>(0, m_oceanRC);
-                        list.SetConstantBufferView(1, m_cameraBuffer.get());
-                        list.SetConstantBufferView(2, m_oceanRenderDataBuffer.get());
-                        list.SetBindlessHeap(3);
-
-                        list.GetList()->IASetVertexBuffers(0, 1, &m_oceanVertices[chunk.lod]->GetVBView()->View());
-                        list.GetList()->IASetIndexBuffer(&m_oceanIndices[chunk.lod]->GetIBView()->View());
-                        list.GetList()->DrawIndexedInstanced(m_drawCount[chunk.lod], 1, 0, 0, 0);
+                        m_oceanRC.cameraPosition = glm::vec4(camPos, 1.0f);
                     }
-                }
 
-                list.EndRender();
+                    m_cameraBuffer->Allocate(&cameraData);
+
+                    list.SetPipelineState(pipeline);
+                    list.BeginRender({passData.finalTexture},
+                                     {ClearOperation::Store},
+                                     passData.depthTexture,
+                                     DSClearOperation::Store,
+                                     "Ocean render pass");
+
+                    m_oceanRC.displacementMapView = fftOceanData->displacementTexture->GetSrv()->BindlessView();
+                    m_oceanRC.slopeMapView = fftOceanData->slopeTexture->GetSrv()->BindlessView();
+                    if (renderer.irradianceMap) { m_oceanRC.irradianceView = renderer.irradianceMap->GetSrv()->BindlessView(); }
+                    if (renderer.specularMap) { m_oceanRC.specularView = renderer.specularMap->GetSrv()->BindlessView(); }
+
+                    if (m_oceanChunkSystem)
+                    {
+                        for (const auto& chunk : m_oceanChunkSystem->GetOceanChunks())
+                        {
+                            if (!chunk.isVisible) continue;
+
+                            m_oceanRC.modelMatrix = ecs->GetComponent<Transform>(chunk.entity).GetWorldMatrix();
+
+                            list.SetRootConstant<OceanRenderRootConstants>(0, m_oceanRC);
+                            list.SetConstantBufferView(1, m_cameraBuffer.get());
+                            list.SetConstantBufferView(2, m_oceanRenderDataBuffer.get());
+                            list.SetBindlessHeap(3);
+
+                            list.GetList()->IASetVertexBuffers(0, 1, &m_oceanVertices[chunk.lod]->GetVBView()->View());
+                            list.GetList()->IASetIndexBuffer(&m_oceanIndices[chunk.lod]->GetIBView()->View());
+                            list.GetList()->DrawIndexedInstanced(m_drawCount[chunk.lod], 1, 0, 0, 0);
+                        }
+                    }
+
+                    list.EndRender();
+                }
             });
     }
 

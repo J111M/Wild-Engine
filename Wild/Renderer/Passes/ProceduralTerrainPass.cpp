@@ -255,9 +255,9 @@ namespace Wild
                 settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DrawTerrainFrag.slang");
                 settings.depthStencilState.depthEnable = true;
 
-                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Albedo
+                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Albedo
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_UNORM); // Normal
-                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Emissive
+                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Emissive
 
                 // Setting up the input layout
                 settings.shaderState.inputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
@@ -302,17 +302,7 @@ namespace Wild
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Draw terrain chunks pass", PipelineStateType::Graphics, settings, uniforms);
 
-                // Rendering
-                auto ecs = engine.GetECS();
-
-                Camera* camera = GetActiveCamera();
-
-                if (camera)
-                {
-                    m_pvc.m_viewProj = camera->GetProjection() * camera->GetView();
-                    m_cameraCbv->Allocate(&m_pvc);
-                }
-
+                // Always begin the pass so the G-buffer and depth get cleared, later passes store into these targets
                 list.SetPipelineState(pipeline);
                 list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
                                  {ClearOperation::Clear, ClearOperation::Clear, ClearOperation::Clear},
@@ -320,24 +310,38 @@ namespace Wild
                                  DSClearOperation::DepthClear,
                                  "PCG pass");
 
-                for (auto [entity, chunk, transform] : ecs->GetRegistry().view<TerrainChunk, Transform>().each())
+                if (m_pcgPassEnabled)
                 {
+                    // Rendering
+                    auto ecs = engine.GetECS();
+
+                    Camera* camera = GetActiveCamera();
+
                     if (camera)
                     {
-                        m_drc.worldMatix = transform.GetWorldMatrix();
-                        m_drc.invModel = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
+                        m_pvc.m_viewProj = camera->GetProjection() * camera->GetView();
+                        m_cameraCbv->Allocate(&m_pvc);
                     }
 
-                    m_drc.heightMapView = chunk.heightMap->GetSrv()->BindlessView();
+                    for (auto [entity, chunk, transform] : ecs->GetRegistry().view<TerrainChunk, Transform>().each())
+                    {
+                        if (camera)
+                        {
+                            m_drc.worldMatix = transform.GetWorldMatrix();
+                            m_drc.invModel = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
+                        }
 
-                    list.SetRootConstant<DrawTerrainRootConstants>(0, m_drc);
-                    list.SetConstantBufferView(1, m_terrainTexturesCbv.get());
-                    list.SetConstantBufferView(2, m_cameraCbv.get());
-                    list.SetBindlessHeap(3);
+                        m_drc.heightMapView = chunk.heightMap->GetSrv()->BindlessView();
 
-                    list.GetList()->IASetVertexBuffers(0, 1, &m_terrainVertices->GetVBView()->View());
-                    list.GetList()->IASetIndexBuffer(&m_terrainIndices->GetIBView()->View());
-                    list.GetList()->DrawIndexedInstanced(m_drawCount, 1, 0, 0, 0);
+                        list.SetRootConstant<DrawTerrainRootConstants>(0, m_drc);
+                        list.SetConstantBufferView(1, m_terrainTexturesCbv.get());
+                        list.SetConstantBufferView(2, m_cameraCbv.get());
+                        list.SetBindlessHeap(3);
+
+                        list.GetList()->IASetVertexBuffers(0, 1, &m_terrainVertices->GetVBView()->View());
+                        list.GetList()->IASetIndexBuffer(&m_terrainIndices->GetIBView()->View());
+                        list.GetList()->DrawIndexedInstanced(m_drawCount, 1, 0, 0, 0);
+                    }
                 }
 
                 list.EndRender();
