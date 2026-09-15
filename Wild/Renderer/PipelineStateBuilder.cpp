@@ -13,9 +13,9 @@ namespace Wild
     {
         m_type = Type;
 
-        // WD_PROFILESCOPE(m_settings.PipelineName);
+        // WD_PROFILESCOPE(m_settings.pipelineName);
 
-        m_name = m_settings.PipelineName;
+        m_name = m_settings.pipelineName;
         m_name = RemoveSpacesFromString(m_name);
 
         CreateRootSignature(uniforms);
@@ -136,41 +136,41 @@ namespace Wild
     {
         auto gfxContext = engine.GetGfxContext();
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-        psoDesc.InputLayout = {m_settings.ShaderState.InputLayout.data(), (UINT)m_settings.ShaderState.InputLayout.size()};
+        psoDesc.InputLayout = {m_settings.shaderState.inputLayout.data(), (UINT)m_settings.shaderState.inputLayout.size()};
         psoDesc.pRootSignature = m_rootSignature.Get();
 
-        if (m_settings.ShaderState.VertexShader) psoDesc.VS = m_settings.ShaderState.VertexShader->GetByteCode();
-        if (m_settings.ShaderState.FragShader) psoDesc.PS = m_settings.ShaderState.FragShader->GetByteCode();
+        if (m_settings.shaderState.vertexShader) psoDesc.VS = m_settings.shaderState.vertexShader->GetByteCode();
+        if (m_settings.shaderState.fragShader) psoDesc.PS = m_settings.shaderState.fragShader->GetByteCode();
 
-        psoDesc.PrimitiveTopologyType = GetTopologyModeType(m_settings.RasterizerState.TopologyMode);
+        psoDesc.PrimitiveTopologyType = GetTopologyModeType(m_settings.rasterizerState.topologyMode);
 
         psoDesc.SampleMask = 0xffffffff;
 
         psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-        psoDesc.RasterizerState.FrontCounterClockwise = GetWindingOrder(m_settings.RasterizerState.WindingMode);
-        psoDesc.RasterizerState.CullMode = GetCullMode(m_settings.RasterizerState.CullMode);
-        psoDesc.RasterizerState.FillMode = GetFillMode(m_settings.RasterizerState.FillMode);
+        psoDesc.RasterizerState.FrontCounterClockwise = GetWindingOrder(m_settings.rasterizerState.windingMode);
+        psoDesc.RasterizerState.CullMode = GetCullMode(m_settings.rasterizerState.cullMode);
+        psoDesc.RasterizerState.FillMode = GetFillMode(m_settings.rasterizerState.fillMode);
 
         psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-        psoDesc.BlendState.AlphaToCoverageEnable = m_settings.RasterizerState.BlendDesc.AlphaToCoverageEnable;
-        psoDesc.BlendState.IndependentBlendEnable = m_settings.RasterizerState.BlendDesc.IndependentBlendEnable;
+        psoDesc.BlendState.AlphaToCoverageEnable = m_settings.rasterizerState.blendDesc.alphaToCoverageEnable;
+        psoDesc.BlendState.IndependentBlendEnable = m_settings.rasterizerState.blendDesc.independentBlendEnable;
 
         // Set blend state for all possible render targets
         for (size_t i = 0; i < 8; i++)
         {
-            psoDesc.BlendState.RenderTarget[i].BlendEnable = m_settings.RasterizerState.BlendDesc.RenderTarget->BlendEnable;
+            psoDesc.BlendState.RenderTarget[i].BlendEnable = m_settings.rasterizerState.blendDesc.renderTarget->blendEnable;
             psoDesc.BlendState.RenderTarget[i].SrcBlend =
-                GetBlendState(m_settings.RasterizerState.BlendDesc.RenderTarget->SrcBlend);
+                GetBlendState(m_settings.rasterizerState.blendDesc.renderTarget->srcBlend);
             psoDesc.BlendState.RenderTarget[i].DestBlend =
-                GetBlendState(m_settings.RasterizerState.BlendDesc.RenderTarget->DestBlend);
+                GetBlendState(m_settings.rasterizerState.blendDesc.renderTarget->destBlend);
             psoDesc.BlendState.RenderTarget[i].BlendOp =
-                GetBlendOpState(m_settings.RasterizerState.BlendDesc.RenderTarget->BlendOperation);
+                GetBlendOpState(m_settings.rasterizerState.blendDesc.renderTarget->blendOperation);
             psoDesc.BlendState.RenderTarget[i].SrcBlendAlpha =
-                GetBlendState(m_settings.RasterizerState.BlendDesc.RenderTarget->SrcBlendAlpha);
+                GetBlendState(m_settings.rasterizerState.blendDesc.renderTarget->srcBlendAlpha);
             psoDesc.BlendState.RenderTarget[i].DestBlendAlpha =
-                GetBlendState(m_settings.RasterizerState.BlendDesc.RenderTarget->DestBlendAlpha);
+                GetBlendState(m_settings.rasterizerState.blendDesc.renderTarget->destBlendAlpha);
             psoDesc.BlendState.RenderTarget[i].BlendOpAlpha =
-                GetBlendOpState(m_settings.RasterizerState.BlendDesc.RenderTarget->BlendOperationAlpha);
+                GetBlendOpState(m_settings.rasterizerState.blendDesc.renderTarget->blendOperationAlpha);
             psoDesc.BlendState.RenderTarget[i].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
         }
 
@@ -195,28 +195,28 @@ namespace Wild
         psoDesc.SampleDesc.Quality = 0;
 
         psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-        psoDesc.DepthStencilState.DepthEnable = m_settings.DepthStencilState.DepthEnable;
-        psoDesc.DepthStencilState.DepthWriteMask = GetDepthWrite(m_settings.DepthStencilState.DepthWriteMask);
-        psoDesc.DepthStencilState.DepthFunc = GetComparisonFunc(m_settings.DepthStencilState.DepthFunc);
-        psoDesc.DepthStencilState.StencilEnable = m_settings.DepthStencilState.StencilEnable;
-        psoDesc.DepthStencilState.StencilReadMask = m_settings.DepthStencilState.StencilReadMask;
-        psoDesc.DepthStencilState.StencilWriteMask = m_settings.DepthStencilState.StencilWriteMask;
+        psoDesc.DepthStencilState.DepthEnable = m_settings.depthStencilState.depthEnable;
+        psoDesc.DepthStencilState.DepthWriteMask = GetDepthWrite(m_settings.depthStencilState.depthWriteMask);
+        psoDesc.DepthStencilState.DepthFunc = GetComparisonFunc(m_settings.depthStencilState.depthFunc);
+        psoDesc.DepthStencilState.StencilEnable = m_settings.depthStencilState.stencilEnable;
+        psoDesc.DepthStencilState.StencilReadMask = m_settings.depthStencilState.stencilReadMask;
+        psoDesc.DepthStencilState.StencilWriteMask = m_settings.depthStencilState.stencilWriteMask;
 
         // Front face stencil operations
         psoDesc.DepthStencilState.FrontFace.StencilFailOp =
-            GetDepthStencilOp(m_settings.DepthStencilState.FrontFace.StencilFailOp);
+            GetDepthStencilOp(m_settings.depthStencilState.frontFace.stencilFailOp);
         psoDesc.DepthStencilState.FrontFace.StencilDepthFailOp =
-            GetDepthStencilOp(m_settings.DepthStencilState.FrontFace.StencilDepthFailOp);
+            GetDepthStencilOp(m_settings.depthStencilState.frontFace.stencilDepthFailOp);
         psoDesc.DepthStencilState.FrontFace.StencilPassOp =
-            GetDepthStencilOp(m_settings.DepthStencilState.FrontFace.StencilPassOp);
-        psoDesc.DepthStencilState.FrontFace.StencilFunc = GetComparisonFunc(m_settings.DepthStencilState.FrontFace.StencilFunc);
+            GetDepthStencilOp(m_settings.depthStencilState.frontFace.stencilPassOp);
+        psoDesc.DepthStencilState.FrontFace.StencilFunc = GetComparisonFunc(m_settings.depthStencilState.frontFace.stencilFunc);
 
         // Back face stencil operations
-        psoDesc.DepthStencilState.BackFace.StencilFailOp = GetDepthStencilOp(m_settings.DepthStencilState.BackFace.StencilFailOp);
+        psoDesc.DepthStencilState.BackFace.StencilFailOp = GetDepthStencilOp(m_settings.depthStencilState.backFace.stencilFailOp);
         psoDesc.DepthStencilState.BackFace.StencilDepthFailOp =
-            GetDepthStencilOp(m_settings.DepthStencilState.BackFace.StencilDepthFailOp);
-        psoDesc.DepthStencilState.BackFace.StencilPassOp = GetDepthStencilOp(m_settings.DepthStencilState.BackFace.StencilPassOp);
-        psoDesc.DepthStencilState.BackFace.StencilFunc = GetComparisonFunc(m_settings.DepthStencilState.BackFace.StencilFunc);
+            GetDepthStencilOp(m_settings.depthStencilState.backFace.stencilDepthFailOp);
+        psoDesc.DepthStencilState.BackFace.StencilPassOp = GetDepthStencilOp(m_settings.depthStencilState.backFace.stencilPassOp);
+        psoDesc.DepthStencilState.BackFace.StencilFunc = GetComparisonFunc(m_settings.depthStencilState.backFace.stencilFunc);
 
         // Check if shader caching is supported otherwise use legacy version
         if ((gfxContext->GetCapabilities().CheckDriverManagedPSOCacheSupport()))
@@ -273,7 +273,7 @@ namespace Wild
     void PipelineState::CreateComputePSO()
     {
         auto gfxContext = engine.GetGfxContext();
-        if (!m_settings.ShaderState.ComputeShader)
+        if (!m_settings.shaderState.computeShader)
         {
             WD_WARN("No compute shader supplied in compute pipeline");
             return;
@@ -281,7 +281,7 @@ namespace Wild
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
         psoDesc.pRootSignature = m_rootSignature.Get();
-        psoDesc.CS = m_settings.ShaderState.ComputeShader->GetByteCode();
+        psoDesc.CS = m_settings.shaderState.computeShader->GetByteCode();
 
         // Check if shader caching is supported otherwise use legacy version
         if ((gfxContext->GetCapabilities().CheckDriverManagedPSOCacheSupport()))
@@ -335,38 +335,38 @@ namespace Wild
         D3DX12_MESH_SHADER_PIPELINE_STATE_DESC psoDesc = {};
         psoDesc.pRootSignature = m_rootSignature.Get();
 
-        if (m_settings.ShaderState.MeshShader) psoDesc.MS = m_settings.ShaderState.MeshShader->GetByteCode();
-        if (m_settings.ShaderState.FragShader) psoDesc.PS = m_settings.ShaderState.FragShader->GetByteCode();
+        if (m_settings.shaderState.meshShader) psoDesc.MS = m_settings.shaderState.meshShader->GetByteCode();
+        if (m_settings.shaderState.fragShader) psoDesc.PS = m_settings.shaderState.fragShader->GetByteCode();
 
-        psoDesc.PrimitiveTopologyType = GetTopologyModeType(m_settings.RasterizerState.TopologyMode);
+        psoDesc.PrimitiveTopologyType = GetTopologyModeType(m_settings.rasterizerState.topologyMode);
 
         psoDesc.SampleMask = 0xffffffff;
 
         psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-        psoDesc.RasterizerState.FrontCounterClockwise = GetWindingOrder(m_settings.RasterizerState.WindingMode);
-        psoDesc.RasterizerState.CullMode = GetCullMode(m_settings.RasterizerState.CullMode);
-        psoDesc.RasterizerState.FillMode = GetFillMode(m_settings.RasterizerState.FillMode);
+        psoDesc.RasterizerState.FrontCounterClockwise = GetWindingOrder(m_settings.rasterizerState.windingMode);
+        psoDesc.RasterizerState.CullMode = GetCullMode(m_settings.rasterizerState.cullMode);
+        psoDesc.RasterizerState.FillMode = GetFillMode(m_settings.rasterizerState.fillMode);
 
         psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-        psoDesc.BlendState.AlphaToCoverageEnable = m_settings.RasterizerState.BlendDesc.AlphaToCoverageEnable;
-        psoDesc.BlendState.IndependentBlendEnable = m_settings.RasterizerState.BlendDesc.IndependentBlendEnable;
+        psoDesc.BlendState.AlphaToCoverageEnable = m_settings.rasterizerState.blendDesc.alphaToCoverageEnable;
+        psoDesc.BlendState.IndependentBlendEnable = m_settings.rasterizerState.blendDesc.independentBlendEnable;
 
         // Set blend state for all possible render targets
         for (size_t i = 0; i < 8; i++)
         {
-            psoDesc.BlendState.RenderTarget[i].BlendEnable = m_settings.RasterizerState.BlendDesc.RenderTarget->BlendEnable;
+            psoDesc.BlendState.RenderTarget[i].BlendEnable = m_settings.rasterizerState.blendDesc.renderTarget->blendEnable;
             psoDesc.BlendState.RenderTarget[i].SrcBlend =
-                GetBlendState(m_settings.RasterizerState.BlendDesc.RenderTarget->SrcBlend);
+                GetBlendState(m_settings.rasterizerState.blendDesc.renderTarget->srcBlend);
             psoDesc.BlendState.RenderTarget[i].DestBlend =
-                GetBlendState(m_settings.RasterizerState.BlendDesc.RenderTarget->DestBlend);
+                GetBlendState(m_settings.rasterizerState.blendDesc.renderTarget->destBlend);
             psoDesc.BlendState.RenderTarget[i].BlendOp =
-                GetBlendOpState(m_settings.RasterizerState.BlendDesc.RenderTarget->BlendOperation);
+                GetBlendOpState(m_settings.rasterizerState.blendDesc.renderTarget->blendOperation);
             psoDesc.BlendState.RenderTarget[i].SrcBlendAlpha =
-                GetBlendState(m_settings.RasterizerState.BlendDesc.RenderTarget->SrcBlendAlpha);
+                GetBlendState(m_settings.rasterizerState.blendDesc.renderTarget->srcBlendAlpha);
             psoDesc.BlendState.RenderTarget[i].DestBlendAlpha =
-                GetBlendState(m_settings.RasterizerState.BlendDesc.RenderTarget->DestBlendAlpha);
+                GetBlendState(m_settings.rasterizerState.blendDesc.renderTarget->destBlendAlpha);
             psoDesc.BlendState.RenderTarget[i].BlendOpAlpha =
-                GetBlendOpState(m_settings.RasterizerState.BlendDesc.RenderTarget->BlendOperationAlpha);
+                GetBlendOpState(m_settings.rasterizerState.blendDesc.renderTarget->blendOperationAlpha);
             psoDesc.BlendState.RenderTarget[i].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
         }
 
@@ -391,28 +391,28 @@ namespace Wild
         psoDesc.SampleDesc.Quality = 0;
 
         psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-        psoDesc.DepthStencilState.DepthEnable = m_settings.DepthStencilState.DepthEnable;
-        psoDesc.DepthStencilState.DepthWriteMask = GetDepthWrite(m_settings.DepthStencilState.DepthWriteMask);
-        psoDesc.DepthStencilState.DepthFunc = GetComparisonFunc(m_settings.DepthStencilState.DepthFunc);
-        psoDesc.DepthStencilState.StencilEnable = m_settings.DepthStencilState.StencilEnable;
-        psoDesc.DepthStencilState.StencilReadMask = m_settings.DepthStencilState.StencilReadMask;
-        psoDesc.DepthStencilState.StencilWriteMask = m_settings.DepthStencilState.StencilWriteMask;
+        psoDesc.DepthStencilState.DepthEnable = m_settings.depthStencilState.depthEnable;
+        psoDesc.DepthStencilState.DepthWriteMask = GetDepthWrite(m_settings.depthStencilState.depthWriteMask);
+        psoDesc.DepthStencilState.DepthFunc = GetComparisonFunc(m_settings.depthStencilState.depthFunc);
+        psoDesc.DepthStencilState.StencilEnable = m_settings.depthStencilState.stencilEnable;
+        psoDesc.DepthStencilState.StencilReadMask = m_settings.depthStencilState.stencilReadMask;
+        psoDesc.DepthStencilState.StencilWriteMask = m_settings.depthStencilState.stencilWriteMask;
 
         // Front face stencil operations
         psoDesc.DepthStencilState.FrontFace.StencilFailOp =
-            GetDepthStencilOp(m_settings.DepthStencilState.FrontFace.StencilFailOp);
+            GetDepthStencilOp(m_settings.depthStencilState.frontFace.stencilFailOp);
         psoDesc.DepthStencilState.FrontFace.StencilDepthFailOp =
-            GetDepthStencilOp(m_settings.DepthStencilState.FrontFace.StencilDepthFailOp);
+            GetDepthStencilOp(m_settings.depthStencilState.frontFace.stencilDepthFailOp);
         psoDesc.DepthStencilState.FrontFace.StencilPassOp =
-            GetDepthStencilOp(m_settings.DepthStencilState.FrontFace.StencilPassOp);
-        psoDesc.DepthStencilState.FrontFace.StencilFunc = GetComparisonFunc(m_settings.DepthStencilState.FrontFace.StencilFunc);
+            GetDepthStencilOp(m_settings.depthStencilState.frontFace.stencilPassOp);
+        psoDesc.DepthStencilState.FrontFace.StencilFunc = GetComparisonFunc(m_settings.depthStencilState.frontFace.stencilFunc);
 
         // Back face stencil operations
-        psoDesc.DepthStencilState.BackFace.StencilFailOp = GetDepthStencilOp(m_settings.DepthStencilState.BackFace.StencilFailOp);
+        psoDesc.DepthStencilState.BackFace.StencilFailOp = GetDepthStencilOp(m_settings.depthStencilState.backFace.stencilFailOp);
         psoDesc.DepthStencilState.BackFace.StencilDepthFailOp =
-            GetDepthStencilOp(m_settings.DepthStencilState.BackFace.StencilDepthFailOp);
-        psoDesc.DepthStencilState.BackFace.StencilPassOp = GetDepthStencilOp(m_settings.DepthStencilState.BackFace.StencilPassOp);
-        psoDesc.DepthStencilState.BackFace.StencilFunc = GetComparisonFunc(m_settings.DepthStencilState.BackFace.StencilFunc);
+            GetDepthStencilOp(m_settings.depthStencilState.backFace.stencilDepthFailOp);
+        psoDesc.DepthStencilState.BackFace.StencilPassOp = GetDepthStencilOp(m_settings.depthStencilState.backFace.stencilPassOp);
+        psoDesc.DepthStencilState.BackFace.StencilFunc = GetComparisonFunc(m_settings.depthStencilState.backFace.stencilFunc);
 
         // Convert pipeline state stream to correctly aligend subobjects
         CD3DX12_PIPELINE_MESH_STATE_STREAM psoStream(psoDesc);

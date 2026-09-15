@@ -156,7 +156,7 @@ namespace Wild
                 if (m_recomputeGrassBlades)
                 {
                     PipelineStateSettings settings{};
-                    settings.ShaderState.ComputeShader =
+                    settings.shaderState.computeShader =
                         engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputePerGrassBladeData.slang");
 
                     std::vector<Uniform> uniforms;
@@ -238,7 +238,7 @@ namespace Wild
                 m_drawCommandsBuffer[frameIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                 PipelineStateSettings settings{};
-                settings.ShaderState.ComputeShader =
+                settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeClearCounter.slang");
 
                 std::vector<Uniform> uniforms;
@@ -280,7 +280,7 @@ namespace Wild
                 auto context = engine.GetGfxContext();
 
                 PipelineStateSettings settings{};
-                settings.ShaderState.ComputeShader =
+                settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeGrassCulling.slang");
 
                 std::vector<Uniform> uniforms;
@@ -349,7 +349,7 @@ namespace Wild
                 auto context = engine.GetGfxContext();
 
                 PipelineStateSettings settings{};
-                settings.ShaderState.ComputeShader =
+                settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/ComputeIndirectCommands.slang");
 
                 std::vector<Uniform> uniforms;
@@ -392,20 +392,20 @@ namespace Wild
         rg.AddPass<RenderGrassData>(
             "Grass render pass", PassType::Graphics, [&renderer, this](const RenderGrassData& grassData, CommandList& list) {
                 PipelineStateSettings settings{};
-                settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/VertGrass.slang");
-                settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/FragGrass.slang");
-                settings.DepthStencilState.DepthEnable = true;
+                settings.shaderState.vertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/VertGrass.slang");
+                settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Grass/FragGrass.slang");
+                settings.depthStencilState.depthEnable = true;
 
-                settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
-                settings.ShaderState.InputLayout.emplace_back(InputElement("COORDS", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3)));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+                settings.shaderState.inputLayout.emplace_back(InputElement("COORDS", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3)));
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("SWAY", DXGI_FORMAT_R32_FLOAT, sizeof(glm::vec3) + sizeof(float)));
 
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Albedo
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_UNORM); // Normal
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Emissive
 
-                settings.RasterizerState.CullMode = CullMode::None;
+                settings.rasterizerState.cullMode = CullMode::None;
 
                 std::vector<Uniform> uniforms;
 

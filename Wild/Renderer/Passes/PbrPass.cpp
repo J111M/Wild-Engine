@@ -109,10 +109,10 @@ namespace Wild
             PassType::Graphics,
             [&renderer, deferredData, shadowMapData, ddgiData, this](const PbrPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
-                settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/PbrVert.slang");
-                settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/PbrFrag.slang");
-                settings.DepthStencilState.DepthEnable = false;
-                settings.RasterizerState.WindingMode = WindingOrder::Clockwise;
+                settings.shaderState.vertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/PbrVert.slang");
+                settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/PbrFrag.slang");
+                settings.depthStencilState.depthEnable = false;
+                settings.rasterizerState.windingMode = WindingOrder::Clockwise;
                 settings.renderTargetsFormat.push_back(passData.finalTexture->GetDesc().format);
 
                 std::vector<Uniform> uniforms;

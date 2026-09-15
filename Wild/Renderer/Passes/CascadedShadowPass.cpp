@@ -44,26 +44,26 @@ namespace Wild
                 passData.biasValue = m_shadowBias;
 
                 PipelineStateSettings settings{};
-                settings.ShaderState.VertexShader =
+                settings.shaderState.vertexShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/CascadedShadowsVert.slang");
-                settings.ShaderState.FragShader =
+                settings.shaderState.fragShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/CascadedShadowsFrag.slang");
-                settings.DepthStencilState.DepthEnable = true;
-                settings.RasterizerState.CullMode = CullMode::Front;
+                settings.depthStencilState.depthEnable = true;
+                settings.rasterizerState.cullMode = CullMode::Front;
 
                 // Hard coded size for now TODO use texture size
-                settings.RasterizerState.Viewport.size =
+                settings.rasterizerState.viewport.size =
                     glm::vec2(passData.shadowMap[0]->Width(), passData.shadowMap[0]->Height());
 
                 // Setting up the input layout
-                settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("TANGENT", DXGI_FORMAT_R32G32B32A32_FLOAT, sizeof(glm::vec3) * 3 + sizeof(glm::vec2)));
 
                 std::vector<Uniform> uniforms;

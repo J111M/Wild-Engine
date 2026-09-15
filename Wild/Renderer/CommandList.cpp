@@ -180,12 +180,12 @@ namespace Wild
         auto settings = m_pipelineState->GetPipelineSettings();
 
         D3D12_VIEWPORT viewPort{};
-        if (settings.RasterizerState.Viewport.size.x > 0 && settings.RasterizerState.Viewport.size.y > 0)
+        if (settings.rasterizerState.viewport.size.x > 0 && settings.rasterizerState.viewport.size.y > 0)
         {
             viewPort.TopLeftX = 0.0f;
             viewPort.TopLeftY = 0.0f;
-            viewPort.Width = static_cast<FLOAT>(settings.RasterizerState.Viewport.size.x);
-            viewPort.Height = static_cast<FLOAT>(settings.RasterizerState.Viewport.size.y);
+            viewPort.Width = static_cast<FLOAT>(settings.rasterizerState.viewport.size.x);
+            viewPort.Height = static_cast<FLOAT>(settings.rasterizerState.viewport.size.y);
             viewPort.MinDepth = 0.0f;
             viewPort.MaxDepth = 1.0f;
         }

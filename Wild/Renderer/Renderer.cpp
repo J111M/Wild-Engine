@@ -118,10 +118,10 @@ namespace Wild
 
         // Copy final image over
         PipelineStateSettings settings{};
-        settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/VertCopyRT.slang");
-        settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/FragCopyRT.slang");
-        settings.DepthStencilState.DepthEnable = false;
-        settings.RasterizerState.WindingMode = WindingOrder::Clockwise;
+        settings.shaderState.vertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/VertCopyRT.slang");
+        settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/FragCopyRT.slang");
+        settings.depthStencilState.depthEnable = false;
+        settings.rasterizerState.windingMode = WindingOrder::Clockwise;
         settings.renderTargetsFormat.push_back(compositeTexture->GetDesc().format);
 
         std::vector<Uniform> uniforms;
@@ -201,7 +201,7 @@ namespace Wild
     {
         if (HasPipelineInCache(key)) return m_pipelineCache.at(key);
 
-        settings.PipelineName = key;
+        settings.pipelineName = key;
 
         // If the unordered map doesn't contain a pipeline at hash value create a new one
         auto it = m_pipelineCache.emplace(key, std::make_shared<PipelineState>(Type, settings, uniforms)).first;

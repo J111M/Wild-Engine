@@ -142,10 +142,10 @@ namespace Wild
                                      PassType::MeshShader,
                                      [&renderer, this](const DeferredPassData& passData, CommandList& list) {
                                          PipelineStateSettings settings{};
-                                         settings.ShaderState.MeshShader =
+                                         settings.shaderState.meshShader =
                                              engine.GetShaderTracker()->GetOrCreateShader("Shaders/DeferredVert.slang");
 
-                                         settings.DepthStencilState.DepthEnable = true;
+                                         settings.depthStencilState.depthEnable = true;
                                      });
     }
 
@@ -154,19 +154,19 @@ namespace Wild
         rg.AddPass<DeferredPassData>(
             "Deferred pass", PassType::Graphics, [&renderer, this](const DeferredPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
-                settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DeferredVert.slang");
-                settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DeferredFrag.slang");
-                settings.DepthStencilState.DepthEnable = true;
+                settings.shaderState.vertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DeferredVert.slang");
+                settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DeferredFrag.slang");
+                settings.depthStencilState.depthEnable = true;
 
                 // Setting up the input layout
-                settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("TANGENT", DXGI_FORMAT_R32G32B32A32_FLOAT, sizeof(glm::vec3) * 3 + sizeof(glm::vec2)));
 
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Albedo

@@ -52,16 +52,16 @@ namespace Wild
                 }
 
                 PipelineStateSettings settings{};
-                settings.ShaderState.VertexShader =
+                settings.shaderState.vertexShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/DebugTools/lineDebugVert.slang");
-                settings.ShaderState.FragShader =
+                settings.shaderState.fragShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/DebugTools/lineDebugFrag.slang");
-                settings.DepthStencilState.DepthEnable = false;
-                settings.RasterizerState.TopologyMode = PrimitiveTopology::LineList;
+                settings.depthStencilState.depthEnable = false;
+                settings.rasterizerState.topologyMode = PrimitiveTopology::LineList;
 
                 // Setting up the input layout
-                settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
 
                 settings.renderTargetsFormat.push_back(passData.debugTexture->GetDesc().format);

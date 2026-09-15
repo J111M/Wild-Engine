@@ -126,22 +126,22 @@ namespace Wild
 
     struct RenderTargetBlendState
     {
-        bool BlendEnable = false;
-        Blend SrcBlend = Blend::One;
-        Blend DestBlend = Blend::Zero;
-        BlendOp BlendOperation = BlendOp::Add;
-        Blend SrcBlendAlpha = Blend::One;
-        Blend DestBlendAlpha = Blend::Zero;
-        BlendOp BlendOperationAlpha = BlendOp::Add;
-        ColorWrite RenderTargetWriteMask = ColorWrite::EnableAll;
+        bool blendEnable = false;
+        Blend srcBlend = Blend::One;
+        Blend destBlend = Blend::Zero;
+        BlendOp blendOperation = BlendOp::Add;
+        Blend srcBlendAlpha = Blend::One;
+        Blend destBlendAlpha = Blend::Zero;
+        BlendOp blendOperationAlpha = BlendOp::Add;
+        ColorWrite renderTargetWriteMask = ColorWrite::EnableAll;
     };
 
     struct BlendState
     {
-        bool AlphaToCoverageEnable = false;
-        bool IndependentBlendEnable = false;
+        bool alphaToCoverageEnable = false;
+        bool independentBlendEnable = false;
 
-        RenderTargetBlendState RenderTarget[8];
+        RenderTargetBlendState renderTarget[8];
     };
 
     struct Viewport
@@ -152,35 +152,35 @@ namespace Wild
 
     struct RasterizerState
     {
-        PrimitiveTopology TopologyMode = PrimitiveTopology::TriangleList;
-        FillMode FillMode = FillMode::Solid;
-        CullMode CullMode = CullMode::Back;
-        WindingOrder WindingMode = WindingOrder::CounterClockwise;
+        PrimitiveTopology topologyMode = PrimitiveTopology::TriangleList;
+        FillMode fillMode = FillMode::Solid;
+        CullMode cullMode = CullMode::Back;
+        WindingOrder windingMode = WindingOrder::CounterClockwise;
 
-        Viewport Viewport{};
+        Viewport viewport{};
 
-        BlendState BlendDesc;
+        BlendState blendDesc;
     };
 
     struct DepthStencilOp
     {
-        StencilOp StencilFailOp = StencilOp::Keep;
-        StencilOp StencilDepthFailOp = StencilOp::Keep;
-        StencilOp StencilPassOp = StencilOp::Keep;
-        ComparisonFunc StencilFunc = ComparisonFunc::Always;
+        StencilOp stencilFailOp = StencilOp::Keep;
+        StencilOp stencilDepthFailOp = StencilOp::Keep;
+        StencilOp stencilPassOp = StencilOp::Keep;
+        ComparisonFunc stencilFunc = ComparisonFunc::Always;
     };
 
     struct DepthStencilState
     {
-        bool DepthEnable = true;
-        DepthWriteMask DepthWriteMask = DepthWriteMask::All;
-        ComparisonFunc DepthFunc = ComparisonFunc::LessEqual;
-        bool StencilEnable = false;
-        uint8_t StencilReadMask = 0xff;
-        uint8_t StencilWriteMask = 0xff;
+        bool depthEnable = true;
+        DepthWriteMask depthWriteMask = DepthWriteMask::All;
+        ComparisonFunc depthFunc = ComparisonFunc::LessEqual;
+        bool stencilEnable = false;
+        uint8_t stencilReadMask = 0xff;
+        uint8_t stencilWriteMask = 0xff;
 
-        DepthStencilOp FrontFace{};
-        DepthStencilOp BackFace{};
+        DepthStencilOp frontFace{};
+        DepthStencilOp backFace{};
     };
 
     struct RaytracingState
@@ -192,12 +192,16 @@ namespace Wild
 
     struct ShaderState
     {
-        std::vector<D3D12_INPUT_ELEMENT_DESC> InputLayout;
+        std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;
 
-        std::shared_ptr<Shader> VertexShader;
-        std::shared_ptr<Shader> FragShader;
-        std::shared_ptr<Shader> MeshShader;
-        std::shared_ptr<Shader> ComputeShader;
+        std::shared_ptr<Shader> vertexShader;
+        std::shared_ptr<Shader> fragShader;
+
+        std::shared_ptr<Shader> computeShader;
+
+        // Mesh shader and amplification shader
+        std::shared_ptr<Shader> amplificationShader;
+        std::shared_ptr<Shader> meshShader;
 
         std::shared_ptr<Shader> rayTracingShader;
     };
@@ -205,15 +209,15 @@ namespace Wild
     struct PipelineStateSettings
     {
         // Shader data and vertex layout
-        ShaderState ShaderState{};
+        ShaderState shaderState{};
         RaytracingState raytracingState{};
-        RasterizerState RasterizerState{};
-        DepthStencilState DepthStencilState{};
+        RasterizerState rasterizerState{};
+        DepthStencilState depthStencilState{};
 
         std::vector<DXGI_FORMAT> renderTargetsFormat{};
         DXGI_FORMAT depthFormat = DXGI_FORMAT_D32_FLOAT;
 
-        std::string PipelineName{};
+        std::string pipelineName{};
     };
 
     enum class ClearOperation

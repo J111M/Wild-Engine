@@ -274,7 +274,7 @@ namespace Wild
 
                 PipelineStateSettings settings{};
 
-                settings.ShaderState.rayTracingShader =
+                settings.shaderState.rayTracingShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/DDGI/DDGIRaytrace.slang");
 
                 settings.raytracingState.payloadSize = 16;
@@ -415,7 +415,7 @@ namespace Wild
                 m_irradianceConstantBuffer->Allocate(&m_updateRc, sizeof(DDGIUpdateConstants));
 
                 PipelineStateSettings settings{};
-                settings.ShaderState.ComputeShader =
+                settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/DDGI/DDGIUpdateIrradiance.slang");
 
                 std::vector<Uniform> uniforms;
@@ -509,7 +509,7 @@ namespace Wild
                 m_distanceConstantBuffer->Allocate(&m_updateRc, sizeof(DDGIUpdateConstants));
 
                 PipelineStateSettings settings{};
-                settings.ShaderState.ComputeShader =
+                settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/DDGI/DDGIUpdateDistance.slang");
 
                 std::vector<Uniform> uniforms;

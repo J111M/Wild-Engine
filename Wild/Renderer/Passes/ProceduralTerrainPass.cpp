@@ -149,7 +149,7 @@ namespace Wild
                     }
 
                     PipelineStateSettings computeSettings{};
-                    computeSettings.ShaderState.ComputeShader =
+                    computeSettings.shaderState.computeShader =
                         engine.GetShaderTracker()->GetOrCreateShader("Shaders/ProceduralTerrainCompute.slang");
 
                     std::vector<Uniform> uniforms;
@@ -251,21 +251,21 @@ namespace Wild
             PassType::Graphics,
             [&renderer, heightMapData, this](DrawTerrainPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
-                settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DrawTerrainVert.slang");
-                settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DrawTerrainFrag.slang");
-                settings.DepthStencilState.DepthEnable = true;
+                settings.shaderState.vertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DrawTerrainVert.slang");
+                settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DrawTerrainFrag.slang");
+                settings.depthStencilState.depthEnable = true;
 
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Albedo
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_UNORM); // Normal
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM); // Emissive
 
                 // Setting up the input layout
-                settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
 
                 std::vector<Uniform> uniforms;

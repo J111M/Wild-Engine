@@ -12,10 +12,10 @@ namespace Wild
     // psoDesc.SampleDesc.Count = 1;
     // psoDesc.SampleDesc.Quality = 0;
 
-    // psoDesc.DepthStencilState.DepthEnable = m_settings.DepthStencilState.DepthEnable;
+    // psoDesc.DepthStencilState.DepthEnable = m_settings.depthStencilState.depthEnable;
     // psoDesc.DepthStencilState.DepthWriteMask =
-    // static_cast<D3D12_DEPTH_WRITE_MASK>(m_settings.DepthStencilState.DepthWriteMask); psoDesc.DepthStencilState.DepthFunc =
-    // static_cast<D3D12_COMPARISON_FUNC>(m_settings.DepthStencilState.DepthFunc);
+    // static_cast<D3D12_DEPTH_WRITE_MASK>(m_settings.depthStencilState.depthWriteMask); psoDesc.DepthStencilState.DepthFunc =
+    // static_cast<D3D12_COMPARISON_FUNC>(m_settings.depthStencilState.depthFunc);
 
     // D3D12_FILL_MODE FillMode;
     // D3D12_CULL_MODE CullMode;

@@ -72,12 +72,12 @@ namespace Wild
                 }
 
                 PipelineStateSettings settings{};
-                settings.ShaderState.VertexShader =
+                settings.shaderState.vertexShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/DebugTools/ProbeDebugVert.slang");
-                settings.ShaderState.FragShader =
+                settings.shaderState.fragShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/DebugTools/ProbeDebugFrag.slang");
 
-                settings.RasterizerState.CullMode = CullMode::Back;
+                settings.rasterizerState.cullMode = CullMode::Back;
                 settings.renderTargetsFormat.push_back(passData.targetTexture->GetDesc().format);
 
                 std::vector<Uniform> uniforms;

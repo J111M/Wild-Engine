@@ -110,22 +110,22 @@ namespace Wild
         rg.AddPass<SkyboxPassData>(
             "Skybox pass", PassType::Graphics, [&renderer, this](const SkyboxPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
-                settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/SkyboxVert.slang");
-                settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/SkyboxFrag.slang");
-                settings.DepthStencilState.DepthEnable = true;
-                settings.DepthStencilState.DepthWriteMask = DepthWriteMask::Zero;
-                settings.DepthStencilState.DepthFunc = ComparisonFunc::LessEqual;
-                settings.RasterizerState.CullMode = CullMode::None;
-                // settings.RasterizerState.WindingMode = WindingOrder::Clockwise;
+                settings.shaderState.vertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/SkyboxVert.slang");
+                settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/SkyboxFrag.slang");
+                settings.depthStencilState.depthEnable = true;
+                settings.depthStencilState.depthWriteMask = DepthWriteMask::Zero;
+                settings.depthStencilState.depthFunc = ComparisonFunc::LessEqual;
+                settings.rasterizerState.cullMode = CullMode::None;
+                // settings.rasterizerState.windingMode = WindingOrder::Clockwise;
                 settings.renderTargetsFormat.push_back(passData.finalTexture->GetDesc().format);
 
                 // Setting up the input layout
-                settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
 
                 // Uniforms
@@ -259,25 +259,25 @@ namespace Wild
                     glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))};
 
                 PipelineStateSettings settings{};
-                settings.ShaderState.VertexShader =
+                settings.shaderState.vertexShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/CaptureIBLVert.slang");
-                settings.ShaderState.FragShader =
+                settings.shaderState.fragShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/CaptureIBLFrag.slang");
-                settings.DepthStencilState.DepthEnable = false;
-                settings.DepthStencilState.DepthWriteMask = DepthWriteMask::Zero;
-                settings.DepthStencilState.DepthFunc = ComparisonFunc::LessEqual;
-                settings.RasterizerState.CullMode = CullMode::None;
+                settings.depthStencilState.depthEnable = false;
+                settings.depthStencilState.depthWriteMask = DepthWriteMask::Zero;
+                settings.depthStencilState.depthFunc = ComparisonFunc::LessEqual;
+                settings.rasterizerState.cullMode = CullMode::None;
 
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_FLOAT);
                 settings.depthFormat = DXGI_FORMAT_UNKNOWN;
 
                 // Setting up the input layout for cube
-                settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
 
                 /// Generating cube map from equirectangular map since it is easier to sample from and less expensive
@@ -286,8 +286,8 @@ namespace Wild
                     /// Convolute cubemap
                     {
                         // Size of the cubemap face
-                        settings.RasterizerState.Viewport.size.x = 512;
-                        settings.RasterizerState.Viewport.size.y = 512;
+                        settings.rasterizerState.viewport.size.x = 512;
+                        settings.rasterizerState.viewport.size.y = 512;
 
                         // Uniforms
                         std::vector<Uniform> uniforms;
@@ -348,14 +348,14 @@ namespace Wild
                     }
                     else
                     {
-                        settings.ShaderState.VertexShader =
+                        settings.shaderState.vertexShader =
                             engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/CaptureIBLVert.slang");
-                        settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader(
+                        settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader(
                             "Shaders/ImageBasedLighting/GenerateIrradianceMapFrag.slang");
 
                         // Size of the cubemap face
-                        settings.RasterizerState.Viewport.size.x = 32;
-                        settings.RasterizerState.Viewport.size.y = 32;
+                        settings.rasterizerState.viewport.size.x = 32;
+                        settings.rasterizerState.viewport.size.y = 32;
 
                         // Uniforms
                         std::vector<Uniform> uniforms;
@@ -417,7 +417,7 @@ namespace Wild
                     /// BRDF look up table pass generated with compute
                     {
                         PipelineStateSettings computeSettings{};
-                        computeSettings.ShaderState.ComputeShader =
+                        computeSettings.shaderState.computeShader =
                             engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/GenerateBrdfLut.slang");
 
                         std::vector<Uniform> uniforms;
@@ -451,7 +451,7 @@ namespace Wild
                     else
                     {
                         PipelineStateSettings computeSettings{};
-                        computeSettings.ShaderState.ComputeShader =
+                        computeSettings.shaderState.computeShader =
                             engine.GetShaderTracker()->GetOrCreateShader("Shaders/ImageBasedLighting/GenerateSpecularMap.slang");
 
                         std::vector<Uniform> uniforms;

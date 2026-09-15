@@ -95,7 +95,7 @@ namespace Wild
                     m_noiseRC.cellCount = 4;
 
                     PipelineStateSettings settings{};
-                    settings.ShaderState.ComputeShader =
+                    settings.shaderState.computeShader =
                         engine.GetShaderTracker()->GetOrCreateShader("Shaders/PostProcess/VolumetricNoise.slang");
 
                     std::vector<Uniform> uniforms;
@@ -148,7 +148,7 @@ namespace Wild
         rg.AddPass<FroxelPassData>(
             "Froxel pass", PassType::Compute, [&renderer, this](FroxelPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
-                settings.ShaderState.ComputeShader =
+                settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/PostProcess/FoxelFogPass.slang");
             });
     }
@@ -191,7 +191,7 @@ namespace Wild
                     }
 
                     PipelineStateSettings settings{};
-                    settings.ShaderState.ComputeShader =
+                    settings.shaderState.computeShader =
                         engine.GetShaderTracker()->GetOrCreateShader("Shaders/PostProcess/Volumetrics.slang");
 
                     std::vector<Uniform> uniforms;
@@ -321,7 +321,7 @@ namespace Wild
                 passData.finalTexture->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                 PipelineStateSettings settings{};
-                settings.ShaderState.ComputeShader =
+                settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/PostProcess/FinalPostProcess.slang");
 
                 std::vector<Uniform> uniforms;

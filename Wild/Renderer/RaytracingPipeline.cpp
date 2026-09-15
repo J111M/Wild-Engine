@@ -9,13 +9,13 @@ namespace Wild
     {
         auto device = engine.GetGfxContext()->GetDevice7();
 
-        if (!settings.ShaderState.rayTracingShader)
+        if (!settings.shaderState.rayTracingShader)
         {
-            WD_ERROR("Pipeline state {} doesn't contain a raytracing shader", settings.PipelineName);
+            WD_ERROR("Pipeline state {} doesn't contain a raytracing shader", settings.pipelineName);
             return;
         }
 
-        auto shader = settings.ShaderState.rayTracingShader;
+        auto shader = settings.shaderState.rayTracingShader;
 
         CD3DX12_STATE_OBJECT_DESC raytracingPipelineDesc{D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE};
 

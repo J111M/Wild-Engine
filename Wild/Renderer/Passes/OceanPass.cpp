@@ -199,7 +199,7 @@ namespace Wild
                     m_gaussianDistribution->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
                     PipelineStateSettings settings{};
-                    settings.ShaderState.ComputeShader =
+                    settings.shaderState.computeShader =
                         engine.GetShaderTracker()->GetOrCreateShader("Shaders/Ocean/InitialSpectrum.slang");
 
                     std::vector<Uniform> uniforms;
@@ -272,7 +272,7 @@ namespace Wild
                 if (m_recomputeInitialSpectrum)
                 {
                     PipelineStateSettings settings{};
-                    settings.ShaderState.ComputeShader =
+                    settings.shaderState.computeShader =
                         engine.GetShaderTracker()->GetOrCreateShader("Shaders/Ocean/ConjugateSpectrum.slang");
 
                     std::vector<Uniform> uniforms;
@@ -329,7 +329,7 @@ namespace Wild
             PassType::Compute,
             [&renderer, conjugateSpectrumData, this](UpdateSpectrumPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
-                settings.ShaderState.ComputeShader =
+                settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Ocean/UpdateSpectrum.slang");
 
                 std::vector<Uniform> uniforms;
@@ -398,7 +398,7 @@ namespace Wild
             PassType::Compute,
             [&renderer, spectrumData, this](IFFTPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
-                settings.ShaderState.ComputeShader =
+                settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Ocean/InverseFFT.slang");
 
                 std::vector<Uniform> uniforms;
@@ -505,7 +505,7 @@ namespace Wild
             PassType::Compute,
             [&renderer, fourierData, this](AssembleOceanPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
-                settings.ShaderState.ComputeShader =
+                settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Ocean/AssembleOcean.slang");
 
                 std::vector<Uniform> uniforms;
@@ -577,7 +577,7 @@ namespace Wild
         rg.AddPass<FoamFilterPassData>(
             "Foam filter ocean pass", PassType::Compute, [&renderer, this](FoamFilterPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
-                settings.ShaderState.ComputeShader =
+                settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Ocean/FoamFilter.slang");
 
                 std::vector<Uniform> uniforms;
@@ -622,18 +622,18 @@ namespace Wild
             PassType::Graphics,
             [&renderer, fftOceanData, this](const OceanPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
-                settings.ShaderState.VertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/OceanRenderVert.slang");
-                settings.ShaderState.FragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/OceanRenderFrag.slang");
-                settings.DepthStencilState.DepthEnable = true;
+                settings.shaderState.vertexShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/OceanRenderVert.slang");
+                settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/OceanRenderFrag.slang");
+                settings.depthStencilState.depthEnable = true;
 
                 settings.renderTargetsFormat.push_back(passData.finalTexture->GetDesc().format);
 
-                settings.ShaderState.InputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
-                settings.ShaderState.InputLayout.emplace_back(
+                settings.shaderState.inputLayout.emplace_back(
                     InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
 
                 std::vector<Uniform> uniforms;
