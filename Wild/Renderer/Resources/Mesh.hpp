@@ -3,6 +3,7 @@
 #include "Core/Transform.hpp"
 
 #include "Renderer/Resources/Material.hpp"
+#include "meshoptimizer.h"
 
 #include <glm/glm.hpp>
 #include <cstdint>
@@ -14,6 +15,16 @@
 namespace Wild
 {
     class GPUBuffer;
+
+
+    struct MeshletData
+    {
+        std::unique_ptr<GPUBuffer> meshletBuffer;
+        std::unique_ptr<GPUBuffer> uniqueVertexIndexBuffer;
+        std::unique_ptr<GPUBuffer> primitiveIndexBuffer;
+        std::unique_ptr<GPUBuffer> cullDataBuffer;
+        uint32_t meshletCount = 0;
+    };
 
     struct Vertex
     {
@@ -38,8 +49,6 @@ namespace Wild
         uint32_t GetVertexCount() const { return m_vertexCount; }
         uint32_t GetDrawCount() const { return m_drawCount; }
 
-        // CPU-side copy of positions/indices, kept around (GPU buffers are upload-only)
-        // so physics colliders can build Jolt mesh/convex-hull shapes from the geometry.
         const std::vector<glm::vec3>& GetCollisionPositions() const { return m_collisionPositions; }
         const std::vector<uint32_t>& GetCollisionIndices() const { return m_collisionIndices; }
 
@@ -72,6 +81,11 @@ namespace Wild
 
         uint32_t m_blasIndex = UINT32_MAX;
         uint32_t m_meshInfoIndex = UINT32_MAX;
+
+        // Meshlet data
+        std::optional<MeshletData> meshlets;
+
+        bool HasMeshlets() const { return meshlets.has_value(); }
     };
 
     // Mesh component for referencing copied entities

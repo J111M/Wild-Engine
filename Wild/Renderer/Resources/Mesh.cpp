@@ -14,6 +14,49 @@ namespace Wild
             return;
         }
 
+        if (engine.GetGfxContext()->GetCapabilities().SupportsMeshShaders())
+        {
+            const size_t maxVertices = 64;
+            const size_t maxTriangles = 124;
+            const size_t indicesSize = indices.size();
+
+            size_t maxMeshlets = meshopt_buildMeshletsBound(indicesSize, maxVertices, maxTriangles);
+
+            std::vector<meshopt_Meshlet> meshlets(maxMeshlets);
+            std::vector<unsigned int> meshletVertices(indicesSize);
+            std::vector<unsigned char> meshletTriangles(indicesSize);
+
+            std::vector<uint32_t> primitiveVertexPositions;
+
+            const size_t meshletCount = meshopt_buildMeshlets(&meshlets[0],
+                                                              &meshletVertices[0],
+                                                              &meshletTriangles[0],
+                                                              indices.data(),
+                                                              indicesSize,
+                                                              reinterpret_cast<const float*>(vertices.data()),
+                                                              vertices.size(),
+                                                              sizeof(Vertex),
+                                                              maxVertices,
+                                                              maxTriangles,
+                                                              0.25f);
+
+            meshlets.resize(meshletCount);
+
+            // Trim the memory that is not written too
+            const meshopt_Meshlet& last = meshlets.back();
+            meshletVertices.resize(last.vertex_offset + last.vertex_count);
+            meshletTriangles.resize(last.triangle_offset + ((last.triangle_count * 3 + 3) & ~3));
+
+            // Reorder vertices and triangles within the meshlets for better GPU vertex cache utilization
+            for (auto& meshlet : meshlets)
+            {
+                meshopt_optimizeMeshlet(&meshletVertices[meshlet.vertex_offset],
+                                        &meshletTriangles[meshlet.triangle_offset],
+                                        meshlet.triangle_count,
+                                        meshlet.vertex_count);
+            }
+        }
+
         {
             BufferDesc desc{};
             desc.usage = BufferUsage::Vertex;
