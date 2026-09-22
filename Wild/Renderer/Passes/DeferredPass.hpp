@@ -5,27 +5,18 @@
 
 namespace Wild
 {
-    struct IndirectFrustum
+    struct DeferredMeshShaderRootConstants
     {
-        // Normalized
-        glm::vec4 frustumPlanes[6];
-        uint32_t totalObjectCount;
-    };
+        glm::mat4 matrix{};
+        glm::mat4 invMatrix{};
+        uint32_t albedoView{};
+        uint32_t normalView{};
+        uint32_t roughnessMetallicView{};
+        uint32_t emissiveView{};
 
-    struct InstanceData
-    {
-        uint32_t instanceIndex;
-        float lodBlend;
-    };
-
-    struct IndirectCommand
-    {
-        UINT drawID;
-        D3D12_DRAW_INDEXED_ARGUMENTS drawArgs;
-    };
-
-    struct IndirectRendering
-    {
+        uint32_t meshletBufferView{};
+        uint32_t vertexBufferView{};
+        uint32_t primIndexBufferView{};
     };
 
     struct DeferredRootConstants

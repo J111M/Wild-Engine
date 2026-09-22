@@ -3,10 +3,10 @@
 #include "Core/Transform.hpp"
 
 #include "Renderer/Resources/Material.hpp"
-#include "meshoptimizer.h"
+#include "Renderer/Resources/Meshlets.hpp"
 
-#include <glm/glm.hpp>
 #include <cstdint>
+#include <glm/glm.hpp>
 #include <memory>
 #include <vector>
 
@@ -15,16 +15,6 @@
 namespace Wild
 {
     class GPUBuffer;
-
-
-    struct MeshletData
-    {
-        std::unique_ptr<GPUBuffer> meshletBuffer;
-        std::unique_ptr<GPUBuffer> uniqueVertexIndexBuffer;
-        std::unique_ptr<GPUBuffer> primitiveIndexBuffer;
-        std::unique_ptr<GPUBuffer> cullDataBuffer;
-        uint32_t meshletCount = 0;
-    };
 
     struct Vertex
     {
@@ -66,6 +56,8 @@ namespace Wild
         uint32_t GetBlasIndex() const { return m_blasIndex; }
         uint32_t GetMeshInfoIndex() const { return m_meshInfoIndex; }
 
+        // bool HasMeshlets() const { return m_meshlets.has_value(); }
+
       private:
         std::shared_ptr<GPUBuffer> m_vertexBuffer;
         std::shared_ptr<GPUBuffer> m_indexBuffer;
@@ -82,10 +74,7 @@ namespace Wild
         uint32_t m_blasIndex = UINT32_MAX;
         uint32_t m_meshInfoIndex = UINT32_MAX;
 
-        // Meshlet data
-        std::optional<MeshletData> meshlets;
-
-        bool HasMeshlets() const { return meshlets.has_value(); }
+        std::unique_ptr<Meshlets> m_meshlets;
     };
 
     // Mesh component for referencing copied entities

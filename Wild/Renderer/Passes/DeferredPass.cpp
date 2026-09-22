@@ -142,10 +142,14 @@ namespace Wild
                                      PassType::MeshShader,
                                      [&renderer, this](const DeferredPassData& passData, CommandList& list) {
                                          PipelineStateSettings settings{};
-                                         settings.shaderState.meshShader =
-                                             engine.GetShaderTracker()->GetOrCreateShader("Shaders/DeferredVert.slang");
+                                         settings.shaderState.meshShader = engine.GetShaderTracker()->GetOrCreateShader(
+                                             "Shaders/Geometry/DeferredMeshShader.slang");
 
                                          settings.depthStencilState.depthEnable = true;
+
+                                         settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Albedo
+                                         settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_UNORM); // Normal
+                                         settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Emissive
                                      });
     }
 
