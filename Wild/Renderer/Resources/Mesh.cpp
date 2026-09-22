@@ -22,7 +22,7 @@ namespace Wild
 
         {
             BufferDesc desc{};
-            desc.usage = BufferUsage::Vertex;
+            desc.usage = BufferUsage::Vertex | BufferUsage::ShaderRead;
             desc.access = MemoryAccess::GpuOnly;
 
             m_vertexBuffer = std::make_shared<GPUBuffer>(desc);

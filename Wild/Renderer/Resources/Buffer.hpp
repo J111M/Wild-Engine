@@ -112,7 +112,9 @@ namespace Wild
 
             UpdateSubresources(list.GetList().Get(), m_resource->Handle().Get(), upload.resource.Get(), 0, 0, 1, &data);
 
-            m_resource->Transition(list, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+            auto state = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+            if (HasFlag(m_desc.usage, BufferUsage::ShaderRead)) state |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            m_resource->Transition(list, state);
 
             // Execute the command list
             list.Close();
@@ -121,6 +123,7 @@ namespace Wild
 
             m_vbView =
                 std::make_shared<VertexBufferView>(m_resource->Handle(), static_cast<uint32_t>(m_desc.size), stride);
+            CreateViews();
         }
     };
 } // namespace Wild

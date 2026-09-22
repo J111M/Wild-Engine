@@ -14,9 +14,11 @@ namespace Wild
         uint32_t roughnessMetallicView{};
         uint32_t emissiveView{};
 
+        uint32_t vertexDataBuffer{};
         uint32_t meshletBufferView{};
-        uint32_t vertexBufferView{};
+        uint32_t meshletVertexBufferView{};
         uint32_t primIndexBufferView{};
+        uint32_t meshletOffset{};
     };
 
     struct DeferredRootConstants

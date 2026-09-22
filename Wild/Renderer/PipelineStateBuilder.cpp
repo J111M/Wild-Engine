@@ -39,7 +39,7 @@ namespace Wild
             CreateComputePSO();
             break;
         case Wild::PipelineStateType::MeshPipeline:
-            CreateGraphicsPSO();
+            CreateMeshPipelinePSO();
             break;
         case Wild::PipelineStateType::Raytracing:
             CreateRaytracingPipeline();

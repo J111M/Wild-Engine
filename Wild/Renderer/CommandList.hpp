@@ -73,6 +73,7 @@ namespace Wild
 
         // For raytracing features
         ComPtr<ID3D12GraphicsCommandList4> m_commandList4;
+        ComPtr<ID3D12GraphicsCommandList6> m_commandList6;
 
         ComPtr<ID3D12CommandAllocator> m_allocator;
 
@@ -92,13 +93,12 @@ namespace Wild
         switch (m_pipelineState->GetPassType())
         {
         case PipelineStateType::Graphics:
+        case PipelineStateType::MeshPipeline:
             m_commandList->SetGraphicsRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
             break;
         case PipelineStateType::Compute:
         case PipelineStateType::Raytracing:
             m_commandList->SetComputeRoot32BitConstants(static_cast<UINT>(rootIndex), sizeof(rc) / 4, &rootConstant, 0);
-            break;
-        case PipelineStateType::MeshPipeline:
             break;
         default:
             break;

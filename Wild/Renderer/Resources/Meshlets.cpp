@@ -1,12 +1,33 @@
 #include "Renderer/Resources/Meshlets.hpp"
 
+#include <cstddef>
+#include <numeric>
+
 namespace Wild
 {
     Meshlets::Meshlets(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const std::string& meshName)
     {
         const size_t maxVertices = 64;
         const size_t maxTriangles = 124;
-        const size_t indicesSize = indices.size();
+
+        if (vertices.empty()) return;
+
+        std::vector<uint32_t> generatedIndices;
+        if (indices.empty())
+        {
+            generatedIndices.resize(vertices.size());
+            std::iota(generatedIndices.begin(), generatedIndices.end(), 0u);
+        }
+        const auto& sourceIndices = indices.empty() ? generatedIndices : indices;
+        const size_t indicesSize = sourceIndices.size() / 3 * 3;
+        if (indicesSize == 0) return;
+
+        if (std::any_of(sourceIndices.begin(), sourceIndices.begin() + indicesSize,
+                        [&vertices](uint32_t index) { return index >= vertices.size(); }))
+        {
+            WD_WARN("Invalid vertex index supplied for meshlets: {}", meshName);
+            return;
+        }
 
         size_t maxMeshlets = meshopt_buildMeshletsBound(indicesSize, maxVertices, maxTriangles);
 
@@ -14,13 +35,11 @@ namespace Wild
         std::vector<unsigned int> meshletVertices(indicesSize);
         std::vector<unsigned char> meshletTriangles(indicesSize);
 
-        std::vector<uint32_t> primitiveVertexPositions;
-
         // Build the meshlets out of the current mesh
         const size_t meshletCount = meshopt_buildMeshlets(&meshlets[0],
                                                           &meshletVertices[0],
                                                           &meshletTriangles[0],
-                                                          indices.data(),
+                                                          sourceIndices.data(),
                                                           indicesSize,
                                                           reinterpret_cast<const float*>(vertices.data()),
                                                           vertices.size(),
@@ -30,11 +49,12 @@ namespace Wild
                                                           0.25f);
 
         meshlets.resize(meshletCount);
+        if (meshlets.empty()) return;
 
         // Trim the memory that is not written too
         const meshopt_Meshlet& last = meshlets.back();
         meshletVertices.resize(last.vertex_offset + last.vertex_count);
-        meshletTriangles.resize(last.triangle_offset + ((last.triangle_count * 3 + 3) & ~3));
+        meshletTriangles.resize(last.triangle_offset + last.triangle_count * 3);
 
         // Reorder vertices and triangles within the meshlets for better GPU vertex cache utilization
         for (auto& meshlet : meshlets)
@@ -73,24 +93,24 @@ namespace Wild
             BufferDesc desc{};
             desc.name = "Meshlet buffer: " + meshName;
             desc.usage = BufferUsage::ShaderRead;
-            desc.size = static_cast<uint64_t>(meshletCollection.size());
+            desc.size = static_cast<uint64_t>(meshletCollection.size()) * sizeof(Meshlet);
             desc.stride = sizeof(Meshlet);
             desc.access = MemoryAccess::GpuOnly;
 
             m_meshletData.meshletBuffer = std::make_unique<GPUBuffer>(desc);
-            m_meshletData.meshletBuffer->Allocate(meshletCollection.data());
+            m_meshletData.meshletBuffer->UploadToGPU(meshletCollection.data());
         }
 
         {
             BufferDesc desc{};
             desc.name = "Vertices buffer of meshlet: " + meshName;
             desc.usage = BufferUsage::ShaderRead;
-            desc.size = static_cast<uint64_t>(meshletVertices.size());
+            desc.size = static_cast<uint64_t>(meshletVertices.size()) * sizeof(uint32_t);
             desc.stride = sizeof(uint32_t);
             desc.access = MemoryAccess::GpuOnly;
 
             m_meshletData.uniqueVertexIndexBuffer = std::make_unique<GPUBuffer>(desc);
-            m_meshletData.uniqueVertexIndexBuffer->Allocate(meshletVertices.data());
+            m_meshletData.uniqueVertexIndexBuffer->UploadToGPU(meshletVertices.data());
         }
 
         std::vector<uint32_t> primitiveIndices(meshletTriangles.begin(), meshletTriangles.end());
@@ -99,12 +119,12 @@ namespace Wild
             BufferDesc desc{};
             desc.name = "Primitive index buffer of meshlet " + meshName;
             desc.usage = BufferUsage::ShaderRead;
-            desc.size = static_cast<uint64_t>(primitiveIndices.size());
-            desc.stride = sizeof(Meshlet);
+            desc.size = static_cast<uint64_t>(primitiveIndices.size()) * sizeof(uint32_t);
+            desc.stride = sizeof(uint32_t);
             desc.access = MemoryAccess::GpuOnly;
 
             m_meshletData.primitiveIndexBuffer = std::make_unique<GPUBuffer>(desc);
-            m_meshletData.primitiveIndexBuffer->Allocate(primitiveIndices.data());
+            m_meshletData.primitiveIndexBuffer->UploadToGPU(primitiveIndices.data());
         }
 
         m_meshletData.meshletCount = static_cast<uint32_t>(meshletCollection.size());

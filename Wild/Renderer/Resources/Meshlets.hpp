@@ -16,10 +16,10 @@ namespace Wild
     {
         glm::vec4 meshletBoundingSphere;
 
-        glm::vec3 coneApex;
+        glm::vec<3, float, glm::packed_highp> coneApex;
         float coneCutoff;
 
-        glm::vec3 coneAxis;
+        glm::vec<3, float, glm::packed_highp> coneAxis;
         uint32_t vertexOffset;
 
         uint32_t meshletVerticesOffset;

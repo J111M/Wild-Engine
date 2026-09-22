@@ -56,7 +56,7 @@ namespace Wild
         uint32_t GetBlasIndex() const { return m_blasIndex; }
         uint32_t GetMeshInfoIndex() const { return m_meshInfoIndex; }
 
-        // bool HasMeshlets() const { return m_meshlets.has_value(); }
+        const Meshlets* GetMeshlets() const { return m_meshlets.get(); }
 
       private:
         std::shared_ptr<GPUBuffer> m_vertexBuffer;

@@ -4,6 +4,8 @@
 #include "Renderer/Resources/LightTypes.hpp"
 #include "Renderer/Resources/Model.hpp"
 
+#include <cstddef>
+
 namespace Wild
 {
     DeferredPass::DeferredPass()
@@ -104,32 +106,6 @@ namespace Wild
         });
 
         engine.GetSceneManager()->LoadScene("Sponza");
-
-        // Setup indirect rendering
-        D3D12_INDIRECT_ARGUMENT_DESC args[2] = {};
-        args[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
-        args[0].Constant.RootParameterIndex = 0;
-        args[0].Constant.DestOffsetIn32BitValues = 0;
-        args[0].Constant.Num32BitValuesToSet = 1;
-        args[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
-
-        D3D12_COMMAND_SIGNATURE_DESC signatureDesc = {};
-        signatureDesc.ByteStride = sizeof(IndirectCommand);
-        signatureDesc.NumArgumentDescs = 2;
-        signatureDesc.pArgumentDescs = args;
-
-        auto device = engine.GetGfxContext()->GetDevice();
-        // device->CreateCommandSignature(&signatureDesc, nullptr, IID_PPV_ARGS(&m_commandSignature));
-
-        // Frustum constant buffer
-        for (int i = 0; i < BACK_BUFFER_COUNT; i++)
-        {
-            BufferDesc desc{};
-            desc.size = sizeof(IndirectFrustum);
-            desc.usage = BufferUsage::Constant;
-            desc.access = MemoryAccess::CpuToGpu;
-            m_frustumBuffer[i] = std::make_unique<GPUBuffer>(desc);
-        }
     }
 
     void DeferredPass::Update(const float dt) {}
@@ -138,19 +114,92 @@ namespace Wild
 
     void DeferredPass::DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg)
     {
-        rg.AddPass<DeferredPassData>("Deferred mesh shader pass",
-                                     PassType::MeshShader,
-                                     [&renderer, this](const DeferredPassData& passData, CommandList& list) {
-                                         PipelineStateSettings settings{};
-                                         settings.shaderState.meshShader = engine.GetShaderTracker()->GetOrCreateShader(
-                                             "Shaders/Geometry/DeferredMeshShader.slang");
+        rg.AddPass<DeferredPassData>(
+            "Deferred mesh shader pass", PassType::MeshShader,
+            [&renderer, this](const DeferredPassData& passData, CommandList& list) {
+                PipelineStateSettings settings{};
+                settings.shaderState.meshShader =
+                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/DeferredMeshShader.slang");
+                settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DeferredFrag.slang");
+                settings.depthStencilState.depthEnable = true;
 
-                                         settings.depthStencilState.depthEnable = true;
+                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Albedo
+                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_UNORM); // Normal
+                settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Emissive
 
-                                         settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Albedo
-                                         settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_UNORM); // Normal
-                                         settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Emissive
-                                     });
+                std::vector<Uniform> uniforms;
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DeferredMeshShaderRootConstants)};
+                uniforms.emplace_back(rootConstant);
+
+                Uniform bindlessUni{0, 0, RootParams::RootResourceType::DescriptorTable};
+                CD3DX12_DESCRIPTOR_RANGE srvRange{};
+                srvRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, UINT_MAX, 0, 0, 1);
+                bindlessUni.ranges.emplace_back(srvRange);
+                bindlessUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                uniforms.emplace_back(bindlessUni);
+
+                Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
+                uniforms.emplace_back(staticSampler);
+
+                auto pipeline =
+                    renderer.GetOrCreatePipeline("Deferred mesh shader pass", PipelineStateType::MeshPipeline, settings, uniforms);
+
+                list.SetPipelineState(pipeline);
+                list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
+                                 {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
+                                 passData.depthTexture,
+                                 DSClearOperation::Store,
+                                 "Deferred mesh shader pass");
+                list.SetBindlessHeap(1);
+
+                Camera* camera = GetActiveCamera();
+                auto meshes = engine.GetECS()->GetRegistry().view<Transform, MeshComponent>();
+                for (auto&& [entity, trans, meshComponent] : meshes.each())
+                {
+                    if (!meshComponent.mesh) continue;
+                    auto& mesh = *meshComponent.mesh;
+                    if (!mesh.GetMeshlets()) continue;
+                    const auto& meshlets = mesh.GetMeshlets()->GetMeshletData();
+                    if (meshlets.meshletCount == 0) continue;
+
+                    DeferredMeshShaderRootConstants rc{};
+                    if (camera)
+                    {
+                        rc.matrix = camera->GetProjection() * camera->GetView() * trans.GetWorldMatrix();
+                        rc.invMatrix = glm::transpose(glm::inverse(glm::mat3(trans.GetWorldMatrix())));
+                    }
+
+                    const auto& material = mesh.GetMaterial();
+                    if (material.m_albedo) rc.albedoView = material.m_albedo->GetSrv()->BindlessView();
+                    if (material.m_normal) rc.normalView = material.m_normal->GetSrv()->BindlessView();
+                    if (material.m_roughnessMetallic)
+                        rc.roughnessMetallicView = material.m_roughnessMetallic->GetSrv()->BindlessView();
+                    if (material.m_emissive) rc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
+
+                    auto vertexBuffer = mesh.GetVertexBuffer();
+                    vertexBuffer->Transition(list, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER |
+                                                       D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    meshlets.meshletBuffer->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    meshlets.uniqueVertexIndexBuffer->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    meshlets.primitiveIndexBuffer->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+                    rc.vertexDataBuffer = vertexBuffer->GetSRView()->View();
+                    rc.meshletBufferView = meshlets.meshletBuffer->GetSRView()->View();
+                    rc.meshletVertexBufferView = meshlets.uniqueVertexIndexBuffer->GetSRView()->View();
+                    rc.primIndexBufferView = meshlets.primitiveIndexBuffer->GetSRView()->View();
+
+                    for (uint32_t offset = 0; offset < meshlets.meshletCount;)
+                    {
+                        uint32_t count = std::min(meshlets.meshletCount - offset, 65535u);
+                        rc.meshletOffset = offset;
+                        list.SetRootConstant(0, rc);
+                        list.Dispatch(count);
+                        offset += count;
+                    }
+                }
+
+                list.EndRender();
+            });
     }
 
     void DeferredPass::DeferredVertexPass(Renderer& renderer, RenderGraph& rg)
@@ -163,15 +212,16 @@ namespace Wild
                 settings.depthStencilState.depthEnable = true;
 
                 // Setting up the input layout
-                settings.shaderState.inputLayout.emplace_back(InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0));
                 settings.shaderState.inputLayout.emplace_back(
-                    InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3)));
+                    InputElement("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, offsetof(Vertex, position)));
                 settings.shaderState.inputLayout.emplace_back(
-                    InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, sizeof(glm::vec3) * 2));
+                    InputElement("COLOR", DXGI_FORMAT_R32G32B32_FLOAT, offsetof(Vertex, color)));
                 settings.shaderState.inputLayout.emplace_back(
-                    InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, sizeof(glm::vec3) * 3));
+                    InputElement("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, offsetof(Vertex, normal)));
                 settings.shaderState.inputLayout.emplace_back(
-                    InputElement("TANGENT", DXGI_FORMAT_R32G32B32A32_FLOAT, sizeof(glm::vec3) * 3 + sizeof(glm::vec2)));
+                    InputElement("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT, offsetof(Vertex, uv)));
+                settings.shaderState.inputLayout.emplace_back(
+                    InputElement("TANGENT", DXGI_FORMAT_R32G32B32A32_FLOAT, offsetof(Vertex, tangent)));
 
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R8G8B8A8_UNORM);     // Albedo
                 settings.renderTargetsFormat.push_back(DXGI_FORMAT_R16G16B16A16_UNORM); // Normal
@@ -265,7 +315,9 @@ namespace Wild
         passData->emissiveTexture = grassData->emissiveTexture;
         passData->depthTexture = grassData->depthTexture;
 
-        if (engine.GetGfxContext()->GetCapabilities().CheckMeshShaderSupport(MeshShaderSupport::Tier1))
+        const auto& capabilities = engine.GetGfxContext()->GetCapabilities();
+        if (capabilities.CheckMeshShaderSupport(MeshShaderSupport::Tier1) &&
+            capabilities.CheckResourceBindingSupport(ResourceBindingSupport::Tier3))
             DeferredMeshShaderPass(renderer, rg);
         else
             DeferredVertexPass(renderer, rg);

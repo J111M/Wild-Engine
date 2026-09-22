@@ -25,6 +25,11 @@ namespace Wild
         }
         else
             WD_INFO("Raytracing features are not supported by the driver");
+
+        if (engine.GetGfxContext()->GetCapabilities().SupportsMeshShaders())
+        {
+            ThrowIfFailed(m_commandList->QueryInterface(IID_PPV_ARGS(&m_commandList6)));
+        }
     }
 
     CommandList::~CommandList()
@@ -289,6 +294,9 @@ namespace Wild
         {
         case PipelineStateType::Compute:
             m_commandList->Dispatch(static_cast<UINT>(x), static_cast<UINT>(y), static_cast<UINT>(z));
+            break;
+        case PipelineStateType::MeshPipeline:
+            m_commandList6->DispatchMesh(x, y, z);
             break;
         case PipelineStateType::Raytracing:
             // Feature support is already checked before reaching this point
