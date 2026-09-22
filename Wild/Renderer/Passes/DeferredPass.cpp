@@ -108,7 +108,45 @@ namespace Wild
         engine.GetSceneManager()->LoadScene("Sponza");
     }
 
-    void DeferredPass::Update(const float dt) {}
+    void DeferredPass::Update(const float dt)
+    {
+        const bool meshShaderPathAvailable = SupportsMeshShaderPath();
+        const bool clusterDebugAvailable = SupportsClusterDebugView();
+
+        engine.GetImGui()->AddPanel("Geometry settings", [this, meshShaderPathAvailable, clusterDebugAvailable]() {
+            ImGui::BeginDisabled(!clusterDebugAvailable);
+            ImGui::Checkbox("Mesh cluster debug view", &m_meshletDebugView);
+            ImGui::EndDisabled();
+
+            if (!clusterDebugAvailable)
+            {
+                ImGui::TextUnformatted("This device builds no meshlets, there are no clusters to colour");
+                return;
+            }
+
+            if (!meshShaderPathAvailable)
+            {
+                ImGui::TextUnformatted("Mesh shaders unsupported, running the vertex path");
+                return;
+            }
+
+            ImGui::Checkbox("Force vertex path", &m_forceVertexPath);
+        });
+    }
+
+    bool DeferredPass::SupportsMeshShaderPath() const
+    {
+        const auto& capabilities = engine.GetGfxContext()->GetCapabilities();
+        return capabilities.CheckMeshShaderSupport(MeshShaderSupport::Tier1) &&
+               capabilities.CheckResourceBindingSupport(ResourceBindingSupport::Tier3);
+    }
+
+    bool DeferredPass::SupportsClusterDebugView() const
+    {
+        const auto& capabilities = engine.GetGfxContext()->GetCapabilities();
+        return capabilities.SupportsMeshShaders() &&
+               capabilities.CheckResourceBindingSupport(ResourceBindingSupport::Tier3);
+    }
 
     void DeferredPass::IndirectPreparePass(Renderer& renderer, RenderGraph& rg) {}
 
@@ -153,6 +191,9 @@ namespace Wild
                 list.SetBindlessHeap(1);
 
                 Camera* camera = GetActiveCamera();
+
+                const bool meshletDebug = m_meshletDebugView && SupportsClusterDebugView();
+
                 auto meshes = engine.GetECS()->GetRegistry().view<Transform, MeshComponent>();
                 for (auto&& [entity, trans, meshComponent] : meshes.each())
                 {
@@ -175,6 +216,8 @@ namespace Wild
                     if (material.m_roughnessMetallic)
                         rc.roughnessMetallicView = material.m_roughnessMetallic->GetSrv()->BindlessView();
                     if (material.m_emissive) rc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
+
+                    rc.meshletDebugView = meshletDebug ? 1u : 0u;
 
                     auto vertexBuffer = mesh.GetVertexBuffer();
                     vertexBuffer->Transition(list, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER |
@@ -253,6 +296,8 @@ namespace Wild
 
                 Camera* camera = GetActiveCamera();
 
+                const bool clusterDebug = m_meshletDebugView && SupportsClusterDebugView();
+
                 list.SetPipelineState(pipeline);
                 list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
                                  {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
@@ -283,6 +328,17 @@ namespace Wild
                         m_rc.roughnessMetallicView = material.m_roughnessMetallic->GetSrv()->BindlessView();
 
                     if (material.m_emissive) m_rc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
+
+                    if (clusterDebug && mesh.GetMeshlets())
+                    {
+                        const auto& meshlets = mesh.GetMeshlets()->GetMeshletData();
+                        if (meshlets.vertexMeshletIdBuffer)
+                        {
+                            meshlets.vertexMeshletIdBuffer->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                            m_rc.vertexMeshletIdBufferView = meshlets.vertexMeshletIdBuffer->GetSRView()->View();
+                            m_rc.meshletDebugView = 1u;
+                        }
+                    }
 
                     list.SetRootConstant<DeferredRootConstants>(0, m_rc);
 
@@ -315,9 +371,7 @@ namespace Wild
         passData->emissiveTexture = grassData->emissiveTexture;
         passData->depthTexture = grassData->depthTexture;
 
-        const auto& capabilities = engine.GetGfxContext()->GetCapabilities();
-        if (capabilities.CheckMeshShaderSupport(MeshShaderSupport::Tier1) &&
-            capabilities.CheckResourceBindingSupport(ResourceBindingSupport::Tier3))
+        if (SupportsMeshShaderPath() && !m_forceVertexPath)
             DeferredMeshShaderPass(renderer, rg);
         else
             DeferredVertexPass(renderer, rg);

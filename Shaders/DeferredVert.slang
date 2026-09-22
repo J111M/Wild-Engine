@@ -1,3 +1,5 @@
+#include "Helper/Common.slang"
+
 struct VSInput
 {
     float3 position : POSITION;
@@ -5,6 +7,7 @@ struct VSInput
     float3 normal : NORMAL;
     float2 uv : TEXCOORD;
     float4 tangent : TANGENT;
+    uint vertexId : SV_VertexID;
 };
 
 struct VSOutput
@@ -14,12 +17,19 @@ struct VSOutput
     float3 normal : NORMAL;
     float2 uv : TEXCOORD;
     float4 tangent : TANGENT;
+    nointerpolation uint meshletId : MESHLETID;
 };
 
 cbuffer Constants : register(b0)
 {
     column_major float4x4 model;
-    uint4 texIndex;
+    column_major float4x4 invTransposeModel;
+    uint albedoView;
+    uint normalView;
+    uint roughnessMetallicView;
+    uint emissiveView;
+    uint vertexMeshletIdBufferView;
+    uint meshletDebugView;
 };
 
 [shader("vertex")]
@@ -31,5 +41,14 @@ VSOutput main(VSInput input)
     output.normal = input.normal;
     output.uv = input.uv;
     output.tangent = input.tangent;
+
+    // Temporary debug for meshlets will be removed later
+    output.meshletId = MESHLET_DEBUG_DISABLED;
+    if (meshletDebugView != 0 && vertexMeshletIdBufferView != 0)
+    {
+        StructuredBuffer<uint> vertexMeshletIds = DescriptorHandle<StructuredBuffer<uint>>(vertexMeshletIdBufferView);
+        output.meshletId = vertexMeshletIds[input.vertexId];
+    }
+
     return output;
 }

@@ -7,6 +7,7 @@ struct PSInput
     float3 normal : NORMAL;
     float2 uv : TEXCOORD;
     float4 tangent : TANGENT;
+    nointerpolation uint meshletId : MESHLETID;
 };
 
 struct PSOut
@@ -29,10 +30,40 @@ cbuffer Constants : register(b0)
 Texture2D textures[4096] : register(t0, space0);
 SamplerState anisotropicWrapSampler : register(s0);
 
+float3 MeshletDebugColor(uint meshletId)
+{
+    uint hash = meshletId;
+    hash ^= hash >> 16;
+    hash *= 0x7feb352du;
+    hash ^= hash >> 15;
+    hash *= 0x846ca68bu;
+    hash ^= hash >> 16;
+
+    float hue = float(hash & 0xFFFFFFu) / float(0x1000000u);
+    float3 rgb = saturate(abs(frac(hue + float3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0);
+
+    const float saturation = 0.85f;
+    return lerp(float3(1.0f), rgb, saturation);
+}
 
 [shader("fragment")]
 PSOut main(PSInput input)
 {
+    // Cluster debug view, the colour goes in emissive with a black albedo so the lighting
+    // pass hands it straight through instead of shading it
+    if (input.meshletId != MESHLET_DEBUG_DISABLED)
+    {
+        float3 debugNormal = normalize(mul((float3x3)invTransposeModel, input.normal.xyz));
+
+        // A black albedo with a fully metallic surface leaves the lighting pass nothing to
+        // work with, so the cluster colour comes out of the emissive target untouched
+        PSOut debugOut;
+        debugOut.albedo = float4(0, 0, 0, 1);
+        debugOut.normal = float4(float2(OctEncode(debugNormal).xy), 0.0f, 1.0f);
+        debugOut.emissive = float4(MeshletDebugColor(input.meshletId), 1.0f);
+        return debugOut;
+    }
+
     float4 albedo = float4(0, 0, 0, 0);
     if (albedoView != 0) { albedo = textures[NonUniformResourceIndex(albedoView)].Sample(anisotropicWrapSampler, input.uv); }
     else {

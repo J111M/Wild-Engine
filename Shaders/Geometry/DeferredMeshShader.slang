@@ -1,3 +1,5 @@
+#include "Helper/Common.slang"
+
 const static uint MESH_SHADER_DISPATCH_X = 32;
 const static uint MAX_VERTICES = 64;
 const static uint MAX_PRIMITIVES = 124;
@@ -22,6 +24,7 @@ struct VertexOutput
     float3 normal : NORMAL;
     float2 uv : TEXCOORD;
     float4 tangent : TANGENT;
+    nointerpolation uint meshletId : MESHLETID;
 };
 
 struct Meshlet
@@ -50,6 +53,7 @@ cbuffer Constants : register(b0)
     uint meshletVertexBufferView;
     uint primIndexBufferView;
     uint meshletOffset;
+    uint meshletDebugView;
 };
 
 [shader("mesh")]
@@ -63,7 +67,8 @@ void main(OutputIndices<uint3, MAX_PRIMITIVES> triangles, OutputVertices<VertexO
     StructuredBuffer<uint> vertexIndices = DescriptorHandle<StructuredBuffer<uint>>(meshletVertexBufferView);
     StructuredBuffer<uint> primitiveIndices = DescriptorHandle<StructuredBuffer<uint>>(primIndexBufferView);
 
-    Meshlet meshlet = meshlets[meshletOffset + groupId.x];
+    uint meshletId = meshletOffset + groupId.x;
+    Meshlet meshlet = meshlets[meshletId];
     SetMeshOutputCounts(meshlet.meshletVerticesCount, meshlet.meshletTriangleCount);
 
     for (uint i = gtid.x; i < meshlet.meshletVerticesCount; i += MESH_SHADER_DISPATCH_X)
@@ -76,6 +81,7 @@ void main(OutputIndices<uint3, MAX_PRIMITIVES> triangles, OutputVertices<VertexO
         output.normal = input.normal;
         output.uv = input.uv;
         output.tangent = input.tangent;
+        output.meshletId = meshletDebugView != 0 ? meshletId : MESHLET_DEBUG_DISABLED;
         vertices[i] = output;
     }
 

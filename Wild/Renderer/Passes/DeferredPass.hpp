@@ -19,6 +19,7 @@ namespace Wild
         uint32_t meshletVertexBufferView{};
         uint32_t primIndexBufferView{};
         uint32_t meshletOffset{};
+        uint32_t meshletDebugView{};
     };
 
     struct DeferredRootConstants
@@ -29,6 +30,9 @@ namespace Wild
         uint32_t normalView{};
         uint32_t roughnessMetallicView{};
         uint32_t emissiveView{};
+
+        uint32_t vertexMeshletIdBufferView{};
+        uint32_t meshletDebugView{};
     };
 
     struct DeferredPassData
@@ -53,9 +57,18 @@ namespace Wild
         void DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg);
         void DeferredVertexPass(Renderer& renderer, RenderGraph& rg);
 
+        bool SupportsMeshShaderPath() const;
+        bool SupportsClusterDebugView() const;
+
       private:
         DeferredRootConstants m_rc;
         std::shared_ptr<PipelineState> m_pipeline{};
+
+        // Colours every mesh cluster by its meshlet id, works on both geometry paths
+        bool m_meshletDebugView = false;
+
+        // Runs the vertex path even when the device supports mesh shaders
+        bool m_forceVertexPath = false;
 
         std::unique_ptr<Texture> m_texture;
 

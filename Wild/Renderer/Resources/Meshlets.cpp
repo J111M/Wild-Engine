@@ -22,8 +22,9 @@ namespace Wild
         const size_t indicesSize = sourceIndices.size() / 3 * 3;
         if (indicesSize == 0) return;
 
-        if (std::any_of(sourceIndices.begin(), sourceIndices.begin() + indicesSize,
-                        [&vertices](uint32_t index) { return index >= vertices.size(); }))
+        if (std::any_of(sourceIndices.begin(), sourceIndices.begin() + indicesSize, [&vertices](uint32_t index) {
+                return index >= vertices.size();
+            }))
         {
             WD_WARN("Invalid vertex index supplied for meshlets: {}", meshName);
             return;
@@ -125,6 +126,27 @@ namespace Wild
 
             m_meshletData.primitiveIndexBuffer = std::make_unique<GPUBuffer>(desc);
             m_meshletData.primitiveIndexBuffer->UploadToGPU(primitiveIndices.data());
+        }
+
+        // Store meshlet id which is used for debugging
+        std::vector<uint32_t> vertexMeshletIds(vertices.size(), 0);
+        for (size_t meshletIndex = 0; meshletIndex < meshlets.size(); meshletIndex++)
+        {
+            const meshopt_Meshlet& meshlet = meshlets[meshletIndex];
+            for (uint32_t i = 0; i < meshlet.vertex_count; i++)
+                vertexMeshletIds[meshletVertices[meshlet.vertex_offset + i]] = static_cast<uint32_t>(meshletIndex);
+        }
+
+        {
+            BufferDesc desc{};
+            desc.name = "Vertex meshlet id buffer of meshlet: " + meshName;
+            desc.usage = BufferUsage::ShaderRead;
+            desc.size = static_cast<uint64_t>(vertexMeshletIds.size()) * sizeof(uint32_t);
+            desc.stride = sizeof(uint32_t);
+            desc.access = MemoryAccess::GpuOnly;
+
+            m_meshletData.vertexMeshletIdBuffer = std::make_unique<GPUBuffer>(desc);
+            m_meshletData.vertexMeshletIdBuffer->UploadToGPU(vertexMeshletIds.data());
         }
 
         m_meshletData.meshletCount = static_cast<uint32_t>(meshletCollection.size());

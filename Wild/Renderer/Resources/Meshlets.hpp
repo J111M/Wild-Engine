@@ -9,6 +9,8 @@ namespace Wild
         std::unique_ptr<GPUBuffer> meshletBuffer;
         std::unique_ptr<GPUBuffer> uniqueVertexIndexBuffer;
         std::unique_ptr<GPUBuffer> primitiveIndexBuffer;
+        std::unique_ptr<GPUBuffer> vertexMeshletIdBuffer;
+
         uint32_t meshletCount = 0;
     };
 
