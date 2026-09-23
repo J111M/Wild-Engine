@@ -335,6 +335,7 @@ namespace Wild
         D3DX12_MESH_SHADER_PIPELINE_STATE_DESC psoDesc = {};
         psoDesc.pRootSignature = m_rootSignature.Get();
 
+        if (m_settings.shaderState.amplificationShader) psoDesc.AS = m_settings.shaderState.amplificationShader->GetByteCode();
         if (m_settings.shaderState.meshShader) psoDesc.MS = m_settings.shaderState.meshShader->GetByteCode();
         if (m_settings.shaderState.fragShader) psoDesc.PS = m_settings.shaderState.fragShader->GetByteCode();
 
