@@ -131,6 +131,10 @@ namespace Wild
             }
 
             ImGui::Checkbox("Force vertex path", &m_forceVertexPath);
+
+            ImGui::BeginDisabled(m_forceVertexPath);
+            ImGui::Checkbox("Use amplification shader", &m_useAmplificationShader);
+            ImGui::EndDisabled();
         });
     }
 
@@ -150,14 +154,29 @@ namespace Wild
 
     void DeferredPass::IndirectPreparePass(Renderer& renderer, RenderGraph& rg) {}
 
-    void DeferredPass::DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg)
+    void DeferredPass::DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg, const bool useAmplification)
     {
+        const char* passName = useAmplification ? "Deferred amplification pass" : "Deferred mesh shader pass";
+
         rg.AddPass<DeferredPassData>(
-            "Deferred mesh shader pass", PassType::MeshShader,
-            [&renderer, this](const DeferredPassData& passData, CommandList& list) {
+            passName, PassType::MeshShader,
+            [&renderer, this, useAmplification, passName](const DeferredPassData& passData, CommandList& list) {
+                // Meshlets handled by one group of the first stage, the task shader culls 64 meshlets per group
+                const uint32_t meshletsPerGroup = useAmplification ? 64u : 1u;
+
                 PipelineStateSettings settings{};
-                settings.shaderState.meshShader =
-                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/DeferredMeshShader.slang");
+                if (useAmplification)
+                {
+                    settings.shaderState.amplificationShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/DeferredAmplificationShader.slang");
+                    settings.shaderState.meshShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/DeferredMeshShader.slang");
+                }
+                else
+                {
+                    settings.shaderState.meshShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/DeferredMeshShader.slang");
+                }
                 settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DeferredFrag.slang");
                 settings.depthStencilState.depthEnable = true;
 
@@ -179,15 +198,14 @@ namespace Wild
                 Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
                 uniforms.emplace_back(staticSampler);
 
-                auto pipeline =
-                    renderer.GetOrCreatePipeline("Deferred mesh shader pass", PipelineStateType::MeshPipeline, settings, uniforms);
+                auto pipeline = renderer.GetOrCreatePipeline(passName, PipelineStateType::MeshPipeline, settings, uniforms);
 
                 list.SetPipelineState(pipeline);
                 list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
                                  {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
                                  passData.depthTexture,
                                  DSClearOperation::Store,
-                                 "Deferred mesh shader pass");
+                                 passName);
                 list.SetBindlessHeap(1);
 
                 Camera* camera = GetActiveCamera();
@@ -231,12 +249,15 @@ namespace Wild
                     rc.meshletVertexBufferView = meshlets.uniqueVertexIndexBuffer->GetSRView()->View();
                     rc.primIndexBufferView = meshlets.primitiveIndexBuffer->GetSRView()->View();
 
+                    // A dispatch is capped at 65535 groups, so large meshes are split into several slices
+                    const uint32_t maxMeshletsPerDispatch = 65535u * meshletsPerGroup;
                     for (uint32_t offset = 0; offset < meshlets.meshletCount;)
                     {
-                        uint32_t count = std::min(meshlets.meshletCount - offset, 65535u);
+                        uint32_t count = std::min(meshlets.meshletCount - offset, maxMeshletsPerDispatch);
                         rc.meshletOffset = offset;
+                        rc.meshletCount = count;
                         list.SetRootConstant(0, rc);
-                        list.Dispatch(count);
+                        list.Dispatch((count + meshletsPerGroup - 1) / meshletsPerGroup);
                         offset += count;
                     }
                 }
@@ -372,7 +393,7 @@ namespace Wild
         passData->depthTexture = grassData->depthTexture;
 
         if (SupportsMeshShaderPath() && !m_forceVertexPath)
-            DeferredMeshShaderPass(renderer, rg);
+            DeferredMeshShaderPass(renderer, rg, m_useAmplificationShader);
         else
             DeferredVertexPass(renderer, rg);
     }

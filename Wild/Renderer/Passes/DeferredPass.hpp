@@ -20,6 +20,7 @@ namespace Wild
         uint32_t primIndexBufferView{};
         uint32_t meshletOffset{};
         uint32_t meshletDebugView{};
+        uint32_t meshletCount{};
     };
 
     struct DeferredRootConstants
@@ -54,7 +55,7 @@ namespace Wild
 
         void IndirectPreparePass(Renderer& renderer, RenderGraph& rg);
 
-        void DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg);
+        void DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg, const bool useAmplification);
         void DeferredVertexPass(Renderer& renderer, RenderGraph& rg);
 
         bool SupportsMeshShaderPath() const;
@@ -69,6 +70,10 @@ namespace Wild
 
         // Runs the vertex path even when the device supports mesh shaders
         bool m_forceVertexPath = false;
+
+        // Uses the amplification shader to cull meshlets before dispatching the mesh shader.
+        // Only ever takes effect when the mesh shader path is active.
+        bool m_useAmplificationShader = false;
 
         std::unique_ptr<Texture> m_texture;
 

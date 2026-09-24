@@ -1,51 +1,68 @@
 #include "Helper/MeshCommon.slang"
 
-const static uint TASK_SHADER_DISPATCH_X = 64;
-
-cbuffer RootConsant : register(b0)
-{
-    uint meshletCount;
-};
-
+groupshared MeshletPayload sharedPayload;
 groupshared Atomic<uint32_t> visibleMeshletCount;
+
+// Object space frustum planes, shared by every thread in the group
+groupshared float4 frustumPlanes[6];
+
+void ExtractFrustumPlanes()
+{
+    frustumPlanes[0] = model[3] + model[0]; // Left
+    frustumPlanes[1] = model[3] - model[0]; // Right
+    frustumPlanes[2] = model[3] + model[1]; // Bottom
+    frustumPlanes[3] = model[3] - model[1]; // Top
+    frustumPlanes[4] = model[2];            // Near
+    frustumPlanes[5] = model[3] - model[2]; // Far
+
+    for (int i = 0; i < 6; i++)
+    {
+        frustumPlanes[i] /= length(frustumPlanes[i].xyz);
+    }
+}
+
+bool IsInFrustum(float3 center, float radius)
+{
+    for (int i = 0; i < 6; i++)
+    {
+        if (dot(frustumPlanes[i].xyz, center) + frustumPlanes[i].w < -radius)
+        {
+            return false;
+        }
+    }
+    return true;
+}
 
 [shader("task")]
 [numthreads(TASK_SHADER_DISPATCH_X, 1, 1)]
 void main(uint3 gid: SV_GroupID, uint3 gtid: SV_GroupThreadID) {
-    uint32_t groupMeshletOffset = (gid.x * TASK_SHADER_DISPATCH_X);
-    uint32_t totalMeshlets = meshletCount;
+    StructuredBuffer<Meshlet> meshlets = DescriptorHandle<StructuredBuffer<Meshlet>>(meshletBufferView);
+
+    // meshletOffset and meshletCount describe the slice of the mesh this dispatch covers
+    uint32_t groupMeshletStart = gid.x * TASK_SHADER_DISPATCH_X;
+    uint32_t groupMeshletOffset = meshletOffset + groupMeshletStart;
 
     // Initialize shared memory for the first thread
     if (gtid.x == 0) {
         visibleMeshletCount.store(0);
         sharedPayload.groupMeshletOffset = groupMeshletOffset;
+        ExtractFrustumPlanes();
     }
-
     // Sync the 0 initialization with the other memory
     GroupMemoryBarrierWithGroupSync();
 
-    // Handling partial groups
-    uint8_t threadMeshletOffset = (uint8_t)gtid.x;
+    // Each thread tests one meshlet, the last group can be partial
+    if (groupMeshletStart + gtid.x < meshletCount) {
+        float4 sphere = meshlets[groupMeshletOffset + gtid.x].meshletBoundingSphere;
 
-    uint32_t groupMeshletCount = min(TASK_SHADER_DISPATCH_X, totalMeshlets - groupMeshletOffset);
-
-    if (threadMeshletOffset < groupMeshletCount) {
-        uint32_t meshletIndex = groupMeshletOffset + threadMeshletOffset;
+        if (IsInFrustum(sphere.xyz, sphere.w)) {
+            uint index = visibleMeshletCount.add(1);
+            sharedPayload.meshletIndices[index] = gtid.x;
+        }
     }
 
     GroupMemoryBarrierWithGroupSync();
 
-    // First thread dispatches the mesh shaders for all visible meshlets
-    if (gtid.x == 0) {
-        DispatchMesh(visibleMeshletCount.load(), 1, 1, sharedPayload);
-
-        // Each thread test one meshlet
-        uint visible = 0;
-        if (visible > 0) {
-            uint index = visibleMeshletCount.add(1);
-
-            // local offset of 64 fits in a uint8_t
-            sharedPayload.meshletIndices[index] = gtid.x;
-        }
-    }
+    // Every thread calls DispatchMesh with the same arguments, it launches one mesh group per visible meshlet
+    DispatchMesh(visibleMeshletCount.load(), 1, 1, sharedPayload);
 }
