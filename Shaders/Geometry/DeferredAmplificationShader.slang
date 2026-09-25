@@ -1,11 +1,14 @@
 #include "Helper/MeshCommon.slang"
 
 groupshared MeshletPayload sharedPayload;
+
+// Atomic counter is used to track the next availibale slot
 groupshared Atomic<uint32_t> visibleMeshletCount;
 
 // Object space frustum planes, shared by every thread in the group
 groupshared float4 frustumPlanes[6];
 
+// TODO use precomputed frustum planes
 void ExtractFrustumPlanes()
 {
     frustumPlanes[0] = model[3] + model[0]; // Left
@@ -63,6 +66,8 @@ void main(uint3 gid: SV_GroupID, uint3 gtid: SV_GroupThreadID) {
 
     GroupMemoryBarrierWithGroupSync();
 
-    // Every thread calls DispatchMesh with the same arguments, it launches one mesh group per visible meshlet
-    DispatchMesh(visibleMeshletCount.load(), 1, 1, sharedPayload);
+    // Thread 0 dispatches mesh shaders for visible meshlets only
+    if (gtid.x == 0) {
+        DispatchMesh(visibleMeshletCount.load(), 1, 1, sharedPayload);
+    }
 }
