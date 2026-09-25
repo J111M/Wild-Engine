@@ -11,12 +11,12 @@ groupshared float4 frustumPlanes[6];
 // TODO use precomputed frustum planes
 void ExtractFrustumPlanes()
 {
-    frustumPlanes[0] = model[3] + model[0]; // Left
-    frustumPlanes[1] = model[3] - model[0]; // Right
-    frustumPlanes[2] = model[3] + model[1]; // Bottom
-    frustumPlanes[3] = model[3] - model[1]; // Top
-    frustumPlanes[4] = model[2];            // Near
-    frustumPlanes[5] = model[3] - model[2]; // Far
+    frustumPlanes[0] = cullMatrix[3] + cullMatrix[0]; // Left
+    frustumPlanes[1] = cullMatrix[3] - cullMatrix[0]; // Right
+    frustumPlanes[2] = cullMatrix[3] + cullMatrix[1]; // Bottom
+    frustumPlanes[3] = cullMatrix[3] - cullMatrix[1]; // Top
+    frustumPlanes[4] = cullMatrix[2];                 // Near
+    frustumPlanes[5] = cullMatrix[3] - cullMatrix[2]; // Far
 
     for (int i = 0; i < 6; i++)
     {
@@ -66,8 +66,5 @@ void main(uint3 gid: SV_GroupID, uint3 gtid: SV_GroupThreadID) {
 
     GroupMemoryBarrierWithGroupSync();
 
-    // Thread 0 dispatches mesh shaders for visible meshlets only
-    if (gtid.x == 0) {
-        DispatchMesh(visibleMeshletCount.load(), 1, 1, sharedPayload);
-    }
+    DispatchMesh(visibleMeshletCount.load(), 1, 1, sharedPayload);
 }

@@ -34,4 +34,6 @@ cbuffer Constants : register(b0)
     uint meshletOffset;
     uint meshletDebugView;
     uint meshletCount;
+    uint cullMatrixPadding;
+    column_major float4x4 cullMatrix;
 };

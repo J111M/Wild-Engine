@@ -21,6 +21,8 @@ namespace Wild
         uint32_t meshletOffset{};
         uint32_t meshletDebugView{};
         uint32_t meshletCount{};
+        uint32_t cullMatrixPadding{};
+        glm::mat4 cullMatrix{};
     };
 
     struct DeferredRootConstants
@@ -73,7 +75,10 @@ namespace Wild
 
         // Uses the amplification shader to cull meshlets before dispatching the mesh shader.
         // Only ever takes effect when the mesh shader path is active.
-        bool m_useAmplificationShader = false;
+        bool m_useAmplificationShader = true;
+
+        bool m_freezeCulling = false;
+        glm::mat4 m_cullViewProjection{1.0f};
 
         std::unique_ptr<Texture> m_texture;
 

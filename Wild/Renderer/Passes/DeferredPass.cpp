@@ -135,6 +135,10 @@ namespace Wild
             ImGui::BeginDisabled(m_forceVertexPath);
             ImGui::Checkbox("Use amplification shader", &m_useAmplificationShader);
             ImGui::EndDisabled();
+
+            ImGui::BeginDisabled(m_forceVertexPath || !m_useAmplificationShader);
+            ImGui::Checkbox("Freeze frustum culling", &m_freezeCulling);
+            ImGui::EndDisabled();
         });
     }
 
@@ -210,6 +214,8 @@ namespace Wild
 
                 Camera* camera = GetActiveCamera();
 
+                if (camera && !m_freezeCulling) m_cullViewProjection = camera->GetProjection() * camera->GetView();
+
                 const bool meshletDebug = m_meshletDebugView && SupportsClusterDebugView();
 
                 auto meshes = engine.GetECS()->GetRegistry().view<Transform, MeshComponent>();
@@ -227,6 +233,7 @@ namespace Wild
                         rc.matrix = camera->GetProjection() * camera->GetView() * trans.GetWorldMatrix();
                         rc.invMatrix = glm::transpose(glm::inverse(glm::mat3(trans.GetWorldMatrix())));
                     }
+                    rc.cullMatrix = m_cullViewProjection * trans.GetWorldMatrix();
 
                     const auto& material = mesh.GetMaterial();
                     if (material.m_albedo) rc.albedoView = material.m_albedo->GetSrv()->BindlessView();
