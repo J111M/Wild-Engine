@@ -10,77 +10,6 @@ namespace Wild
 {
     DeferredPass::DeferredPass()
     {
-        // TODO make scene storing via json parsing
-        engine.GetSceneManager()->AddScene("Main Scene", []() {
-            auto ecs = engine.GetECS();
-
-            glm::vec3 palmPositions[5] = {glm::vec3(16.251, -5.655, 20),
-                                          glm::vec3(-27.567, -6.976, -5.361),
-                                          glm::vec3(-25.417, -6.732, -24.320),
-                                          glm::vec3(4.529, -1.24, -7.303),
-                                          glm::vec3(-5.261, -3.097, 14.194)};
-
-            for (size_t i = 0; i < 5; i++)
-            {
-                auto entity = ecs->CreateEntity();
-                ecs->AddComponent<SceneObject>(entity);
-                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
-                ecs->AddComponent<Model>(entity, "Assets/Models/palmtree/quiver_tree_02_2k.gltf", entity);
-                transform.SetScale(glm::vec3(10, 10, 10));
-                transform.SetPosition(palmPositions[i]);
-                transform.Name = "Palm tree";
-            }
-
-            {
-                auto entity = ecs->CreateEntity();
-                ecs->AddComponent<SceneObject>(entity);
-                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
-                ecs->AddComponent<Model>(entity, "Assets/Models/ship/ship_pinnace_2k.gltf", entity);
-                transform.SetScale(glm::vec3(1.5, 1.5, 1.5));
-                transform.SetPosition(glm::vec3(70, -9, 40));
-                transform.Name = "Ship";
-            }
-
-            {
-                auto entity = ecs->CreateEntity();
-                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
-                auto& light = ecs->AddComponent<PointLight>(entity);
-
-                transform.Name = std::string("Point light");
-
-                transform.SetPosition(glm::vec3(72.157, 5.284, 13.881));
-                light.position = transform.GetPosition();
-
-                light.colorIntensity = glm::vec4(glm::vec3(0.0, 0.6, 0.4), 1200.0f);
-            }
-
-            {
-                auto entity = ecs->CreateEntity();
-                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
-                auto& light = ecs->AddComponent<PointLight>(entity);
-
-                transform.Name = std::string("Point light");
-
-                transform.SetPosition(glm::vec3(64.445, 5.685, 13.886));
-                light.position = transform.GetPosition();
-
-                light.colorIntensity = glm::vec4(glm::vec3(0.0, 0.8, 0.5), 1800.0f);
-            }
-
-            {
-                auto entity = ecs->CreateEntity();
-                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
-                auto& light = ecs->AddComponent<PointLight>(entity);
-
-                transform.Name = std::string("Point light");
-
-                transform.SetPosition(glm::vec3(69.377, -5.387, 44.431));
-                light.position = transform.GetPosition();
-
-                light.colorIntensity = glm::vec4(glm::vec3(0.0, 0.8, 0.2), 5971.0f);
-            }
-        });
-
         engine.GetSceneManager()->AddScene("Bistro", []() {
             auto ecs = engine.GetECS();
             auto entity = ecs->CreateEntity();
@@ -88,9 +17,30 @@ namespace Wild
             auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
             ecs->AddComponent<Model>(entity, "Assets/Models/bistro/bistro/bistro.gltf", entity);
             transform.SetScale(glm::vec3(1, 1, 1));
-            transform.SetPosition(glm::vec3(70, 1, 70));
+            transform.SetPosition(glm::vec3(0, 1, 0));
             transform.SetRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
             transform.Name = "Bistro";
+        });
+
+        engine.GetSceneManager()->AddScene("Culling test", []() {
+            auto ecs = engine.GetECS();
+            for (size_t x = 0; x < 25; x++)
+            {
+                for (size_t y = 0; y < 25; y++)
+                {
+                    for (size_t z = 0; z < 25; z++)
+                    {
+                        auto entity = ecs->CreateEntity();
+                        ecs->AddComponent<SceneObject>(entity);
+                        auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+                        ecs->AddComponent<Model>(entity, "Assets/Models/DamagedHelmet/glTF/DamagedHelmet.gltf", entity);
+                        transform.SetScale(glm::vec3(1, 1, 1));
+                        transform.SetPosition(glm::vec3(x * 2, y * 2, z * 2));
+                        // transform.SetRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
+                        transform.Name = "Damaged helmet" + std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(z);
+                    }
+                }
+            }
         });
 
         engine.GetSceneManager()->AddScene("Sponza", []() {
@@ -100,7 +50,7 @@ namespace Wild
             auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
             ecs->AddComponent<Model>(entity, "Assets/Models/Sponza/glTF/Sponza.gltf", entity);
             transform.SetScale(glm::vec3(1, 1, 1));
-            transform.SetPosition(glm::vec3(70, 1, 70));
+            transform.SetPosition(glm::vec3(0, 1, 0));
             // transform.SetRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
             transform.Name = "Sponza";
         });
@@ -146,14 +96,13 @@ namespace Wild
     {
         const auto& capabilities = engine.GetGfxContext()->GetCapabilities();
         return capabilities.CheckMeshShaderSupport(MeshShaderSupport::Tier1) &&
-               capabilities.CheckResourceBindingSupport(ResourceBindingSupport::Tier3);
+            capabilities.CheckResourceBindingSupport(ResourceBindingSupport::Tier3);
     }
 
     bool DeferredPass::SupportsClusterDebugView() const
     {
         const auto& capabilities = engine.GetGfxContext()->GetCapabilities();
-        return capabilities.SupportsMeshShaders() &&
-               capabilities.CheckResourceBindingSupport(ResourceBindingSupport::Tier3);
+        return capabilities.SupportsMeshShaders() && capabilities.CheckResourceBindingSupport(ResourceBindingSupport::Tier3);
     }
 
     void DeferredPass::IndirectPreparePass(Renderer& renderer, RenderGraph& rg) {}
@@ -163,7 +112,8 @@ namespace Wild
         const char* passName = useAmplification ? "Deferred amplification pass" : "Deferred mesh shader pass";
 
         rg.AddPass<DeferredPassData>(
-            passName, PassType::MeshShader,
+            passName,
+            PassType::MeshShader,
             [&renderer, this, useAmplification, passName](const DeferredPassData& passData, CommandList& list) {
                 // Meshlets handled by one group of the first stage, the task shader culls 64 meshlets per group
                 const uint32_t meshletsPerGroup = useAmplification ? 64u : 1u;
@@ -245,8 +195,8 @@ namespace Wild
                     rc.meshletDebugView = meshletDebug ? 1u : 0u;
 
                     auto vertexBuffer = mesh.GetVertexBuffer();
-                    vertexBuffer->Transition(list, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER |
-                                                       D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    vertexBuffer->Transition(
+                        list, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                     meshlets.meshletBuffer->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                     meshlets.uniqueVertexIndexBuffer->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                     meshlets.primitiveIndexBuffer->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
