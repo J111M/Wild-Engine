@@ -32,14 +32,14 @@ struct VertexOutput
 [outputtopology("triangle")]
 [numthreads(MESH_SHADER_DISPATCH_X, 1, 1)]
 void main(OutputIndices<uint3, MAX_PRIMITIVES> triangles, OutputVertices<VertexOutput, MAX_VERTICES> vertices,
-          uint3 groupId : SV_GroupID, uint3 gtid : SV_GroupThreadID)
+          in payload MeshletPayload meshPayload, uint3 groupId : SV_GroupID, uint3 gtid : SV_GroupThreadID)
 {
     StructuredBuffer<Vertex> vertexBuffer = DescriptorHandle<StructuredBuffer<Vertex>>(vertexDataBuffer);
     StructuredBuffer<Meshlet> meshlets = DescriptorHandle<StructuredBuffer<Meshlet>>(meshletBufferView);
     StructuredBuffer<uint> vertexIndices = DescriptorHandle<StructuredBuffer<uint>>(meshletVertexBufferView);
     StructuredBuffer<uint> primitiveIndices = DescriptorHandle<StructuredBuffer<uint>>(primIndexBufferView);
 
-    uint meshletId = meshletOffset + groupId.x;
+    uint meshletId = meshPayload.groupMeshletOffset + meshPayload.meshletIndices[groupId.x];
     Meshlet meshlet = meshlets[meshletId];
     SetMeshOutputCounts(meshlet.meshletVerticesCount, meshlet.meshletTriangleCount);
 
