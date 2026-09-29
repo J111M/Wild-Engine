@@ -31,9 +31,11 @@ cbuffer Constants : register(b0)
     uint meshletBufferView;
     uint meshletVertexBufferView;
     uint primIndexBufferView;
+    float3 cullCameraPosition; // Object space camera position
+    uint meshletCount;
+
+    column_major float4x4 cullMatrix;
+
     uint meshletOffset;
     uint meshletDebugView;
-    uint meshletCount;
-    uint cullMatrixPadding;
-    column_major float4x4 cullMatrix;
 };

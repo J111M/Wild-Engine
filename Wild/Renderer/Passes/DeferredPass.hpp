@@ -7,8 +7,8 @@ namespace Wild
 {
     struct DeferredMeshShaderRootConstants
     {
-        glm::mat4 matrix{};
-        glm::mat4 invMatrix{};
+        glm::mat<4, 4, float, glm::packed_highp> matrix{};
+        glm::mat<4, 4, float, glm::packed_highp> invMatrix{};
         uint32_t albedoView{};
         uint32_t normalView{};
         uint32_t roughnessMetallicView{};
@@ -18,11 +18,15 @@ namespace Wild
         uint32_t meshletBufferView{};
         uint32_t meshletVertexBufferView{};
         uint32_t primIndexBufferView{};
+
+        // Object space camera position
+        glm::vec<3, float, glm::packed_highp> cullCameraPosition{};
+        uint32_t meshletCount{};
+
+        glm::mat<4, 4, float, glm::packed_highp> cullMatrix{};
+
         uint32_t meshletOffset{};
         uint32_t meshletDebugView{};
-        uint32_t meshletCount{};
-        uint32_t cullMatrixPadding{};
-        glm::mat4 cullMatrix{};
     };
 
     struct DeferredRootConstants
@@ -79,6 +83,7 @@ namespace Wild
 
         bool m_freezeCulling = false;
         glm::mat4 m_cullViewProjection{1.0f};
+        glm::vec3 m_cullCameraPosition{0.0f};
 
         std::unique_ptr<Texture> m_texture;
 

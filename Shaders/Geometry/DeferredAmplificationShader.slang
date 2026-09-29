@@ -36,6 +36,15 @@ bool IsInFrustum(float3 center, float radius)
     return true;
 }
 
+// Backface cone culling in object space rejects meshlets whose triangles all face away from the camera
+bool IsConeVisible(Meshlet meshlet)
+{
+    float3 cameraToCenter = meshlet.meshletBoundingSphere.xyz - cullCameraPosition;
+    float cameraToCenterDist = length(cameraToCenter);
+
+    return dot(cameraToCenter, meshlet.coneAxis) < meshlet.coneCutoff * cameraToCenterDist + meshlet.meshletBoundingSphere.w;
+}
+
 [shader("task")]
 [numthreads(TASK_SHADER_DISPATCH_X, 1, 1)]
 void main(uint3 gid: SV_GroupID, uint3 gtid: SV_GroupThreadID) {
@@ -56,9 +65,10 @@ void main(uint3 gid: SV_GroupID, uint3 gtid: SV_GroupThreadID) {
 
     // Each thread tests one meshlet, the last group can be partial
     if (groupMeshletStart + gtid.x < meshletCount) {
-        float4 sphere = meshlets[groupMeshletOffset + gtid.x].meshletBoundingSphere;
+        Meshlet meshlet = meshlets[groupMeshletOffset + gtid.x];
+        float4 sphere = meshlet.meshletBoundingSphere;
 
-        if (IsInFrustum(sphere.xyz, sphere.w)) {
+        if (IsInFrustum(sphere.xyz, sphere.w) && IsConeVisible(meshlet)) {
             uint index = visibleMeshletCount.add(1);
             sharedPayload.meshletIndices[index] = gtid.x;
         }

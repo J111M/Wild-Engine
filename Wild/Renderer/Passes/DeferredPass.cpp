@@ -164,7 +164,11 @@ namespace Wild
 
                 Camera* camera = GetActiveCamera();
 
-                if (camera && !m_freezeCulling) m_cullViewProjection = camera->GetProjection() * camera->GetView();
+                if (camera && !m_freezeCulling)
+                {
+                    m_cullViewProjection = camera->GetProjection() * camera->GetView();
+                    m_cullCameraPosition = camera->GetPosition();
+                }
 
                 const bool meshletDebug = m_meshletDebugView && SupportsClusterDebugView();
 
@@ -181,10 +185,11 @@ namespace Wild
                     if (camera)
                     {
                         rc.matrix = camera->GetProjection() * camera->GetView() * trans.GetWorldMatrix();
-                        rc.invMatrix = glm::transpose(glm::inverse(glm::mat3(trans.GetWorldMatrix())));
+                        rc.invMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(trans.GetWorldMatrix()))));
                     }
                     rc.cullMatrix = m_cullViewProjection * trans.GetWorldMatrix();
-
+                    rc.cullCameraPosition =
+                        glm::vec3(glm::inverse(trans.GetWorldMatrix()) * glm::vec4(m_cullCameraPosition, 1.0f));
                     const auto& material = mesh.GetMaterial();
                     if (material.m_albedo) rc.albedoView = material.m_albedo->GetSrv()->BindlessView();
                     if (material.m_normal) rc.normalView = material.m_normal->GetSrv()->BindlessView();
