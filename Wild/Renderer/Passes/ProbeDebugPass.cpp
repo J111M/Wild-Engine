@@ -6,11 +6,7 @@
 
 namespace Wild
 {
-    void ProbeDebugPass::Update(const float dt)
-    {
-        Camera* camera = GetActiveCamera();
-        if (camera) { m_rc.projView = camera->GetProjection() * camera->GetView(); }
-    }
+    void ProbeDebugPass::Update(const float dt) {}
 
     void ProbeDebugPass::Add(Renderer& renderer, RenderGraph& rg)
     {
@@ -89,6 +85,10 @@ namespace Wild
                 Uniform probeBuffer{0, 0, RootParams::RootResourceType::ShaderResourceView};
                 uniforms.emplace_back(probeBuffer);
 
+                Uniform sceneCameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                sceneCameraUni.visibility = D3D12_SHADER_VISIBILITY_VERTEX;
+                uniforms.emplace_back(sceneCameraUni);
+
                 Uniform clampSampler{0, 0, RootParams::RootResourceType::StaticSampler};
                 clampSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
                 clampSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
@@ -117,6 +117,7 @@ namespace Wild
 
                 list.SetRootConstant<ProbeDebugRootConstants>(0, m_rc);
                 list.SetShaderResourceView(1, probeSystem->GetProbeBuffer().get());
+                list.SetConstantBufferView(2, GetSceneDataAddress());
 
                 list.GetList()->DrawInstanced(12 * 8 * 6, probeSystem->GetProbeCount(), 0, 0);
 

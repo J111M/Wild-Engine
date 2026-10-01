@@ -1,19 +1,18 @@
 #include "GrassCommon.slang"
+#include "../Helper/SceneData.slang"
 
-cbuffer FrustumData : register(b0)
+cbuffer GrassCullConstants : register(b0)
 {
-    float4x4 viewProj;
-    float4 frustumPlanes[6];
-    float3 cameraPos;
-    
     // LOD distances
     float lod0;
     float lod1;
     float lod2;
-    
+
     float lodBlendRange;
     float maxDistance;
 };
+
+ConstantBuffer<SceneCameraData> sceneCamera : register(b1);
 
 struct GrassData
 {
@@ -30,7 +29,7 @@ bool IsInFrustum(float3 position, float radius)
 {
     for (int i = 0; i < 6; i++)
     {
-        float dist = dot(frustumPlanes[i].xyz, position) + frustumPlanes[i].w;
+        float dist = dot(sceneCamera.frustumPlanes[i].xyz, position) + sceneCamera.frustumPlanes[i].w;
         if (dist < -radius)
         {
             return false;
@@ -99,7 +98,7 @@ void main(uint3 id : SV_DispatchThreadID)
     
     //Distance cull
 
-    float distance = 13; //length(instance.worldPosition - cameraPos);
+    float distance = 13; //length(instance.worldPosition - sceneCamera.position.xyz);
     //if (distance > 500)
     //    return;
     

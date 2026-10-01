@@ -36,8 +36,6 @@ namespace Wild
 
     struct DDGITraceConstants
     {
-        glm::mat4 inverseView{1.0f};
-
         glm::vec4 lightDirection{0.0f, -1.0f, 0.0f, 0.0f};     // xyz = direction the light travels, w unused
         glm::vec4 lightColorIntensity{1.0f, 1.0f, 1.0f, 1.0f}; // rgb = color, a = intensity
 

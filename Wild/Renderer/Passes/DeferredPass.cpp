@@ -85,10 +85,6 @@ namespace Wild
             ImGui::BeginDisabled(m_forceVertexPath);
             ImGui::Checkbox("Use amplification shader", &m_useAmplificationShader);
             ImGui::EndDisabled();
-
-            ImGui::BeginDisabled(m_forceVertexPath || !m_useAmplificationShader);
-            ImGui::Checkbox("Freeze frustum culling", &m_freezeCulling);
-            ImGui::EndDisabled();
         });
     }
 
@@ -149,6 +145,10 @@ namespace Wild
                 bindlessUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
                 uniforms.emplace_back(bindlessUni);
 
+                // Read by the amplification stage for culling and by the mesh stage for the view projection
+                Uniform sceneCameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(sceneCameraUni);
+
                 Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
                 uniforms.emplace_back(staticSampler);
 
@@ -161,14 +161,9 @@ namespace Wild
                                  DSClearOperation::Store,
                                  passName);
                 list.SetBindlessHeap(1);
+                list.SetConstantBufferView(2, GetSceneDataAddress());
 
-                Camera* camera = GetActiveCamera();
-
-                if (camera && !m_freezeCulling)
-                {
-                    m_cullViewProjection = camera->GetProjection() * camera->GetView();
-                    m_cullCameraPosition = camera->GetPosition();
-                }
+                const glm::vec4 cameraPosition = GetSceneData().position;
 
                 const bool meshletDebug = m_meshletDebugView && SupportsClusterDebugView();
 
@@ -181,15 +176,12 @@ namespace Wild
                     const auto& meshlets = mesh.GetMeshlets()->GetMeshletData();
                     if (meshlets.meshletCount == 0) continue;
 
+                    const glm::mat4& world = trans.GetWorldMatrix();
+
                     DeferredMeshShaderRootConstants rc{};
-                    if (camera)
-                    {
-                        rc.matrix = camera->GetProjection() * camera->GetView() * trans.GetWorldMatrix();
-                        rc.invMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(trans.GetWorldMatrix()))));
-                    }
-                    rc.cullMatrix = m_cullViewProjection * trans.GetWorldMatrix();
-                    rc.cullCameraPosition =
-                        glm::vec3(glm::inverse(trans.GetWorldMatrix()) * glm::vec4(m_cullCameraPosition, 1.0f));
+                    rc.model = world;
+                    rc.invTransposeModel = glm::mat4(glm::transpose(glm::inverse(glm::mat3(world))));
+                    rc.cullCameraPosition = glm::vec3(glm::inverse(world) * cameraPosition);
                     const auto& material = mesh.GetMaterial();
                     if (material.m_albedo) rc.albedoView = material.m_albedo->GetSrv()->BindlessView();
                     if (material.m_normal) rc.normalView = material.m_normal->GetSrv()->BindlessView();
@@ -269,6 +261,10 @@ namespace Wild
 
                 uniforms.emplace_back(bindlessUni);
 
+                Uniform sceneCameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                sceneCameraUni.visibility = D3D12_SHADER_VISIBILITY_VERTEX;
+                uniforms.emplace_back(sceneCameraUni);
+
                 Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
                 uniforms.emplace_back(staticSampler);
 
@@ -276,8 +272,6 @@ namespace Wild
 
                 // Rendering
                 auto ecs = engine.GetECS();
-
-                Camera* camera = GetActiveCamera();
 
                 const bool clusterDebug = m_meshletDebugView && SupportsClusterDebugView();
 
@@ -288,6 +282,8 @@ namespace Wild
                                  DSClearOperation::Store,
                                  "Deferred pass");
 
+                list.SetConstantBufferView(2, GetSceneDataAddress());
+
                 auto meshes = ecs->GetRegistry().view<Transform, MeshComponent>();
                 for (auto&& [entity, trans, meshComponent] : meshes.each())
                 {
@@ -296,11 +292,8 @@ namespace Wild
 
                     m_rc = DeferredRootConstants{};
 
-                    if (camera)
-                    {
-                        m_rc.matrix = camera->GetProjection() * camera->GetView() * trans.GetWorldMatrix();
-                        m_rc.invMatrix = glm::transpose(glm::inverse(glm::mat3(trans.GetWorldMatrix())));
-                    }
+                    m_rc.model = trans.GetWorldMatrix();
+                    m_rc.invTransposeModel = glm::transpose(glm::inverse(glm::mat3(trans.GetWorldMatrix())));
 
                     auto material = mesh.GetMaterial();
                     if (material.m_albedo) m_rc.albedoView = material.m_albedo->GetSrv()->BindlessView();

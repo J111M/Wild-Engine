@@ -1,3 +1,5 @@
+#include "Helper/SceneData.slang"
+
 const static uint TASK_SHADER_DISPATCH_X = 64;
 
 
@@ -31,11 +33,11 @@ cbuffer Constants : register(b0)
     uint meshletBufferView;
     uint meshletVertexBufferView;
     uint primIndexBufferView;
-    float3 cullCameraPosition; // Object space camera position
+    float3 cullCameraPosition; // Object space position of the culling camera
     uint meshletCount;
-
-    column_major float4x4 cullMatrix;
 
     uint meshletOffset;
     uint meshletDebugView;
 };
+
+ConstantBuffer<SceneCameraData> sceneCamera : register(b1);

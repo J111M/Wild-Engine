@@ -1,8 +1,6 @@
 #include "Renderer/Passes/ProceduralGrass/IndirectGrass.hpp"
 #include "Renderer/Passes/ProceduralTerrainPass.hpp"
 
-#include <glm/gtc/matrix_access.hpp>
-
 namespace Wild
 {
     IndirectGrass::IndirectGrass()
@@ -41,16 +39,6 @@ namespace Wild
             m_instanceCountBuffer[i] = std::make_unique<GPUBuffer>(desc);
         }
 
-        // Frustum constant buffer
-        for (int i = 0; i < BACK_BUFFER_COUNT; i++)
-        {
-            BufferDesc desc{};
-            desc.size = sizeof(FrustumBuffer);
-            desc.usage = BufferUsage::Constant;
-            desc.access = MemoryAccess::CpuToGpu;
-            m_frustumBuffer[i] = std::make_unique<GPUBuffer>(desc);
-        }
-
         // We need to create the commands on the gpu we do that in this buffer
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)
         {
@@ -76,17 +64,17 @@ namespace Wild
 
         {
             BufferDesc desc{};
-            desc.size = sizeof(SceneData);
+            desc.size = sizeof(GrassWindData);
             desc.usage = BufferUsage::Constant;
             desc.access = MemoryAccess::CpuToGpu;
 
             for (int i = 0; i < BACK_BUFFER_COUNT; i++)
             {
-                m_sceneData[i] = std::make_shared<GPUBuffer>(desc);
+                m_windDataBuffer[i] = std::make_shared<GPUBuffer>(desc);
 
                 // Keep buffer data mapped for cpu write access
                 CD3DX12_RANGE readRange(0, 0);
-                m_sceneData[i]->Map(&readRange);
+                m_windDataBuffer[i]->Map(&readRange);
             }
         }
 
@@ -111,33 +99,16 @@ namespace Wild
         auto& ecs = engine.GetECS();
 
         engine.GetImGui()->AddPanel("Grass Settings", [this]() {
-            ImGui::SliderFloat("Wind Strength", &m_grassSceneData.windStrength, 0.01f, 20.0f);
-            ImGui::SliderFloat("Octaves", &m_grassSceneData.octaves, 0.1, 1);
-            ImGui::SliderFloat("Frequency", &m_grassSceneData.frequency, 0.01f, 0.4f);
-            ImGui::SliderFloat("Amplitude", &m_grassSceneData.amplitude, 0.01f, 1.0f);
-            ImGui::SliderFloat2("Wind Direction", &m_grassSceneData.windDirection.x, -10.0f, 10.0f);
+            ImGui::SliderFloat("Wind Strength", &m_windData.windStrength, 0.01f, 20.0f);
+            ImGui::SliderFloat("Octaves", &m_windData.octaves, 0.1, 1);
+            ImGui::SliderFloat("Frequency", &m_windData.frequency, 0.01f, 0.4f);
+            ImGui::SliderFloat("Amplitude", &m_windData.amplitude, 0.01f, 1.0f);
+            ImGui::SliderFloat2("Wind Direction", &m_windData.windDirection.x, -10.0f, 10.0f);
 
             if (ImGui::Button("Recompute blades")) { m_recomputeGrassBlades = true; }
         });
 
-        SceneData SceneCbv{};
-
-        Camera* cam = GetActiveCamera();
-
-        if (cam)
-        {
-            SceneCbv.ProjView = cam->GetProjection() * cam->GetView();
-            SceneCbv.CameraPosition = cam->GetPosition();
-
-            SceneCbv.windStrength = m_grassSceneData.windStrength;
-            SceneCbv.octaves = m_grassSceneData.octaves;
-            SceneCbv.frequency = m_grassSceneData.frequency;
-            SceneCbv.amplitude = m_grassSceneData.amplitude;
-            SceneCbv.windDirection = m_grassSceneData.windDirection;
-        }
-
-        m_sceneData[device->GetBackBufferIndex()]->Allocate(&SceneCbv);
-        UpdateFrustumData(static_cast<int>(device->GetBackBufferIndex()));
+        m_windDataBuffer[device->GetBackBufferIndex()]->Allocate(&m_windData);
 
         m_accumulatedTime += dt * 1;
         m_rc.time = m_accumulatedTime;
@@ -290,9 +261,8 @@ namespace Wild
 
                     std::vector<Uniform> uniforms;
 
-                    // Per frame frustum data
-                    Uniform frustumData{0, 0, RootParams::RootResourceType::ConstantBufferView};
-                    uniforms.emplace_back(frustumData);
+                    Uniform cullConstants{0, 0, RootParams::RootResourceType::Constants, sizeof(GrassCullConstants)};
+                    uniforms.emplace_back(cullConstants);
 
                     // Grass instance data
                     Uniform grassInstanceData{0, 0, RootParams::RootResourceType::ShaderResourceView};
@@ -306,6 +276,10 @@ namespace Wild
                     Uniform instanceCounter{1, 0, RootParams::RootResourceType::UnorderedAccessView};
                     uniforms.emplace_back(instanceCounter);
 
+                    // Frustum planes and camera position of the camera that is currently being rendered
+                    Uniform sceneCameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                    uniforms.emplace_back(sceneCameraUni);
+
                     auto& pipeline =
                         renderer.GetOrCreatePipeline("Grass culling pass", PipelineStateType::Compute, settings, uniforms);
 
@@ -314,11 +288,11 @@ namespace Wild
 
                     UINT frameIndex = context->GetBackBufferIndex();
 
-                    // Set frame data
-                    list.SetConstantBufferView(0, m_frustumBuffer[frameIndex].get());
+                    list.SetRootConstant<GrassCullConstants>(0, m_cullConstants);
                     list.SetShaderResourceView(1, m_perBladeDataBuffer.get());
                     list.SetUnorderedAccessView(2, m_culledInstancesBuffer[frameIndex].get());
                     list.SetUnorderedAccessView(3, m_instanceCountBuffer[frameIndex].get());
+                    list.SetConstantBufferView(4, GetSceneDataAddress());
 
                     list.GetList()->Dispatch(((MAXGRASSBLADES + 63) / 64), 1, 1);
 
@@ -430,8 +404,8 @@ namespace Wild
                         0, 0, RootParams::RootResourceType::ShaderResourceView, 0, D3D12_SHADER_VISIBILITY_VERTEX};
                     uniforms.emplace_back(grassBladeData);
 
-                    Uniform sceneData{1, 0, RootParams::RootResourceType::ConstantBufferView, 0};
-                    uniforms.emplace_back(sceneData);
+                    Uniform windData{1, 0, RootParams::RootResourceType::ConstantBufferView, 0};
+                    uniforms.emplace_back(windData);
 
                     Uniform culledInstanceData{1, 0, RootParams::RootResourceType::ShaderResourceView};
                     uniforms.emplace_back(culledInstanceData);
@@ -447,6 +421,10 @@ namespace Wild
 
                     uniforms.emplace_back(bindlessUni);
 
+                    Uniform sceneCameraUni{2, 0, RootParams::RootResourceType::ConstantBufferView};
+                    sceneCameraUni.visibility = D3D12_SHADER_VISIBILITY_VERTEX;
+                    uniforms.emplace_back(sceneCameraUni);
+
                     Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
                     staticSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
                     staticSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
@@ -456,8 +434,6 @@ namespace Wild
                         renderer.GetOrCreatePipeline("Grass render pass", PipelineStateType::Graphics, settings, uniforms);
 
                     auto ecs = engine.GetECS();
-
-                    Camera* camera = GetActiveCamera();
 
                     list.SetPipelineState(pipeline);
                     list.BeginRender(
@@ -471,11 +447,8 @@ namespace Wild
                     UINT frameIndex = gfxContext->GetBackBufferIndex();
 
                     auto& transform = engine.GetECS()->GetComponent<Transform>(m_chunkEntity);
-                    if (camera)
-                    {
-                        m_rc.matrix = camera->GetProjection() * camera->GetView() * transform.GetWorldMatrix();
-                        m_rc.invMatrix = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
-                    }
+                    m_rc.model = transform.GetWorldMatrix();
+                    m_rc.invTransposeModel = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
                     m_rc.bladeId = 0;
 
                     m_rc.terrainView = 0;
@@ -494,7 +467,7 @@ namespace Wild
                     {
                         list.SetRootConstant<GrassRootConstants>(0, m_rc);
                         list.SetShaderResourceView(1, m_perBladeDataBuffer.get());
-                        list.SetConstantBufferView(2, m_sceneData[gfxContext->GetBackBufferIndex()].get());
+                        list.SetConstantBufferView(2, m_windDataBuffer[frameIndex].get());
 
                         if (m_culledInstancesBuffer[frameIndex]->GetBuffer())
                         {
@@ -502,6 +475,7 @@ namespace Wild
                         }
 
                         list.SetBindlessHeap(4);
+                        list.SetConstantBufferView(5, GetSceneDataAddress());
 
                         list.GetList()->IASetVertexBuffers(0, 1, &m_grassVertices->GetVBView()->View());
                         list.GetList()->IASetIndexBuffer(&m_grassIndices->GetIBView()->View());
@@ -519,49 +493,6 @@ namespace Wild
                     list.EndRender();
                 }
             });
-    }
-
-    void IndirectGrass::UpdateFrustumData(const int frameIndex)
-    {
-        auto ecs = engine.GetECS();
-        auto& cameras = ecs->View<Camera>();
-
-        FrustumBuffer FrustumData{};
-
-        // Loop over all camera's TODO make the code run for each camera entity
-        for (auto& cameraEntity : cameras)
-        {
-            if (ecs->HasComponent<Camera>(cameraEntity))
-            {
-                auto& cam = ecs->GetComponent<Camera>(cameraEntity);
-
-                FrustumData.viewProj = cam.GetView() * cam.GetProjection();
-                FrustumData.cameraPos = cam.GetPosition();
-            }
-        }
-
-        // Extracting the frustum data from the view and proj
-        FrustumData.frustumPlanes[0] = glm::row(FrustumData.viewProj, 3) + glm::row(FrustumData.viewProj, 0); // Left
-        FrustumData.frustumPlanes[1] = glm::row(FrustumData.viewProj, 3) - glm::row(FrustumData.viewProj, 0); // Right
-        FrustumData.frustumPlanes[2] = glm::row(FrustumData.viewProj, 3) + glm::row(FrustumData.viewProj, 1); // Bottom
-        FrustumData.frustumPlanes[3] = glm::row(FrustumData.viewProj, 3) - glm::row(FrustumData.viewProj, 1); // Top
-        FrustumData.frustumPlanes[4] = glm::row(FrustumData.viewProj, 2);                                     // Near
-        FrustumData.frustumPlanes[5] = glm::row(FrustumData.viewProj, 3) - glm::row(FrustumData.viewProj, 2); // Far
-
-        // Normalize frustum planes
-        for (int i = 0; i < 6; i++)
-        {
-            FrustumData.frustumPlanes[i] = glm::normalize(FrustumData.frustumPlanes[i]);
-        }
-
-        // TODO make slider for LOD change in imgui
-        FrustumData.lod0 = 15.0f;
-        FrustumData.lod1 = 30.0f;
-        FrustumData.lod2 = 50.0f;
-        FrustumData.maxDistance = 70.0f;
-        FrustumData.lodBlendRange = 5.0f;
-
-        m_frustumBuffer[frameIndex]->Allocate(&FrustumData);
     }
 
     void IndirectGrass::CreateGrassMeshes()

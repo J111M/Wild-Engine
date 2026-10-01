@@ -4,17 +4,7 @@
 
 namespace Wild
 {
-    PostProcessPass::PostProcessPass()
-    {
-        BufferDesc desc{};
-        desc.size = sizeof(SceneBuffer);
-        desc.usage = BufferUsage::Constant;
-        desc.access = MemoryAccess::CpuToGpu;
-        for (size_t i = 0; i < BACK_BUFFER_COUNT; i++)
-        {
-            m_sceneDataBuffer[i] = std::make_unique<GPUBuffer>(desc);
-        }
-    }
+    PostProcessPass::PostProcessPass() {}
 
     void PostProcessPass::Add(Renderer& renderer, RenderGraph& rg)
     {
@@ -26,27 +16,6 @@ namespace Wild
     void PostProcessPass::Update(const float dt)
     {
         m_fogTime += m_windSpeed * dt;
-
-        auto ecs = engine.GetECS();
-        Camera* camera = GetActiveCamera();
-
-        if (camera)
-        {
-            m_sceneData.inverseView = glm::inverse(camera->GetView());
-            m_sceneData.inverseProj = glm::inverse(camera->GetProjection());
-            m_sceneData.viewSpace = camera->GetView();
-            m_sceneData.cameraPosition = camera->GetPosition();
-            m_volumetricRC.nearFar = camera->GetNearFar();
-        }
-
-        auto view = ecs->View<DirectionalLight>();
-        for (auto entity : view)
-        {
-            auto& directionalLight = ecs->GetComponent<DirectionalLight>(entity);
-
-            m_sceneData.lightDirection = directionalLight.direction;
-            break;
-        }
 
         engine.GetImGui()->AddPanel("Volumetric Fog Settings", [this]() {
             ImGui::Checkbox("Enable volumetrics", &m_enabledVolumetricFog);
@@ -64,9 +33,6 @@ namespace Wild
         });
 
         m_volumetricRC.windDirectionTime.a = m_fogTime;
-
-        int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
-        m_sceneDataBuffer[frameIndex]->Allocate(&m_sceneData);
     }
 
     void PostProcessPass::VolumetricNoisePass(Renderer& renderer, RenderGraph& rg)
@@ -200,8 +166,8 @@ namespace Wild
                     Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(VolumetricRootConstants)};
                     uniforms.emplace_back(rootConstant);
 
-                    Uniform cameraBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
-                    uniforms.emplace_back(cameraBuffer);
+                    Uniform sceneCameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                    uniforms.emplace_back(sceneCameraUni);
 
                     Uniform lightsBuffer{2, 0, RootParams::RootResourceType::ConstantBufferView};
                     uniforms.emplace_back(lightsBuffer);
@@ -253,8 +219,6 @@ namespace Wild
                     fogSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
                     uniforms.emplace_back(fogSampler);
 
-                    int frameIndex = engine.GetGfxContext()->GetBackBufferIndex();
-
                     auto& pipeline =
                         renderer.GetOrCreatePipeline("Volumetrics pass", PipelineStateType::Compute, settings, uniforms);
                     list.SetPipelineState(pipeline);
@@ -275,7 +239,7 @@ namespace Wild
                     m_volumetricRC.biasValue = shadowData->biasValue;
 
                     list.SetRootConstant<VolumetricRootConstants>(0u, m_volumetricRC);
-                    list.SetConstantBufferView(1u, m_sceneDataBuffer[frameIndex].get());
+                    list.SetConstantBufferView(1u, GetSceneDataAddress());
                     list.SetConstantBufferView(2u, pbrData->pointlights.get());
                     list.SetConstantBufferView(3u, shadowData->directLightBuffer.get());
                     list.SetUnorderedAccessView(4u, passData.finalTexture);

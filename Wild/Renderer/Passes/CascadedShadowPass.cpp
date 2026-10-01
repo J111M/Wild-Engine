@@ -13,12 +13,17 @@ namespace Wild
         desc.size = sizeof(DirectLightBuffer);
         desc.usage = BufferUsage::Constant;
         desc.access = MemoryAccess::CpuToGpu;
-        m_directionalLightBuffer = std::make_shared<GPUBuffer>(desc);
+
+        for (auto& buffer : m_directionalLightBuffers)
+        {
+            buffer = std::make_shared<GPUBuffer>(desc);
+        }
     }
 
     void CascadedShadowPass::Add(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<CsmPassData>();
+        passData->directLightBuffer = m_directionalLightBuffers[engine.GetGfxContext()->GetBackBufferIndex()];
 
         for (size_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
         {
@@ -113,8 +118,6 @@ namespace Wild
                     passData.shadowMap[i]->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 }
 
-                passData.directLightBuffer = m_directionalLightBuffer;
-
                 // Debug the shadow map
                 if (m_drawDebugFrustum)
                 {
@@ -196,79 +199,77 @@ namespace Wild
             if (ImGui::Button("Lock debug frustum")) { m_lockFrustum = !m_lockFrustum; }
         });
 
-        Camera* camera = GetActiveCamera();
-
-        if (camera)
+        if (m_drawDebugFrustum)
         {
-            if (m_drawDebugFrustum)
+            if (!m_lockFrustum)
             {
-                if (!m_lockFrustum)
-                {
-                    m_minExtents.clear();
-                    m_maxExtents.clear();
-                    m_lightView.clear();
-                    m_frustumCorners.clear();
-                    m_lightDirDebug.clear();
-                    m_lightDirDebug2.clear();
-                }
-            }
-
-            auto ecs = engine.GetECS();
-            auto view = ecs->View<DirectionalLight>();
-            for (auto entity : view)
-            {
-                auto& directionalLight = ecs->GetComponent<DirectionalLight>(entity);
-
-                float yaw = dt * 0.05; // radians per second
-
-                float cosYaw = cosf(yaw);
-                float sinYaw = sinf(yaw);
-                float x = directionalLight.direction[0];
-                float z = directionalLight.direction[2];
-
-                directionalLight.direction[0] = x * cosYaw - z * sinYaw;
-                directionalLight.direction[2] = x * sinYaw + z * cosYaw;
-
-                m_directLight.lightDirectionIntensity = glm::vec4(directionalLight.direction, directionalLight.colorIntensity.a);
-                break;
-            }
-
-            for (uint32_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
-            {
-                glm::mat4 cascadeProjections{};
-                float cascadeFarDistances{};
-
-                std::array<float, 2> nearFar;
-
-                for (uint32_t nf = 0; nf < 2u; nf++)
-                {
-                    const glm::vec2 camNearFar = camera->GetNearFar();
-                    const float shadowDistance = camNearFar.y;
-
-                    const float ratio = static_cast<float>(cascade + nf) / static_cast<float>(SHADOWMAP_CASCADES);
-                    float logS = camNearFar.x * std::powf(shadowDistance / camNearFar.x, ratio);
-                    float linS = camNearFar.x + (shadowDistance - camNearFar.x) * ratio;
-                    float nearField = glm::mix(logS, linS, 0.175f);
-                    nearFar[nf] = nearField;
-                }
-
-                cascadeProjections = glm::perspectiveRH_ZO(camera->GetFOV(), camera->GetAspect(), nearFar[0], nearFar[1]);
-                cascadeFarDistances = nearFar[1];
-
-                const glm::mat4 cascadeViewProj = GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,
-                                                                             m_directLight.lightDirectionIntensity.y,
-                                                                             m_directLight.lightDirectionIntensity.z),
-                                                                   camera->GetView(),
-                                                                   cascadeProjections,
-                                                                   cascade);
-
-                // Set direct light data
-                m_directLight.viewProj[cascade] = cascadeViewProj;
-                m_directLight.cascadeDistance[cascade] = cascadeFarDistances;
+                m_minExtents.clear();
+                m_maxExtents.clear();
+                m_lightView.clear();
+                m_frustumCorners.clear();
+                m_lightDirDebug.clear();
+                m_lightDirDebug2.clear();
             }
         }
 
-        m_directionalLightBuffer->Allocate(&m_directLight);
+        auto ecs = engine.GetECS();
+        auto view = ecs->View<DirectionalLight>();
+        for (auto entity : view)
+        {
+            auto& directionalLight = ecs->GetComponent<DirectionalLight>(entity);
+
+            float yaw = dt * 0.05; // radians per second
+
+            float cosYaw = cosf(yaw);
+            float sinYaw = sinf(yaw);
+            float x = directionalLight.direction[0];
+            float z = directionalLight.direction[2];
+
+            directionalLight.direction[0] = x * cosYaw - z * sinYaw;
+            directionalLight.direction[2] = x * sinYaw + z * cosYaw;
+
+            m_directLight.lightDirectionIntensity = glm::vec4(directionalLight.direction, directionalLight.colorIntensity.a);
+            break;
+        }
+
+        const SceneCameraData& sceneData = GetSceneData();
+
+        for (uint32_t cascade = 0; cascade < SHADOWMAP_CASCADES; cascade++)
+        {
+            glm::mat4 cascadeProjections{};
+            float cascadeFarDistances{};
+
+            std::array<float, 2> nearFar;
+
+            for (uint32_t nf = 0; nf < 2u; nf++)
+            {
+                const glm::vec2 camNearFar = glm::vec2(sceneData.nearFarFovAspect);
+                const float shadowDistance = camNearFar.y;
+
+                const float ratio = static_cast<float>(cascade + nf) / static_cast<float>(SHADOWMAP_CASCADES);
+                float logS = camNearFar.x * std::powf(shadowDistance / camNearFar.x, ratio);
+                float linS = camNearFar.x + (shadowDistance - camNearFar.x) * ratio;
+                float nearField = glm::mix(logS, linS, 0.175f);
+                nearFar[nf] = nearField;
+            }
+
+            cascadeProjections = glm::perspectiveRH_ZO(
+                sceneData.nearFarFovAspect.z, sceneData.nearFarFovAspect.w, nearFar[0], nearFar[1]);
+            cascadeFarDistances = nearFar[1];
+
+            const glm::mat4 cascadeViewProj = GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,
+                                                                         m_directLight.lightDirectionIntensity.y,
+                                                                         m_directLight.lightDirectionIntensity.z),
+                                                               sceneData.view,
+                                                               cascadeProjections,
+                                                               cascade);
+
+            // Set direct light data
+            m_directLight.viewProj[cascade] = cascadeViewProj;
+            m_directLight.cascadeDistance[cascade] = cascadeFarDistances;
+        }
+
+        m_directionalLightBuffers[engine.GetGfxContext()->GetBackBufferIndex()]->Allocate(&m_directLight);
     }
 
     // Function taken from https://learnopengl.com/Guest-Articles/2021/CSM and modified to work in my case

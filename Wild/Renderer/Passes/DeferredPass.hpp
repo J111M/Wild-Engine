@@ -5,10 +5,11 @@
 
 namespace Wild
 {
+    // Camera matrices come from the scene data buffer, only per object data is stored here
     struct DeferredMeshShaderRootConstants
     {
-        glm::mat<4, 4, float, glm::packed_highp> matrix{};
-        glm::mat<4, 4, float, glm::packed_highp> invMatrix{};
+        glm::mat<4, 4, float, glm::packed_highp> model{};
+        glm::mat<4, 4, float, glm::packed_highp> invTransposeModel{};
         uint32_t albedoView{};
         uint32_t normalView{};
         uint32_t roughnessMetallicView{};
@@ -19,11 +20,9 @@ namespace Wild
         uint32_t meshletVertexBufferView{};
         uint32_t primIndexBufferView{};
 
-        // Object space camera position
+        // Object space position of the culling camera
         glm::vec<3, float, glm::packed_highp> cullCameraPosition{};
         uint32_t meshletCount{};
-
-        glm::mat<4, 4, float, glm::packed_highp> cullMatrix{};
 
         uint32_t meshletOffset{};
         uint32_t meshletDebugView{};
@@ -31,8 +30,8 @@ namespace Wild
 
     struct DeferredRootConstants
     {
-        glm::mat4 matrix{};
-        glm::mat4 invMatrix{};
+        glm::mat4 model{};
+        glm::mat4 invTransposeModel{};
         uint32_t albedoView{};
         uint32_t normalView{};
         uint32_t roughnessMetallicView{};
@@ -80,10 +79,6 @@ namespace Wild
         // Uses the amplification shader to cull meshlets before dispatching the mesh shader.
         // Only ever takes effect when the mesh shader path is active.
         bool m_useAmplificationShader = true;
-
-        bool m_freezeCulling = false;
-        glm::mat4 m_cullViewProjection{1.0f};
-        glm::vec3 m_cullCameraPosition{0.0f};
 
         std::unique_ptr<Texture> m_texture;
 

@@ -1,4 +1,5 @@
 #include "Helper/Common.slang"
+#include "Helper/SceneData.slang"
 
 struct VSInput
 {
@@ -32,11 +33,14 @@ cbuffer Constants : register(b0)
     uint meshletDebugView;
 };
 
+ConstantBuffer<SceneCameraData> sceneCamera : register(b1);
+
 [shader("vertex")]
 VSOutput main(VSInput input)
 {
     VSOutput output;
-    output.position = mul(model, float4(input.position, 1.0f));
+    float4 worldPosition = mul(model, float4(input.position, 1.0f));
+    output.position = mul(sceneCamera.viewProjection, worldPosition);
     output.color = input.color;
     output.normal = input.normal;
     output.uv = input.uv;

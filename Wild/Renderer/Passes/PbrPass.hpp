@@ -17,17 +17,8 @@ namespace Wild
         uint32_t numOfPointLights{};
     };
 
-    struct CameraBuffer
-    {
-        glm::mat4 inverseView{};
-        glm::mat4 inverseProj{};
-        glm::mat4 viewSpace{};
-        float cameraFar{};
-    };
-
     struct PBRData
     {
-        glm::vec3 cameraPosition{};
         glm::vec4 lightDirectionIntensity = glm::vec4(-0.3, 14.0, -2.5, 1.0f);
         glm::vec4 lightColorIntensity = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
         uint32_t viewMode = 0;
@@ -65,9 +56,6 @@ namespace Wild
         PbrRootConstants m_rc{};
         PBRData m_pbrData{};
 
-        CameraBuffer m_camData{};
-
-        std::unique_ptr<GPUBuffer> m_cameraBuffer[BACK_BUFFER_COUNT];
         std::unique_ptr<GPUBuffer> m_pbrDataBuffer[BACK_BUFFER_COUNT];
 
         std::unique_ptr<GPUBuffer> m_environmentData;

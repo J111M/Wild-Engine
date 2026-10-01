@@ -1,6 +1,6 @@
-cbuffer RootConstant : register(b0) { 
-    column_major float4x4 projView;
-};
+#include "Helper/SceneData.slang"
+
+ConstantBuffer<SceneCameraData> sceneCamera : register(b0);
 
 struct VSInput
 {
@@ -18,7 +18,7 @@ struct VSOutput
 VSOutput main(VSInput input)
 {
     VSOutput output;
-    output.position = mul(projView, float4(input.position, 1.0f));
+    output.position = mul(sceneCamera.viewProjection, float4(input.position, 1.0f));
     output.color = input.color;
     return output;
 }

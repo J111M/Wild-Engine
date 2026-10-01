@@ -6,10 +6,9 @@
 
 namespace Wild
 {
+    // Camera matrices come from the scene data buffer
     struct ProbeDebugRootConstants
     {
-        glm::mat4 projView{};
-
         float probeScale = 0.25f;
         uint32_t probeDataView{INVALID_HEAP_INDEX};
         float irradianceExposure{20.0f};

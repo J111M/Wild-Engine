@@ -1,3 +1,5 @@
+#include "Helper/SceneData.slang"
+
 #include "Helper/Common.slang"
 #include "Helper/Rng.slang"
 
@@ -49,10 +51,7 @@ cbuffer TextureViews : register(b1)
     uint noiseBlendView;
 }
 
-cbuffer Camera : register(b2)
-{
-     column_major float4x4 projView;
-}
+ConstantBuffer<SceneCameraData> sceneCamera : register(b2);
 
 Texture2D textures[4096] : register(t0, space0);
 SamplerState linearClampSampler : register(s0);

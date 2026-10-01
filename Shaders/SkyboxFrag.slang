@@ -8,12 +8,6 @@ cbuffer Constants : register(b0)
     float4 lightDirectionIntensity;
 };
 
-cbuffer matrices : register(b1)
-{
-    column_major float4x4 view;
-    column_major float4x4 projection;
-}
-
 texture2D textures[4096] : register(t0, space0);
 TextureCube textureCube[4096] : register(t0, space1);
 SamplerState linearSampler : register(s0);

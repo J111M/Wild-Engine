@@ -21,18 +21,11 @@ namespace Wild
     class Camera
     {
       public:
-        Camera(glm::vec3 pos = {0, 0, -10}, uint32_t index = 0);
+        Camera(glm::vec3 pos = {0, 0, -10});
         ~Camera() {};
 
         void UpdateMatrix(float fov, float aspect, float nearF, float farF);
         void Input(Window& window, uint32_t width, uint32_t height, float dt);
-
-        void SetRenderActivity(bool isActive) { m_currentRenderCamera = isActive; }
-        bool IsRenderModeActive() const { return m_currentRenderCamera; }
-
-        void SetMovementActivity(bool isActive) { m_movementIsActive = isActive; }
-
-        uint32_t GetCameraIndex() const { return m_cameraIndex; }
 
         const glm::mat4& GetProjection() const { return m_projectionMatrix; }
         const glm::mat4& GetView() const { return m_viewMatrix; }
@@ -75,9 +68,5 @@ namespace Wild
         glm::mat4 m_cameraMatrix{1.0f};
 
         glm::quat m_quaternion{};
-
-        bool m_movementIsActive = false;
-        bool m_currentRenderCamera = false;
-        uint32_t m_cameraIndex{};
     };
 } // namespace Wild

@@ -49,6 +49,7 @@ namespace Wild
         template <typename rc> void SetRootConstant(uint32_t rootIndex, rc& rootConstant);
         void SetBindlessHeap(uint32_t rootIndex);
         void SetConstantBufferView(uint32_t rootIndex, GPUBuffer* buffer);
+        void SetConstantBufferView(uint32_t rootIndex, D3D12_GPU_VIRTUAL_ADDRESS address);
 
         void SetUnorderedAccessView(uint32_t rootIndex, GPUBuffer* buffer);
         void SetUnorderedAccessView(uint32_t rootIndex, Texture* texture, std::optional<uint32_t> index = std::nullopt);

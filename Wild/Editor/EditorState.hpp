@@ -13,7 +13,6 @@ namespace Wild
         bool wireframe = false;
         bool showColliders = false;
         bool showNormals = false;
-        bool freezeCulling = false;
         bool masterDebugDraw = true;
     };
 

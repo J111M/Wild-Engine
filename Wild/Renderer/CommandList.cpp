@@ -88,17 +88,20 @@ namespace Wild
 
     void CommandList::SetConstantBufferView(uint32_t rootIndex, GPUBuffer* buffer)
     {
+        SetConstantBufferView(rootIndex, buffer->GetBuffer()->GetGPUVirtualAddress());
+    }
+
+    void CommandList::SetConstantBufferView(uint32_t rootIndex, D3D12_GPU_VIRTUAL_ADDRESS address)
+    {
         switch (m_pipelineState->GetPassType())
         {
         case PipelineStateType::Graphics:
         case PipelineStateType::MeshPipeline:
-            m_commandList->SetGraphicsRootConstantBufferView(static_cast<UINT>(rootIndex),
-                                                             buffer->GetBuffer()->GetGPUVirtualAddress());
+            m_commandList->SetGraphicsRootConstantBufferView(static_cast<UINT>(rootIndex), address);
             break;
         case PipelineStateType::Compute:
         case PipelineStateType::Raytracing:
-            m_commandList->SetComputeRootConstantBufferView(static_cast<UINT>(rootIndex),
-                                                            buffer->GetBuffer()->GetGPUVirtualAddress());
+            m_commandList->SetComputeRootConstantBufferView(static_cast<UINT>(rootIndex), address);
             break;
         }
     }
