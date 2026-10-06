@@ -50,6 +50,18 @@ namespace Wild
         Texture* depthTexture;
     };
 
+    struct OcclusionPrepassData
+    {
+        // Depth of the previous frame, used as the occluder data for this frame
+        Texture* previousDepthTexture;
+    };
+
+    struct PreviousDepthCopyPassData
+    {
+        Texture* depthTexture;
+        Texture* previousDepthTexture;
+    };
+
     class DeferredPass : public RenderFeature
     {
       public:
@@ -59,7 +71,8 @@ namespace Wild
         virtual void Add(Renderer& renderer, RenderGraph& rg) override;
         virtual void Update(const float dt) override;
 
-        void IndirectPreparePass(Renderer& renderer, RenderGraph& rg);
+        void OcclusionPrepass(Renderer& renderer, RenderGraph& rg);
+        void PreviousDepthCopyPass(Renderer& renderer, RenderGraph& rg);
 
         void DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg, const bool useAmplification);
         void DeferredVertexPass(Renderer& renderer, RenderGraph& rg);

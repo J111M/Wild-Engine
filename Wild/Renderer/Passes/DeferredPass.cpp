@@ -105,7 +105,58 @@ namespace Wild
         return capabilities.SupportsMeshShaders() && capabilities.CheckResourceBindingSupport(ResourceBindingSupport::Tier3);
     }
 
-    void DeferredPass::IndirectPreparePass(Renderer& renderer, RenderGraph& rg) {}
+    void DeferredPass::OcclusionPrepass(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<OcclusionPrepassData>();
+
+        // Persists between frames through the transient cache, filled by the previous depth copy pass at the end of the frame
+        {
+            TextureDesc desc;
+            desc.width = engine.GetGfxContext()->GetWidth();
+            desc.height = engine.GetGfxContext()->GetHeight();
+            desc.format = DXGI_FORMAT_R32_FLOAT;
+            desc.name = "Previous frame depth";
+            desc.usage = TextureDesc::gpuOnly;
+            desc.flag = TextureDesc::shaderResource;
+            passData->previousDepthTexture = rg.CreateTransientTexture("PreviousFrameDepth", desc);
+        }
+
+        rg.AddPass<OcclusionPrepassData>(
+            "Occlusion prepass", PassType::Compute, [&renderer, this](const OcclusionPrepassData& passData, CommandList& list) {
+                passData.previousDepthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+                // Create a mip chain from previous frame depth data
+            });
+    }
+
+    void DeferredPass::PreviousDepthCopyPass(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<PreviousDepthCopyPassData>();
+        auto* deferredData = rg.GetPassData<PreviousDepthCopyPassData, DeferredPassData>();
+        auto* occlusionData = rg.GetPassData<PreviousDepthCopyPassData, OcclusionPrepassData>();
+
+        passData->depthTexture = deferredData->depthTexture;
+        passData->previousDepthTexture = occlusionData->previousDepthTexture;
+
+        rg.AddPass<PreviousDepthCopyPassData>(
+            "Previous depth copy pass", PassType::Default, [](const PreviousDepthCopyPassData& passData, CommandList& list) {
+                passData.depthTexture->Transition(list, D3D12_RESOURCE_STATE_COPY_SOURCE);
+                passData.previousDepthTexture->Transition(list, D3D12_RESOURCE_STATE_COPY_DEST);
+
+                // Copy into mip 0 only, so the copy keeps working once the target has a mip chain
+                D3D12_TEXTURE_COPY_LOCATION src{};
+                src.pResource = passData.depthTexture->GetResource();
+                src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+                src.SubresourceIndex = 0;
+
+                D3D12_TEXTURE_COPY_LOCATION dst{};
+                dst.pResource = passData.previousDepthTexture->GetResource();
+                dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+                dst.SubresourceIndex = 0;
+
+                list.GetList()->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+            });
+    }
 
     void DeferredPass::DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg, const bool useAmplification)
     {
@@ -354,9 +405,15 @@ namespace Wild
         passData->emissiveTexture = grassData->emissiveTexture;
         passData->depthTexture = grassData->depthTexture;
 
+        // Passes execute in the order they are added
+        OcclusionPrepass(renderer, rg);
+        rg.GetPassData<DeferredPassData, OcclusionPrepassData>();
+
         if (SupportsMeshShaderPath() && !m_forceVertexPath)
             DeferredMeshShaderPass(renderer, rg, m_useAmplificationShader);
         else
             DeferredVertexPass(renderer, rg);
+
+        PreviousDepthCopyPass(renderer, rg);
     }
 } // namespace Wild
