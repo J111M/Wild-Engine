@@ -1,3 +1,5 @@
+#include "Helper/SceneData.slang"
+
 #include "Helper/Common.slang"
 
 struct PSInput
@@ -14,7 +16,6 @@ struct PSInput
 cbuffer Constants : register(b0)
 {
     column_major float4x4 modelMatrix;
-    float4 cameraPosition;
     float4 lightDirectionIntensity;
 
     uint displacementMapView;
@@ -23,10 +24,7 @@ cbuffer Constants : register(b0)
     uint specularView;
 }
 
-cbuffer Camera : register(b1) {
-    column_major float4x4 projViewMatrix;
-    column_major float4x4 invModel;
-}
+ConstantBuffer<SceneCameraData> sceneCamera : register(b1);
 
 cbuffer OceanRenderData : register(b2) {
     float4 uvScalars;
@@ -94,7 +92,7 @@ float4 main(PSInput input) : SV_TARGET0
     float3 mN = float3(0, 1, 0); // Macro normal
     N = normalize(float3(-slope.x, 1.0f, -slope.y));
 
-    float3 V = normalize(cameraPosition.xyz - input.worlPosition.xyz);
+    float3 V = normalize(sceneCamera.position.xyz - input.worlPosition.xyz);
     float3 L = -normalize(float3(lightDirectionIntensity.xyz));
     float3 H = normalize(L + V);
 

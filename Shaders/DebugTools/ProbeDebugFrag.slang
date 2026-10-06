@@ -2,8 +2,6 @@ import DDGI.RayTracingUtils;
 import DDGI.DDGIProbeData;
 cbuffer RootConstant : register(b0)
 {
-    column_major float4x4 projView;
-
     float probeScale;
     uint probeDataView;
     float irradianceExposure;

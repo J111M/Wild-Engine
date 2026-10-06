@@ -130,12 +130,6 @@ namespace Wild
     /// Ocean render pass
     /// </summary>
 
-    struct OceanCameraData
-    {
-        glm::mat4 projViewMatrix{};
-        glm::mat4 invModel{};
-    };
-
     struct OceanPassData
     {
         Texture* finalTexture;
@@ -165,7 +159,6 @@ namespace Wild
     struct OceanRenderRootConstants
     {
         glm::mat4 modelMatrix{};
-        glm::vec4 cameraPosition{};
         glm::vec4 lightDirectionIntensity{};
 
         uint32_t displacementMapView{};
@@ -231,8 +224,6 @@ namespace Wild
 
         OceanRenderData m_oceanRenderData{};
         std::unique_ptr<GPUBuffer> m_oceanRenderDataBuffer;
-
-        std::unique_ptr<GPUBuffer> m_cameraBuffer{};
     };
 
 } // namespace Wild

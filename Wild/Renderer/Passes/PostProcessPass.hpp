@@ -33,7 +33,6 @@ namespace Wild
     struct VolumetricRootConstants
     {
         glm::vec2 textureSize{};
-        glm::vec2 nearFar{};
 
         uint32_t srcTextureView{};
         uint32_t depthView{};
@@ -74,15 +73,6 @@ namespace Wild
         uint32_t pad{};
     };
 
-    struct SceneBuffer
-    {
-        glm::mat4 inverseProj;
-        glm::mat4 inverseView;
-        glm::mat4 viewSpace;
-        glm::vec3 cameraPosition;
-        glm::vec3 lightDirection;
-    };
-
     class PostProcessPass : public RenderFeature
     {
       public:
@@ -104,8 +94,6 @@ namespace Wild
 
         // Volumetric data
         VolumetricRootConstants m_volumetricRC{};
-        SceneBuffer m_sceneData{};
-        std::unique_ptr<GPUBuffer> m_sceneDataBuffer[BACK_BUFFER_COUNT];
 
         bool m_enabledVolumetricFog = false;
 

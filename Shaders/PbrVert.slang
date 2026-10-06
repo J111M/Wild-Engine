@@ -5,12 +5,6 @@ struct VSOutput
     float2 uv : TEXCOORD0;
 };
 
-cbuffer matrices : register(b1)
-{
-    column_major float4x4 inverseView;
-    column_major float4x4 inverseProjection;
-}
-
 [shader("vertex")]
 VSOutput main(uint vertexID: SV_VertexID)
 {

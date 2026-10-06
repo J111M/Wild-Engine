@@ -87,9 +87,6 @@ namespace Wild
     {
         auto ecs = engine.GetECS();
 
-        Camera* camera = GetActiveCamera();
-        if (camera) m_traceRc.inverseView = glm::inverse(camera->GetView());
-
         // Use the first directional light for now
         auto view = ecs->View<DirectionalLight>();
         for (auto entity : view)

@@ -1,3 +1,5 @@
+#include "Helper/SceneData.slang"
+
 struct VSInput
 {
     float3 position : POSITION;
@@ -20,7 +22,6 @@ struct VSOutput
 cbuffer Constants : register(b0)
 {
     column_major float4x4 modelMatrix;
-    float4 cameraPosition;
     float4 directionIntensity;
 
     uint displacementMapView;
@@ -29,11 +30,7 @@ cbuffer Constants : register(b0)
     uint specularView;
 }
 
-cbuffer Camera : register(b1)
-{
-    column_major float4x4 projViewMatrix;
-    column_major float4x4 invModel;
-}
+ConstantBuffer<SceneCameraData> sceneCamera : register(b1);
 
 cbuffer OceanRenderData : register(b2) {
     float4 uvScalars;
@@ -78,7 +75,7 @@ VSOutput main(VSInput input)
     output.foam = displacement3.w;
     worldPos = mul(modelMatrix, float4(displacedPosition.xyz, 1.0f));
     output.worlPosition = worldPos.xyz;
-    output.position = mul(projViewMatrix, worldPos);
+    output.position = mul(sceneCamera.viewProjection, worldPos);
     output.color = input.color;
     output.normal = input.normal;
     output.uv = input.uv;

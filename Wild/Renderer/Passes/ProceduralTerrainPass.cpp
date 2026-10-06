@@ -16,12 +16,6 @@ namespace Wild
         terrainTextureBuffer.access = MemoryAccess::CpuToGpu;
         m_terrainTexturesCbv = std::make_unique<GPUBuffer>(terrainTextureBuffer);
 
-        BufferDesc cameraBufferDesc{};
-        cameraBufferDesc.size = sizeof(ProjViewCamera);
-        cameraBufferDesc.usage = BufferUsage::Constant;
-        cameraBufferDesc.access = MemoryAccess::CpuToGpu;
-        m_cameraCbv = std::make_unique<GPUBuffer>(cameraBufferDesc);
-
         // Load all terrain textures
         grassTexture = std::make_unique<Texture>("Assets/Textures/grass/Grass008_2K-JPG_Color.jpg");
         grassNormalTexture = std::make_unique<Texture>("Assets/Textures/grass/Grass008_2K-JPG_NormalDX.jpg");
@@ -275,8 +269,8 @@ namespace Wild
                 Uniform TextureViewBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
                 uniforms.emplace_back(TextureViewBuffer);
 
-                Uniform projViewBuffer{2, 0, RootParams::RootResourceType::ConstantBufferView};
-                uniforms.emplace_back(projViewBuffer);
+                Uniform sceneCameraUni{2, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(sceneCameraUni);
 
                 Uniform bindlessUni{0, 0, RootParams::RootResourceType::DescriptorTable};
                 CD3DX12_DESCRIPTOR_RANGE srvRange{};
@@ -315,27 +309,16 @@ namespace Wild
                     // Rendering
                     auto ecs = engine.GetECS();
 
-                    Camera* camera = GetActiveCamera();
-
-                    if (camera)
-                    {
-                        m_pvc.m_viewProj = camera->GetProjection() * camera->GetView();
-                        m_cameraCbv->Allocate(&m_pvc);
-                    }
-
                     for (auto [entity, chunk, transform] : ecs->GetRegistry().view<TerrainChunk, Transform>().each())
                     {
-                        if (camera)
-                        {
-                            m_drc.worldMatix = transform.GetWorldMatrix();
-                            m_drc.invModel = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
-                        }
+                        m_drc.worldMatix = transform.GetWorldMatrix();
+                        m_drc.invModel = glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
 
                         m_drc.heightMapView = chunk.heightMap->GetSrv()->BindlessView();
 
                         list.SetRootConstant<DrawTerrainRootConstants>(0, m_drc);
                         list.SetConstantBufferView(1, m_terrainTexturesCbv.get());
-                        list.SetConstantBufferView(2, m_cameraCbv.get());
+                        list.SetConstantBufferView(2, GetSceneDataAddress());
                         list.SetBindlessHeap(3);
 
                         list.GetList()->IASetVertexBuffers(0, 1, &m_terrainVertices->GetVBView()->View());

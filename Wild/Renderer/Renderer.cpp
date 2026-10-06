@@ -29,6 +29,7 @@ namespace Wild
         auto gfxContext = engine.GetGfxContext();
 
         m_resourceCache = std::make_shared<TransientResourceCache>();
+        m_sceneData = std::make_unique<SceneDataBuffer>();
 
         m_systemManager.AddSystem<ProbeSystem>(glm::vec3(-31.0f, 0.0f, -31.0f), glm::vec3(2.0f), glm::ivec3(32, 16, 32));
         m_systemManager.AddSystem<LightSystem>();
@@ -63,58 +64,41 @@ namespace Wild
 
     Renderer::~Renderer() {}
 
-    // Not used for now since it cause buggs with the multi camera system
     void Renderer::Update(const float dt) {}
 
     void Renderer::Render(CommandList& list, float deltaTime)
     {
         auto gfxContext = engine.GetGfxContext();
 
-        auto ecs = engine.GetECS();
-        auto& cameras = ecs->View<Camera>();
+        // Written first so every Update and pass of this frame sees the same camera data
+        if (!m_sceneData->Update(SceneCameraData::FromCamera(engine.GetCamera()), gfxContext->GetBackBufferIndex())) return;
 
-        Camera* camera = nullptr;
+        m_systemManager.GetSystem<LightSystem>().Update();
 
-        bool mainCamera = true;
-        uint32_t cameraIndex{};
-        for (auto entity : cameras)
+        for (auto& feature : m_renderFeatures)
         {
-            m_activeCamera = entity;
-
-            auto& currentCamera = ecs->GetComponent<Camera>(m_activeCamera);
-            currentCamera.SetRenderActivity(true);
-
-            m_systemManager.GetSystem<LightSystem>().Update();
-
-            for (auto& feature : m_renderFeatures)
-            {
-                feature->Update(deltaTime);
-            }
-
-            if (gfxContext->GetCapabilities().SupportsRayTracing()) { engine.GetAccelerationStructureManager()->UpdateTLAS(); }
-
-            RenderGraph rg = RenderGraph(*m_resourceCache);
-
-            for (auto& feature : m_renderFeatures)
-            {
-                feature->Add(*this, rg);
-            }
-
-            rg.Compile();
-            rg.Execute();
-
-            currentCamera.SetRenderActivity(false);
-
-            // viewportTextures[cameraIndex] = ;
-
-            cameraIndex++;
+            feature->Update(deltaTime);
         }
+
+        if (gfxContext->GetCapabilities().SupportsRayTracing()) { engine.GetAccelerationStructureManager()->UpdateTLAS(); }
+
+        RenderGraph rg = RenderGraph(*m_resourceCache);
+
+        for (auto& feature : m_renderFeatures)
+        {
+            feature->Add(*this, rg);
+        }
+
+        rg.Compile();
+        rg.Execute();
 
         if (compositeOverride)
         {
             compositeTexture = compositeOverride;
             compositeOverride = nullptr;
         }
+
+        if (!compositeTexture) return;
 
         // Copy final image over
         PipelineStateSettings settings{};
@@ -143,10 +127,7 @@ namespace Wild
 
         auto& pipeline = GetOrCreatePipeline("Copy pass", PipelineStateType::Graphics, settings, uniforms);
 
-        for (size_t i = 0; i < MAX_CAMERAS; i++)
-        {
-            compositeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        }
+        compositeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         list.SetPipelineState(pipeline);
         list.BeginRender(
@@ -180,13 +161,6 @@ namespace Wild
 
             m_texturesCached = true;
         }
-    }
-
-    Camera* Renderer::GetActiveCamera()
-    {
-        Camera* camera = nullptr;
-        if (m_activeCamera != entt::null) camera = &engine.GetECS()->GetComponent<Camera>(m_activeCamera);
-        return camera;
     }
 
     bool Renderer::HasPipelineInCache(const std::string& key)
@@ -227,22 +201,7 @@ namespace Wild
     }
 
     /// Render Feature
-    // Loops over all cameras in the scene checks the current camera active for rendering and returns it. If none availiable
-    // return nullptr.
-    Camera* RenderFeature::GetActiveCamera()
-    {
-        auto& ecs = engine.GetECS();
+    const SceneCameraData& RenderFeature::GetSceneData() const { return engine.GetRenderer()->GetSceneData(); }
 
-        auto& cameras = ecs->View<Camera>();
-
-        for (auto cameraEntity : cameras)
-        {
-            if (!ecs->HasComponent<Camera>(cameraEntity)) { continue; }
-
-            Camera& camera = ecs->GetComponent<Camera>(cameraEntity);
-            if (camera.IsRenderModeActive()) { return &camera; }
-        }
-
-        return nullptr;
-    }
+    D3D12_GPU_VIRTUAL_ADDRESS RenderFeature::GetSceneDataAddress() const { return engine.GetRenderer()->GetSceneDataAddress(); }
 } // namespace Wild

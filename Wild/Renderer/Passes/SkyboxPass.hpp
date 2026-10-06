@@ -28,12 +28,6 @@ namespace Wild
         Texture* irradianceTexture;
     };
 
-    struct CameraProjection
-    {
-        glm::mat4 view{};
-        glm::mat4 proj{};
-    };
-
     struct SkyRootConstants
     {
         uint32_t view{};
@@ -77,7 +71,6 @@ namespace Wild
         std::vector<Vertex> CreateCube();
         std::vector<Vertex> m_cube;
 
-        std::unique_ptr<GPUBuffer> m_cameraProjection[BACK_BUFFER_COUNT];
         std::unique_ptr<GPUBuffer> m_cubeVertexBuffer;
         std::unique_ptr<Texture> m_skyboxTexture;
 

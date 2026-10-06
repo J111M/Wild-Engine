@@ -1,8 +1,11 @@
+#include "Helper/SceneData.slang"
+
 cbuffer RootConstant : register(b0)
 {
-    column_major float4x4 projView;
     float probeScale;
 };
+
+ConstantBuffer<SceneCameraData> sceneCamera : register(b1);
 
 StructuredBuffer<float4> probePositions : register(t0);
 
@@ -38,7 +41,7 @@ VSOutput main(uint vertexId: SV_VertexID, uint instanceId: SV_InstanceID)
     float3 worldPosition = probePositions[instanceId].xyz + direction * probeScale;
 
     VSOutput output;
-    output.position = mul(projView, float4(worldPosition, 1.0f));
+    output.position = mul(sceneCamera.viewProjection, float4(worldPosition, 1.0f));
     output.normal = direction;
     output.instanceId = instanceId;
     return output;

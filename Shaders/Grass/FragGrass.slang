@@ -10,12 +10,6 @@ cbuffer Constants : register(b0)
     uint foo3;
 };
 
-cbuffer SceneData : register(b1)
-{
-    column_major float4x4 projView;
-    float3 cameraPosition;
-};
-
 struct GrassData
 {
     float3 position;

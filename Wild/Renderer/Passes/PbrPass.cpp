@@ -11,17 +11,6 @@ namespace Wild
     {
         {
             BufferDesc desc{};
-            desc.size = sizeof(CameraBuffer);
-            desc.usage = BufferUsage::Constant;
-            desc.access = MemoryAccess::CpuToGpu;
-            for (int i = 0; i < BACK_BUFFER_COUNT; i++)
-            {
-                m_cameraBuffer[i] = std::make_unique<GPUBuffer>(desc);
-            }
-        }
-
-        {
-            BufferDesc desc{};
             desc.size = sizeof(PBRData);
             desc.usage = BufferUsage::Constant;
             desc.access = MemoryAccess::CpuToGpu;
@@ -47,19 +36,7 @@ namespace Wild
 
         m_pbrData.numOfPointLights = engine.GetRenderer()->GetSystems().GetSystem<LightSystem>().GetPointLightCount();
 
-        Camera* camera = GetActiveCamera();
-
-        if (camera)
-        {
-            m_camData.inverseView = glm::inverse(camera->GetView());
-            m_camData.inverseProj = glm::inverse(camera->GetProjection());
-            m_camData.viewSpace = camera->GetProjection() * camera->GetView();
-            m_camData.cameraFar = camera->GetNearFar().y;
-            m_pbrData.cameraPosition = camera->GetPosition();
-        }
-
         int frameIndex = context->GetBackBufferIndex();
-        m_cameraBuffer[frameIndex]->Allocate(&m_camData);
 
         engine.GetImGui()->AddPanel("Pbr settings", [this]() {
             const char* debugModes[] = {"None", "Albedo", "Normals", "Roughness", "Metallic", "AO", "Depth"};
@@ -121,10 +98,10 @@ namespace Wild
                 rootConstantUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
                 uniforms.emplace_back(rootConstantUni);
 
-                // Inverse camera buffer
-                Uniform invCameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
-                invCameraUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-                uniforms.emplace_back(invCameraUni);
+                // Scene camera data
+                Uniform sceneCameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                sceneCameraUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                uniforms.emplace_back(sceneCameraUni);
 
                 Uniform pbrUni{2, 0, RootParams::RootResourceType::ConstantBufferView};
                 pbrUni.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
@@ -234,7 +211,7 @@ namespace Wild
                 auto context = engine.GetGfxContext();
                 int frameIndex = context->GetBackBufferIndex();
 
-                list.SetConstantBufferView(1, m_cameraBuffer[frameIndex].get());
+                list.SetConstantBufferView(1, GetSceneDataAddress());
                 list.SetConstantBufferView(2, m_pbrDataBuffer[frameIndex].get());
                 list.SetConstantBufferView(3, m_environmentData.get());
                 list.SetConstantBufferView(4, renderer.GetSystems().GetSystem<LightSystem>().GetPointLightBuffer().get());

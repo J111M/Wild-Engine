@@ -49,16 +49,14 @@ namespace Wild
         std::shared_ptr<GPUBuffer> CulledBuffer = nullptr;
     };
 
-    struct FrustumBuffer
+    // The frustum and camera position come from the scene data buffer
+    struct GrassCullConstants
     {
-        glm::mat4 viewProj{};
-        glm::vec4 frustumPlanes[6]{};
-        glm::vec3 cameraPos{};
-        float lod0{};
-        float lod1{};
-        float lod2{};
-        float lodBlendRange{};
-        float maxDistance{};
+        float lod0 = 15.0f;
+        float lod1 = 30.0f;
+        float lod2 = 50.0f;
+        float lodBlendRange = 5.0f;
+        float maxDistance = 70.0f;
     };
 
     struct CulledInstance
@@ -93,10 +91,9 @@ namespace Wild
         Texture* depthTexture;
     };
 
-    struct SceneData
+    // Grass and wind settings
+    struct GrassWindData
     {
-        glm::mat4 ProjView{};
-        glm::vec3 CameraPosition{};
         float windStrength = 4.505f;
         float octaves = 0.51f;
         float frequency = 0.05f;
@@ -106,10 +103,11 @@ namespace Wild
         float pad1;
     };
 
+    // Camera matrices come from the scene data buffer
     struct GrassRootConstants
     {
-        glm::mat4 matrix{};
-        glm::mat4 invMatrix{};
+        glm::mat4 model{};
+        glm::mat4 invTransposeModel{};
         uint32_t bladeId{};
         float time;
         uint32_t chunkId{};
@@ -133,7 +131,6 @@ namespace Wild
         void AddGrassCulling(Renderer& renderer, RenderGraph& rg);
         void AddIndirectDrawCommandsPass(Renderer& renderer, RenderGraph& rg);
         void AddRenderGrass(Renderer& renderer, RenderGraph& rg);
-        void UpdateFrustumData(const int frameIndex);
 
         void CreateGrassMeshes();
 
@@ -142,8 +139,8 @@ namespace Wild
         std::unique_ptr<GPUBuffer> m_perBladeDataBuffer;
         bool m_recomputeGrassBlades = true;
 
-        // Store frustum data
-        std::unique_ptr<GPUBuffer> m_frustumBuffer[BACK_BUFFER_COUNT];
+        // TODO make slider for LOD change in imgui
+        GrassCullConstants m_cullConstants{};
 
         // Keeps track of all instances that need to be culled
         std::shared_ptr<GPUBuffer> m_culledInstancesBuffer[BACK_BUFFER_COUNT];
@@ -161,13 +158,13 @@ namespace Wild
         GrassRootConstants m_rc{};
         Entity m_chunkEntity;
         float m_accumulatedTime{};
-        std::shared_ptr<GPUBuffer> m_sceneData[BACK_BUFFER_COUNT];
+        std::shared_ptr<GPUBuffer> m_windDataBuffer[BACK_BUFFER_COUNT];
 
         // Contains all LOD's inside the same buffer
         std::unique_ptr<GPUBuffer> m_grassVertices;
         std::unique_ptr<GPUBuffer> m_grassIndices;
 
-        SceneData m_grassSceneData{};
+        GrassWindData m_windData{};
 
         // 3 grass lod's total
         uint32_t m_lodAmount = 3;

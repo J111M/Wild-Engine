@@ -1,11 +1,11 @@
 #include "../Helper/Common.slang"
+#include "../Helper/SceneData.slang"
 #include "../ShadowInc.slang"
 #include "Formula.slang"
 
 cbuffer RootConsant : register(b0)
 {
     float2 textureSize;
-    float2 nearFar;
 
     uint srcTextureView;
     uint depthView;
@@ -33,16 +33,7 @@ cbuffer RootConsant : register(b0)
     uint noiseTextureView;
 };
 
-cbuffer SceneData : register(b1)
-{
-    column_major float4x4 inverseProj;
-    column_major float4x4 inverseView;
-    column_major float4x4 viewSpace;
-    float3 cameraPosition;
-    float pad;
-    float3 sunDirection;
-    float pad1;
-};
+ConstantBuffer<SceneCameraData> sceneCamera : register(b1);
 
 struct PointLight
 {
@@ -80,16 +71,16 @@ float randomOffset(float2 pos) { return fract(sin(dot(pos.xy, float2(145.0, 7.23
 
 float4 GetWorldSpacePosition(float3 position)
 {
-    float4 positionVS = mul(inverseProj, float4(position, 1.0));
+    float4 positionVS = mul(sceneCamera.inverseProjection, float4(position, 1.0));
     positionVS /= positionVS.w;
 
-    return mul(inverseView, positionVS);
+    return mul(sceneCamera.inverseView, positionVS);
 }
 
 // Shadow sample
 float ShadowCalculation(float3 marchPosition)
 {
-    float4 viewSpacePosition = mul(viewSpace, float4(marchPosition, 1.0f));
+    float4 viewSpacePosition = mul(sceneCamera.view, float4(marchPosition, 1.0f));
 
     float depthValue = abs(viewSpacePosition.z);
 
@@ -129,7 +120,11 @@ float ShadowCalculation(float3 marchPosition)
     return shadow;
 }
 
-float LinearizeDepth(float depth) { return (nearFar.x * nearFar.y) / (nearFar.y - depth * (nearFar.y - nearFar.x)); }
+float LinearizeDepth(float depth)
+{
+    const float2 nearFar = sceneCamera.nearFarFovAspect.xy;
+    return (nearFar.x * nearFar.y) / (nearFar.y - depth * (nearFar.y - nearFar.x));
+}
 
 // Exponentiol height falloff
 float HeightFactor(float height) { return exp(-max(0.0, height - 5.0) * 0.10); }
@@ -158,7 +153,7 @@ void main(uint3 id: SV_DispatchThreadID)
 
     float2 uv = coords / textureSize.xy;
 
-    const float maxDistance = nearFar.y * 2;
+    const float maxDistance = sceneCamera.nearFarFovAspect.y * 2;
 
     float4 srcTexture = textures[NonUniformResourceIndex(srcTextureView)].Load(int3(coords, 0));
 
@@ -168,13 +163,13 @@ void main(uint3 id: SV_DispatchThreadID)
 
     float4 worldPosition = GetWorldSpacePosition(float3(ndc, rawDepth));
 
-    float3 rayOrigin = cameraPosition;
+    float3 rayOrigin = sceneCamera.position.xyz;
     float3 rayDirection = normalize(worldPosition.xyz - rayOrigin);
 
-    float sceneDepth = length(worldPosition.xyz - cameraPosition);
+    float sceneDepth = length(worldPosition.xyz - sceneCamera.position.xyz);
     float rayDistance = min(min(sceneDepth, maxDistance), stepCount);
 
-    float3 worldToCamera = normalize(cameraPosition - worldPosition.xyz);
+    float3 worldToCamera = normalize(sceneCamera.position.xyz - worldPosition.xyz);
 
     // Steps along the ray
     float3 stepVector = rayDirection * stepSize;

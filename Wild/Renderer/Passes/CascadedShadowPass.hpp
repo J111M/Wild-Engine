@@ -46,7 +46,8 @@ namespace Wild
 
         DirectLightBuffer m_directLight;
         CsmRootConstants m_rc{};
-        std::shared_ptr<GPUBuffer> m_directionalLightBuffer{};
+        // One buffer per frame in flight, the cascades follow the camera every frame
+        std::shared_ptr<GPUBuffer> m_directionalLightBuffers[BACK_BUFFER_COUNT];
 
         bool m_lightChanged = true;
 

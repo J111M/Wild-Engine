@@ -13,15 +13,6 @@ namespace Wild
         m_cubeVertexBuffer = std::make_unique<GPUBuffer>(desc);
         m_cubeVertexBuffer->CreateVertexBuffer<Vertex>(m_cube);
 
-        BufferDesc bufferDesc{};
-        bufferDesc.size = sizeof(CameraProjection);
-        bufferDesc.usage = BufferUsage::Constant;
-        bufferDesc.access = MemoryAccess::CpuToGpu;
-        for (int i = 0; i < BACK_BUFFER_COUNT; i++)
-        {
-            m_cameraProjection[i] = std::make_unique<GPUBuffer>(bufferDesc);
-        }
-
         // TODO remvoe skybox texture because it is wasted data
         // Initial equirectangular texture map used as skybox
         m_skyboxTexture = std::make_unique<Texture>(filePath, TextureType::SKYBOX, 0, DXGI_FORMAT_R32G32B32A32_FLOAT);
@@ -57,20 +48,7 @@ namespace Wild
 
     void SkyboxPass::Update(const float dt)
     {
-        auto context = engine.GetGfxContext();
         auto ecs = engine.GetECS();
-        Camera* camera = GetActiveCamera();
-
-        CameraProjection camData{};
-
-        if (camera)
-        {
-            camData.view = glm::mat4(glm::mat3(camera->GetView()));
-            camData.proj = camera->GetProjection();
-        }
-
-        int frameIndex = context->GetBackBufferIndex();
-        m_cameraProjection[frameIndex]->Allocate(&camData);
 
         engine.GetImGui()->AddPanel("Debug skybox", [this]() {
             int skyMode = m_debugSkyboxMode;
@@ -134,8 +112,8 @@ namespace Wild
                 Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(SkyRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
-                Uniform cameraBuffer{1, 0, RootParams::RootResourceType::ConstantBufferView};
-                uniforms.emplace_back(cameraBuffer);
+                Uniform sceneCameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(sceneCameraUni);
 
                 {
                     Uniform bindless{0, 0, RootParams::RootResourceType::DescriptorTable};
@@ -168,9 +146,6 @@ namespace Wild
                                  DSClearOperation::Store,
                                  "Skybox pass");
 
-                auto context = engine.GetGfxContext();
-                int frameIndex = context->GetBackBufferIndex();
-
                 switch (m_debugSkyboxMode)
                 {
                 case 0:
@@ -196,7 +171,7 @@ namespace Wild
 
                 list.SetRootConstant<SkyRootConstants>(0, m_skyRC);
 
-                list.SetConstantBufferView(1, m_cameraProjection[frameIndex].get());
+                list.SetConstantBufferView(1, GetSceneDataAddress());
 
                 // m_skyboxTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 list.SetBindlessHeap(2);

@@ -1,4 +1,5 @@
 #include "Helper/Common.slang"
+#include "Helper/SceneData.slang"
 #include "Helper/PbrFormulas.slang"
 #include "ShadowInc.slang"
 
@@ -17,17 +18,10 @@ cbuffer Constants : register(b0)
     uint probeDataView;
 };
 
-cbuffer matrices : register(b1)
-{
-    column_major float4x4 inverseView;
-    column_major float4x4 inverseProjection;
-    column_major float4x4 viewSpace;
-    float cameraFar;
-}
+ConstantBuffer<SceneCameraData> sceneCamera : register(b1);
 
 cbuffer PbrData : register(b2)
 {
-    float4 cameraPosition;
     float4 lightDirection;
     float4 lightColorIntensity;
     uint debugViewMode;
@@ -77,7 +71,7 @@ struct VSOutput
 // Shadow map implementation inspired by https://learnopengl.com/Guest-Articles/2021/CSM and modified to work with my system
 float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal, out int shadowLayer)
 {
-    float4 viewSpacePosition = mul(viewSpace, float4(worldSpaceFragPosition, 1.0f));
+    float4 viewSpacePosition = mul(sceneCamera.viewProjection, float4(worldSpaceFragPosition, 1.0f));
 
     float depthValue = abs(viewSpacePosition.z);
 
@@ -280,13 +274,13 @@ float4 main(VSOutput input) : SV_TARGET0
     float3 positionNDC =
         float3(input.uv.x * 2.0 - 1.0, 1.0 - input.uv.y * 2.0, textures[depthView].Sample(gbufferSampler, input.uv).x);
 
-    float3 positionWS = RestorePositionWS(positionNDC, inverseProjection, inverseView).xyz;
+    float3 positionWS = RestorePositionWS(positionNDC, sceneCamera.inverseProjection, sceneCamera.inverseView).xyz;
 
     float3 color = float3(0.0f, 0.0f, 0.0f);
 
     // shading setup
     float3 N = OctDecode(normal.xy);
-    float3 V = normalize(cameraPosition.xyz - positionWS);
+    float3 V = normalize(sceneCamera.position.xyz - positionWS);
     float3 R = reflect(-V, N);
 
     float3 F0 = float3(0.04f, 0.04f, 0.04f);

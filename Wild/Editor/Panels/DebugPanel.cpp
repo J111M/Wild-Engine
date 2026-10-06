@@ -19,7 +19,6 @@ namespace Wild
         ImGui::Checkbox("Wireframe", &debug.wireframe);
         ImGui::Checkbox("Show Colliders", &debug.showColliders);
         ImGui::Checkbox("Show Normals", &debug.showNormals);
-        ImGui::Checkbox("Freeze Culling", &debug.freezeCulling);
         ImGui::EndDisabled();
 
         ImGui::SeparatorText("Global Illumination");

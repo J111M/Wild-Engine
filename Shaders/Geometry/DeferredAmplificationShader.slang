@@ -8,9 +8,11 @@ groupshared Atomic<uint32_t> visibleMeshletCount;
 // Object space frustum planes, shared by every thread in the group
 groupshared float4 frustumPlanes[6];
 
-// TODO use precomputed frustum planes
 void ExtractFrustumPlanes()
 {
+    // Object space clip matrix of the camera
+    const float4x4 cullMatrix = mul(sceneCamera.viewProjection, model);
+
     frustumPlanes[0] = cullMatrix[3] + cullMatrix[0]; // Left
     frustumPlanes[1] = cullMatrix[3] - cullMatrix[0]; // Right
     frustumPlanes[2] = cullMatrix[3] + cullMatrix[1]; // Bottom

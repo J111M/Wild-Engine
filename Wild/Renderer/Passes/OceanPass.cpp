@@ -42,14 +42,6 @@ namespace Wild
         GenerateOceanPlane(64);
 
         // m_oceanChunkSystem = std::make_unique<OceanChunkSystem>(63.80f, 17, -9);
-
-        {
-            BufferDesc desc{};
-            desc.size = sizeof(CameraBuffer);
-            desc.usage = BufferUsage::Constant;
-            desc.access = MemoryAccess::CpuToGpu;
-            m_cameraBuffer = std::make_unique<GPUBuffer>(desc);
-        }
     }
 
     void OceanPass::Add(Renderer& renderer, RenderGraph& rg)
@@ -641,8 +633,8 @@ namespace Wild
                 Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(OceanRenderRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
-                Uniform cameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
-                uniforms.emplace_back(cameraUni);
+                Uniform sceneCameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
+                uniforms.emplace_back(sceneCameraUni);
 
                 Uniform oceanDataUni{2, 0, RootParams::RootResourceType::ConstantBufferView};
                 uniforms.emplace_back(oceanDataUni);
@@ -684,22 +676,8 @@ namespace Wild
                     // Rendering
                     auto ecs = engine.GetECS();
 
-                    Camera* camera = GetActiveCamera();
-
-                    OceanCameraData cameraData{};
-
-                    if (camera)
-                    {
-                        glm::vec3 camPos = camera->GetPosition();
-                        if (m_oceanChunkSystem) m_oceanChunkSystem->Update(camPos, camera->GetFrustum(), m_frustumCullingEnabled);
-
-                        cameraData.projViewMatrix = camera->GetProjection() * camera->GetView();
-                        cameraData.invModel = {}; // glm::transpose(glm::inverse(glm::mat3(transform.GetWorldMatrix())));
-
-                        m_oceanRC.cameraPosition = glm::vec4(camPos, 1.0f);
-                    }
-
-                    m_cameraBuffer->Allocate(&cameraData);
+                    const SceneCameraData& sceneData = GetSceneData();
+                    m_oceanChunkSystem->Update(glm::vec3(sceneData.position), sceneData.frustum, m_frustumCullingEnabled);
 
                     list.SetPipelineState(pipeline);
                     list.BeginRender({passData.finalTexture},
@@ -722,7 +700,7 @@ namespace Wild
                             m_oceanRC.modelMatrix = ecs->GetComponent<Transform>(chunk.entity).GetWorldMatrix();
 
                             list.SetRootConstant<OceanRenderRootConstants>(0, m_oceanRC);
-                            list.SetConstantBufferView(1, m_cameraBuffer.get());
+                            list.SetConstantBufferView(1, GetSceneDataAddress());
                             list.SetConstantBufferView(2, m_oceanRenderDataBuffer.get());
                             list.SetBindlessHeap(3);
 

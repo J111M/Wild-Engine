@@ -1,5 +1,6 @@
 #include "GrassCommon.slang"
 #include "../Helper/Rng.slang"
+#include "../Helper/SceneData.slang"
 
 struct VSInput
 {
@@ -27,11 +28,8 @@ cbuffer Constants : register(b0)
     uint terrainView;
 };
 
-cbuffer SceneData : register(b1)
+cbuffer GrassWindData : register(b1)
 {
-    column_major float4x4 projView;
-    float3 cameraPosition;
-    float pad;
     float windStrength;
     float octaves;
     float frequency;
@@ -40,6 +38,8 @@ cbuffer SceneData : register(b1)
     float pad1;
     float pad2;
 };
+
+ConstantBuffer<SceneCameraData> sceneCamera : register(b2);
 
 struct GrassData
 {
@@ -159,7 +159,7 @@ VSOutput main(VSInput input)
 
     float4 vertexWorldPos = mul(world, float4(bladePosition, 1.0f));
 
-    output.position = vertexWorldPos;
+    output.position = mul(sceneCamera.viewProjection, vertexWorldPos);
     output.fragPosition = vertexWorldPos.xyz;
     output.normal = normal;
     output.bladeHeight = input.texCoord; // 1D coordinates

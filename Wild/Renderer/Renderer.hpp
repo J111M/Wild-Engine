@@ -2,6 +2,7 @@
 
 #include "Renderer/PipelineStateBuilder.hpp"
 #include "Renderer/Resources/Buffer.hpp"
+#include "Renderer/Resources/SceneData.hpp"
 #include "Renderer/Resources/Texture.hpp"
 #include "Renderer/ShaderPipeline.hpp"
 
@@ -15,8 +16,6 @@
 #include "Tools/D3D12Common.hpp"
 #include "Tools/States.hpp"
 
-#define MAX_CAMERAS 2
-
 namespace Wild
 {
     class Renderer;
@@ -28,7 +27,9 @@ namespace Wild
         virtual void Update(float dt) = 0;
         virtual ~RenderFeature() = default;
 
-        Camera* GetActiveCamera();
+        // Camera data of the current frame
+        const SceneCameraData& GetSceneData() const;
+        D3D12_GPU_VIRTUAL_ADDRESS GetSceneDataAddress() const;
     };
 
     class Renderer
@@ -57,7 +58,9 @@ namespace Wild
 
         void CacheIBLTextures();
 
-        Camera* GetActiveCamera();
+        // Camera data of the current frame, written at the start of Render
+        const SceneCameraData& GetSceneData() const { return m_sceneData->GetData(); }
+        D3D12_GPU_VIRTUAL_ADDRESS GetSceneDataAddress() const { return m_sceneData->GetGpuAddress(); }
 
         // IBL textures
         Texture* irradianceMap{};
@@ -70,10 +73,9 @@ namespace Wild
 
         // Output is overwritten if set regardless of pass order
         Texture* compositeOverride = nullptr;
-        Texture* viewportTextures[MAX_CAMERAS]{};
 
       private:
-        Entity m_activeCamera{};
+        std::unique_ptr<SceneDataBuffer> m_sceneData;
 
         SystemManager m_systemManager;
 

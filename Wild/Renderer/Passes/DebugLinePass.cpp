@@ -67,23 +67,20 @@ namespace Wild
                 settings.renderTargetsFormat.push_back(passData.debugTexture->GetDesc().format);
 
                 std::vector<Uniform> uniforms;
-                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DebugRootConstants)};
-                uniforms.emplace_back(rootConstant);
+                Uniform sceneCameraUni{0, 0, RootParams::RootResourceType::ConstantBufferView};
+                sceneCameraUni.visibility = D3D12_SHADER_VISIBILITY_VERTEX;
+                uniforms.emplace_back(sceneCameraUni);
 
                 auto& pipeline = renderer.GetOrCreatePipeline("Debug line pass", PipelineStateType::Graphics, settings, uniforms);
 
                 // Rendering
-                Camera* camera = GetActiveCamera();
-
-                if (camera) { m_rc.projView = camera->GetProjection() * camera->GetView(); }
-
                 list.SetPipelineState(pipeline);
                 list.BeginRender(
                     {passData.debugTexture}, {ClearOperation::Store}, {nullptr}, DSClearOperation::Store, "Debug line pass");
 
                 list.GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 
-                list.SetRootConstant<DebugRootConstants>(0, m_rc);
+                list.SetConstantBufferView(0, GetSceneDataAddress());
                 if (m_lineVertexBuffer)
                 {
                     list.GetList()->IASetVertexBuffers(0, 1, &m_lineVertexBuffer->GetVBView()->View());

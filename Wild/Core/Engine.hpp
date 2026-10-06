@@ -62,6 +62,8 @@ namespace Wild
         std::shared_ptr<PhysicsSystem> GetPhysicsSystem() { return m_physicsSystem; }
         std::shared_ptr<AccelerationStructureManager> GetAccelerationStructureManager() { return m_accelerationStructureManager; }
 
+        Camera& GetCamera() { return m_camera; }
+
         ResourceSystems& GetResourceSystems() { return m_resourceSystems; }
 
       private:
@@ -83,6 +85,8 @@ namespace Wild
         std::shared_ptr<AccelerationStructureManager> m_accelerationStructureManager;
 
         ResourceSystems m_resourceSystems;
+
+        Camera m_camera{glm::vec3(0.0f, 0.0f, 5.0f)};
 
         std::filesystem::path m_systemPath{};
 

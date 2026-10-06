@@ -48,7 +48,8 @@ void main(OutputIndices<uint3, MAX_PRIMITIVES> triangles, OutputVertices<VertexO
         uint vertexIndex = vertexIndices[meshlet.meshletVerticesOffset + i] + meshlet.vertexOffset;
         Vertex input = vertexBuffer[vertexIndex];
         VertexOutput output;
-        output.position = mul(model, float4(input.position, 1.0f));
+        float4 worldPosition = mul(model, float4(input.position, 1.0f));
+        output.position = mul(sceneCamera.viewProjection, worldPosition);
         output.color = input.color;
         output.normal = input.normal;
         output.uv = input.uv;

@@ -1,3 +1,5 @@
+#include "Helper/SceneData.slang"
+
 struct VSInput
 {
     float3 position : POSITION;
@@ -42,10 +44,7 @@ cbuffer TextureViews : register(b1)
     uint noiseBlendView;
 }
 
-cbuffer Camera : register(b2)
-{
-     column_major float4x4 projView;
-}
+ConstantBuffer<SceneCameraData> sceneCamera : register(b2);
 
 Texture2D textures[4096] : register(t0, space0);
 SamplerState linearSampler : register(s0);
@@ -84,7 +83,7 @@ VSOutput main(VSInput input)
     outputPosition.y += terrainHeight * maxHeight;
 
     output.worldPosition = mul(world, float4(outputPosition, 1.0f)).xyz;
-    output.position = mul(projView, float4(output.worldPosition, 1.0f));
+    output.position = mul(sceneCamera.viewProjection, float4(output.worldPosition, 1.0f));
     output.normal = normal;
     output.tangent = tangent;
     output.bitangent = bitangent;

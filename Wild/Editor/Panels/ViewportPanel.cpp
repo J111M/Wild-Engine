@@ -87,6 +87,16 @@ namespace Wild
 
             return closest;
         }
+
+        // Dropped assets spawn a little in front of the camera
+        void PlaceInFrontOfCamera(Transform& transform)
+        {
+            const Camera& camera = engine.GetCamera();
+
+            const glm::mat4& view = camera.GetView();
+            glm::vec3 forward = -glm::normalize(glm::vec3(view[0][2], view[1][2], view[2][2]));
+            transform.SetPosition(camera.GetPosition() + forward * 10.0f);
+        }
     } // namespace
 
     void ViewportPanel::OnRender()
@@ -140,16 +150,7 @@ namespace Wild
         auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0.0f), entity);
         transform.Name = std::filesystem::path(assetPath).stem().string();
 
-        for (auto cameraEntity : ecs->View<Camera>())
-        {
-            auto& camera = ecs->GetComponent<Camera>(cameraEntity);
-            if (camera.GetCameraIndex() != 0) continue;
-
-            const glm::mat4& view = camera.GetView();
-            glm::vec3 forward = -glm::normalize(glm::vec3(view[0][2], view[1][2], view[2][2]));
-            transform.SetPosition(camera.GetPosition() + forward * 10.0f);
-            break;
-        }
+        PlaceInFrontOfCamera(transform);
 
         ecs->AddComponent<Model>(entity, std::filesystem::path(assetPath), entity);
 
@@ -171,18 +172,7 @@ namespace Wild
             return;
         }
 
-        auto& transform = ecs->GetComponent<Transform>(entity);
-
-        for (auto cameraEntity : ecs->View<Camera>())
-        {
-            auto& camera = ecs->GetComponent<Camera>(cameraEntity);
-            if (camera.GetCameraIndex() != 0) continue;
-
-            const glm::mat4& view = camera.GetView();
-            glm::vec3 forward = -glm::normalize(glm::vec3(view[0][2], view[1][2], view[2][2]));
-            transform.SetPosition(camera.GetPosition() + forward * 10.0f);
-            break;
-        }
+        PlaceInFrontOfCamera(ecs->GetComponent<Transform>(entity));
 
         m_state.selectedEntity = entity;
         engine.GetUndoSystem()->CommitEdit();
@@ -195,18 +185,7 @@ namespace Wild
         if (m_state.viewportSize.x <= 0.0f || m_state.viewportSize.y <= 0.0f) return;
 
         auto ecs = engine.GetECS();
-
-        Camera* camera = nullptr;
-        for (auto cameraEntity : ecs->View<Camera>())
-        {
-            auto& cam = ecs->GetComponent<Camera>(cameraEntity);
-            if (cam.GetCameraIndex() == 0)
-            {
-                camera = &cam;
-                break;
-            }
-        }
-        if (!camera) return;
+        const Camera& camera = engine.GetCamera();
 
         ImVec2 mousePos = ImGui::GetMousePos();
         glm::vec2 localMouse(mousePos.x - m_state.viewportPos.x, mousePos.y - m_state.viewportPos.y);
@@ -215,7 +194,7 @@ namespace Wild
         ndc.x = (localMouse.x / m_state.viewportSize.x) * 2.0f - 1.0f;
         ndc.y = 1.0f - (localMouse.y / m_state.viewportSize.y) * 2.0f;
 
-        glm::mat4 invViewProj = glm::inverse(camera->GetProjection() * camera->GetView());
+        glm::mat4 invViewProj = glm::inverse(camera.GetProjection() * camera.GetView());
 
         // GLM_FORCE_DEPTH_ZERO_TO_ONE (see Camera.hpp) means NDC z runs [0,1], not [-1,1]
         glm::vec4 nearPoint = invViewProj * glm::vec4(ndc.x, ndc.y, 0.0f, 1.0f);
