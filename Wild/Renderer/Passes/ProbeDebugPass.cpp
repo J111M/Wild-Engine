@@ -112,8 +112,7 @@ namespace Wild
                 list.BeginRender({passData.targetTexture},
                                  {ClearOperation::Store},
                                  passData.depthTexture,
-                                 DSClearOperation::Store,
-                                 "Probe debug pass");
+                                 DSClearOperation::Store);
 
                 list.SetRootConstant<ProbeDebugRootConstants>(0, m_rc);
                 list.SetShaderResourceView(1, probeSystem->GetProbeBuffer().get());

@@ -85,8 +85,7 @@ namespace Wild
                     list.BeginRender({},
                                      {ClearOperation::Store},
                                      {passData.shadowMap[i]},
-                                     DSClearOperation::DepthClear,
-                                     "Cascaded shadow pass");
+                                     DSClearOperation::DepthClear);
 
                     auto meshes = engine.GetECS()->GetRegistry().view<Transform, MeshComponent>();
                     for (auto&& [entity, trans, meshComponent] : meshes.each())

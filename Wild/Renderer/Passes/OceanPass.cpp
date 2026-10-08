@@ -231,7 +231,7 @@ namespace Wild
                     auto& pipeline = renderer.GetOrCreatePipeline(
                         "Initial spectrum ocean pass", PipelineStateType::Compute, settings, uniforms);
                     list.SetPipelineState(pipeline);
-                    list.BeginRender("Initial spectrum ocean pass");
+                    list.BeginRender();
 
                     list.SetRootConstant<InitialSpectrumRootConstants>(0, m_initialSpectrumRC);
                     list.SetShaderResourceView(1, m_gaussianDistribution.get());
@@ -281,7 +281,7 @@ namespace Wild
                     auto& pipeline = renderer.GetOrCreatePipeline(
                         "Conjugate spectrum ocean pass", PipelineStateType::Compute, settings, uniforms);
                     list.SetPipelineState(pipeline);
-                    list.BeginRender("Conjugate spectrum ocean pass");
+                    list.BeginRender();
 
                     list.SetRootConstant<InitialSpectrumRootConstants>(0, m_initialSpectrumRC);
                     list.SetUnorderedAccessView(1, passData.conjugatedTexture);
@@ -352,7 +352,7 @@ namespace Wild
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Update spectrum ocean pass", PipelineStateType::Compute, settings, uniforms);
                 list.SetPipelineState(pipeline);
-                list.BeginRender("Update spectrum ocean pass");
+                list.BeginRender();
 
                 m_updateSpectrumRC.h0TextureView = conjugateSpectrumData->conjugatedTexture->GetSrv()->BindlessView();
 
@@ -426,7 +426,7 @@ namespace Wild
                 // m_ifftRC.spectrumTextureView = spectrumData->spectrumTexture->GetSrv()->BindlessView();
 
                 list.SetPipelineState(pipeline);
-                list.BeginRender("Horizontal inverse FFT ocean pass");
+                list.BeginRender();
 
                 list.SetRootConstant<IFFTRootConstants>(0, m_ifftRC);
                 list.SetBindlessHeap(1);
@@ -446,7 +446,7 @@ namespace Wild
                 m_ifftRC.axisFlag = 1;
 
                 list.SetPipelineState(pipeline);
-                list.BeginRender("Vertical inverse FFT ocean pass");
+                list.BeginRender();
 
                 list.SetRootConstant<IFFTRootConstants>(0, m_ifftRC);
                 list.SetBindlessHeap(1);
@@ -539,7 +539,7 @@ namespace Wild
                 m_assembleRC.fourierTextureView = fourierData->fourierTarget->GetSrv()->BindlessView();
 
                 list.SetPipelineState(pipeline);
-                list.BeginRender("Assemble ocean pass");
+                list.BeginRender();
 
                 list.SetRootConstant<AssembleOceanRootConstants>(0, m_assembleRC);
                 list.SetBindlessHeap(1);
@@ -588,7 +588,7 @@ namespace Wild
                 // m_assembleRC.fourierTextureView = fourierData->fourierTarget->GetSrv()->BindlessView();
 
                 list.SetPipelineState(pipeline);
-                list.BeginRender("Foam filter ocean pass");
+                list.BeginRender();
 
                 list.SetUnorderedAccessView(0, passData.displacementTexture);
 
@@ -683,8 +683,7 @@ namespace Wild
                     list.BeginRender({passData.finalTexture},
                                      {ClearOperation::Store},
                                      passData.depthTexture,
-                                     DSClearOperation::Store,
-                                     "Ocean render pass");
+                                     DSClearOperation::Store);
 
                     m_oceanRC.displacementMapView = fftOceanData->displacementTexture->GetSrv()->BindlessView();
                     m_oceanRC.slopeMapView = fftOceanData->slopeTexture->GetSrv()->BindlessView();

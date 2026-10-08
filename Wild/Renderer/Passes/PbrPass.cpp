@@ -180,7 +180,7 @@ namespace Wild
 
                 list.SetPipelineState(pipeline);
                 list.BeginRender(
-                    {passData.finalTexture}, {ClearOperation::Store}, nullptr, DSClearOperation::Store, "Pbr assembly pass");
+                    {passData.finalTexture}, {ClearOperation::Store}, nullptr, DSClearOperation::Store);
 
                 deferredData->albedoRoughnessTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 deferredData->normalMetallicTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);

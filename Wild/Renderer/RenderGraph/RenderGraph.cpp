@@ -23,6 +23,8 @@ namespace Wild
         auto list = engine.GetGfxContext()->GetCommandList();
         for (auto& pass : Passes)
         {
+            if (!pass->IsValid()) continue;
+
             WD_PROFILESCOPE(pass->GetName());
 
             pass->ExecuteFunction(*list);

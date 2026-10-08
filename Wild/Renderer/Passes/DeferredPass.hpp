@@ -49,6 +49,11 @@ namespace Wild
         Texture* depthTexture;
     };
 
+    struct DepthMipChainRootConstant
+    {
+        glm::vec2 texelSize{};
+    };
+
     struct OcclusionPrepassData
     {
         // Depth of the previous frame, used as the occluder data for this frame
@@ -110,5 +115,8 @@ namespace Wild
 
         // Command signature for Execute indirect
         ComPtr<ID3D12CommandSignature> m_commandSignature;
+
+        // Depth prepass data
+        DepthMipChainRootConstant m_depthMipRc{};
     };
 } // namespace Wild

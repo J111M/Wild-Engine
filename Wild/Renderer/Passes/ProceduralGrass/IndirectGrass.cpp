@@ -159,7 +159,7 @@ namespace Wild
                     auto& pipeline = renderer.GetOrCreatePipeline(
                         "Compute per blade data pass", PipelineStateType::Compute, settings, uniforms);
                     list.SetPipelineState(pipeline);
-                    list.BeginRender("Compute per blade data pass");
+                    list.BeginRender();
 
                     for (auto [entity, chunk, transform] : engine.GetECS()->GetRegistry().view<TerrainChunk, Transform>().each())
                     {
@@ -221,7 +221,7 @@ namespace Wild
                     auto& pipeline =
                         renderer.GetOrCreatePipeline("Clear counter pass", PipelineStateType::Compute, settings, uniforms);
                     list.SetPipelineState(pipeline);
-                    list.BeginRender("Clear counter pass");
+                    list.BeginRender();
 
                     list.SetUnorderedAccessView(0, m_instanceCountBuffer[frameIndex].get());
 
@@ -284,7 +284,7 @@ namespace Wild
                         renderer.GetOrCreatePipeline("Grass culling pass", PipelineStateType::Compute, settings, uniforms);
 
                     list.SetPipelineState(pipeline);
-                    list.BeginRender("Grass culling pass");
+                    list.BeginRender();
 
                     UINT frameIndex = context->GetBackBufferIndex();
 
@@ -345,7 +345,7 @@ namespace Wild
                         "Indirect command creation pass", PipelineStateType::Compute, settings, uniforms);
 
                     list.SetPipelineState(pipeline);
-                    list.BeginRender("Draw command creation pass");
+                    list.BeginRender();
 
                     int frameIndex = context->GetBackBufferIndex();
                     list.SetUnorderedAccessView(0, m_instanceCountBuffer[frameIndex].get());
@@ -440,8 +440,7 @@ namespace Wild
                         {grassData.albedoRoughnessTexture, grassData.normalMetallicTexture, grassData.emissiveTexture},
                         {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
                         {grassData.depthTexture},
-                        DSClearOperation::Store,
-                        "Grass Pass");
+                        DSClearOperation::Store);
 
                     auto& gfxContext = engine.GetGfxContext();
                     UINT frameIndex = gfxContext->GetBackBufferIndex();

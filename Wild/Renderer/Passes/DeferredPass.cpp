@@ -113,16 +113,43 @@ namespace Wild
             desc.format = DXGI_FORMAT_R32_FLOAT;
             desc.name = "Previous frame depth";
             desc.usage = TextureDesc::gpuOnly;
-            desc.flag = TextureDesc::shaderResource;
+            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::shaderResource | TextureDesc::readWrite);
             passData->previousDepthTexture = rg.CreateTransientTexture("PreviousFrameDepth", desc);
         }
 
-        rg.AddPass<OcclusionPrepassData>(
-            "Occlusion prepass", PassType::Compute, [&renderer, this](const OcclusionPrepassData& passData, CommandList& list) {
-                passData.previousDepthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        // Render large objects to the depth texture since previous frame data might not always be the same
+         //rg.AddPass<OcclusionPrepassData>(
+         //   "Occlusion depth render prepass", PassType::Graphics, [&renderer, this](const OcclusionPrepassData& passData, CommandList& list) {
+         //       //passData.previousDepthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-                // Create a mip chain from previous frame depth data
-            });
+         //   });
+
+        // Use the previous frames depth data to test againts occluded objects
+        //rg.AddPass<OcclusionPrepassData>(
+        //    "Create mip chain pass", PassType::Compute, [&renderer, this](const OcclusionPrepassData& passData, CommandList& list) {
+        //        passData.previousDepthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        //        PipelineStateSettings settings{};
+        //        settings.shaderState.computeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/OcclusionCulling/DepthMipChain.slang");
+
+        //        std::vector<Uniform> uniforms;
+        //        Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DepthMipChainRootConstant)};
+        //        uniforms.emplace_back(rootConstant);
+
+        //         auto& pipeline = renderer.GetOrCreatePipeline(
+        //            "Create mip chain pass", PipelineStateType::Compute, settings, uniforms);
+        //        list.SetPipelineState(pipeline);
+        //        list.BeginRender();
+
+        //        list.SetRootConstant<DepthMipChainRootConstant>(0, m_depthMipRc);
+
+        //        // Use 3D texture dimension
+        //        //list.GetList()->Dispatch((desc.width + 7) / 8, (desc.height + 7) / 8, (desc.depthOrArray + 7) / 8);
+
+        //        list.EndRender();
+
+        //        // Create a mip chain from previous frame depth data
+        //    });
     }
 
     void DeferredPass::PreviousDepthCopyPass(Renderer& renderer, RenderGraph& rg)
@@ -209,8 +236,7 @@ namespace Wild
                 list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
                                  {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
                                  passData.depthTexture,
-                                 DSClearOperation::Store,
-                                 passName);
+                                 DSClearOperation::Store);
                 list.SetBindlessHeap(1);
                 list.SetConstantBufferView(2, GetSceneDataAddress());
 
@@ -330,8 +356,7 @@ namespace Wild
                 list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
                                  {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
                                  {passData.depthTexture},
-                                 DSClearOperation::Store,
-                                 "Deferred pass");
+                                 DSClearOperation::Store);
 
                 list.SetConstantBufferView(2, GetSceneDataAddress());
 
@@ -407,6 +432,6 @@ namespace Wild
         else
             DeferredVertexPass(renderer, rg);
 
-        PreviousDepthCopyPass(renderer, rg);
+       // PreviousDepthCopyPass(renderer, rg);
     }
 } // namespace Wild

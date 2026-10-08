@@ -131,7 +131,7 @@ namespace Wild
 
         list.SetPipelineState(pipeline);
         list.BeginRender(
-            {gfxContext->GetRenderTarget().get()}, {ClearOperation::Store}, nullptr, DSClearOperation::Store, "Compositor pass");
+            {gfxContext->GetRenderTarget().get()}, {ClearOperation::Store}, nullptr, DSClearOperation::Store);
         list.GetList()->SetGraphicsRootDescriptorTable(0, compositeTexture->GetSrv()->GetGpuHandle());
         list.GetList()->DrawInstanced(3, 1, 0, 0);
         list.EndRender();

@@ -143,8 +143,7 @@ namespace Wild
                 list.BeginRender({passData.finalTexture},
                                  {ClearOperation::Store},
                                  passData.depthTexture,
-                                 DSClearOperation::Store,
-                                 "Skybox pass");
+                                 DSClearOperation::Store);
 
                 switch (m_debugSkyboxMode)
                 {
@@ -295,7 +294,6 @@ namespace Wild
                                              {ClearOperation::Store},
                                              nullptr,
                                              DSClearOperation::Store,
-                                             "IBL pass",
                                              face);
 
                             auto context = engine.GetGfxContext();
@@ -365,7 +363,6 @@ namespace Wild
                                              {ClearOperation::Store},
                                              nullptr,
                                              DSClearOperation::Store,
-                                             "Generate Irradiance map",
                                              face);
 
                             auto context = engine.GetGfxContext();

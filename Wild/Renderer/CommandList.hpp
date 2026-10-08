@@ -34,9 +34,9 @@ namespace Wild
         void SetPipelineState(const std::shared_ptr<PipelineState> pipeline);
 
         void BeginRender(const std::vector<Texture*>& renderTargets, const std::vector<ClearOperation>& clearRt,
-                         Texture* depthStencil, DSClearOperation clearDs, const std::string& passName = {},
+                         Texture* depthStencil, DSClearOperation clearDs,
                          std::optional<uint32_t> rtArrayIndex = std::nullopt);
-        void BeginRender(const std::string& passName = {});
+        void BeginRender();
 
         void EndRender();
 
@@ -66,7 +66,7 @@ namespace Wild
         void SetRenderTargets(const std::vector<Texture*>& renderTargets, Texture* depthStencil,
                               std::optional<uint32_t> rtArrayIndex = std::nullopt);
 
-        const bool CanPassExecute(const std::string& passName);
+        const bool CanPassExecute();
 
         uint32_t GetPassColor(std::string_view name);
 

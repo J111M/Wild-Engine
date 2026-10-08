@@ -76,7 +76,7 @@ namespace Wild
                 // Rendering
                 list.SetPipelineState(pipeline);
                 list.BeginRender(
-                    {passData.debugTexture}, {ClearOperation::Store}, {nullptr}, DSClearOperation::Store, "Debug line pass");
+                    {passData.debugTexture}, {ClearOperation::Store}, {nullptr}, DSClearOperation::Store);
 
                 list.GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 

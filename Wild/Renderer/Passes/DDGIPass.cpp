@@ -328,7 +328,7 @@ namespace Wild
                     "Dynamic Diffuse Global Illumination Pass", PipelineStateType::Raytracing, settings, uniforms);
 
                 list.SetPipelineState(pipeline);
-                list.BeginRender("DDGI probe trace pass");
+                list.BeginRender();
 
                 list.SetConstantBufferView(0, m_traceConstantBuffer.get());
                 list.GetList()->SetComputeRootShaderResourceView(1, engine.GetAccelerationStructureManager()->GetTLASAddress());
@@ -430,7 +430,7 @@ namespace Wild
                     renderer.GetOrCreatePipeline("DDGI update irradiance pass", PipelineStateType::Compute, settings, uniforms);
 
                 list.SetPipelineState(pipeline);
-                list.BeginRender("DDGI update irradiance pass");
+                list.BeginRender();
 
                 list.SetConstantBufferView(0, m_irradianceConstantBuffer.get());
                 list.SetShaderResourceView(1, probeSystem->GetProbeRayDataBuffer().get());
@@ -524,7 +524,7 @@ namespace Wild
                     renderer.GetOrCreatePipeline("DDGI update distance pass", PipelineStateType::Compute, settings, uniforms);
 
                 list.SetPipelineState(pipeline);
-                list.BeginRender("DDGI update distance pass");
+                list.BeginRender();
 
                 list.SetConstantBufferView(0, m_distanceConstantBuffer.get());
                 list.SetShaderResourceView(1, probeSystem->GetProbeRayDataBuffer().get());

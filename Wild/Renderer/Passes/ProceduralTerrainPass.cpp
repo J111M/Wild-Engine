@@ -301,8 +301,7 @@ namespace Wild
                 list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
                                  {ClearOperation::Clear, ClearOperation::Clear, ClearOperation::Clear},
                                  passData.depthTexture,
-                                 DSClearOperation::DepthClear,
-                                 "PCG pass");
+                                 DSClearOperation::DepthClear);
 
                 if (m_pcgPassEnabled)
                 {

@@ -166,10 +166,9 @@ namespace Wild
     }
 
     void CommandList::BeginRender(const std::vector<Texture*>& renderTargets, const std::vector<ClearOperation>& clearRt,
-                                  Texture* depthStencil, DSClearOperation clearDs, const std::string& passName,
-                                  std::optional<uint32_t> rtArrayIndex)
+                                  Texture* depthStencil, DSClearOperation clearDs, std::optional<uint32_t> rtArrayIndex)
     {
-        if (!CanPassExecute(passName)) return;
+        if (!CanPassExecute()) return;
 
         m_frameInFlight = true;
         m_pipelineIsSet = false;
@@ -177,13 +176,14 @@ namespace Wild
         auto gfxContext = engine.GetGfxContext();
 
         // Debug event
+        const std::string& passName = m_pipelineState->GetPipelineSettings().pipelineName;
         std::wstring wstringPassName(passName.begin(), passName.end());
         PIXBeginEvent(m_commandList.Get(), static_cast<UINT32>(GetPassColor(passName)), wstringPassName.c_str());
 
-        m_commandList->SetGraphicsRootSignature(m_pipelineState->GetRootSignature().Get());
-
         ID3D12DescriptorHeap* heaps[] = {engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get()};
         m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
+
+        m_commandList->SetGraphicsRootSignature(m_pipelineState->GetRootSignature().Get());
 
         auto settings = m_pipelineState->GetPipelineSettings();
 
@@ -227,9 +227,9 @@ namespace Wild
         ClearDepthStencil(*depthStencil, clearDs);
     }
 
-    void CommandList::BeginRender(const std::string& passName)
+    void CommandList::BeginRender()
     {
-        if (!CanPassExecute(passName)) return;
+        if (!CanPassExecute()) return;
 
         if (m_pipelineState->GetPassType() != PipelineStateType::Compute &&
             m_pipelineState->GetPassType() != PipelineStateType::Raytracing)
@@ -239,16 +239,18 @@ namespace Wild
         }
 
         // Debug event
+        const std::string& passName = m_pipelineState->GetPipelineSettings().pipelineName;
         std::wstring wstringPassName(passName.begin(), passName.end());
         PIXBeginEvent(m_commandList.Get(), static_cast<UINT32>(GetPassColor(passName)), wstringPassName.c_str());
 
         m_frameInFlight = true;
         m_pipelineIsSet = false;
 
-        m_commandList->SetComputeRootSignature(m_pipelineState->GetRootSignature().Get());
-
+        // Heaps must be bound before a root signature that directly indexes them
         ID3D12DescriptorHeap* heaps[] = {engine.GetGfxContext()->GetCbvSrvUavAllocator()->GetHeap().Get()};
         m_commandList->SetDescriptorHeaps(1, heaps);
+
+        m_commandList->SetComputeRootSignature(m_pipelineState->GetRootSignature().Get());
     }
 
     void CommandList::EndRender()
@@ -347,9 +349,9 @@ namespace Wild
         m_commandList->OMSetRenderTargets(numRenderTargets, handles.data(), FALSE, dsvHandle);
     }
 
-    const bool CommandList::CanPassExecute(const std::string& passName)
+    const bool CommandList::CanPassExecute()
     {
-        if (!m_pipelineIsSet)
+        if (!m_pipelineIsSet || !m_pipelineState)
         {
             WD_WARN("Invalid PSO or Root signature supplied pass will not execute.");
             return false;
@@ -357,7 +359,8 @@ namespace Wild
 
         if (m_frameInFlight)
         {
-            WD_WARN("A frame is already in flight on this commandlist call end render first in: %s", passName.c_str());
+            WD_WARN("A frame is already in flight on this commandlist call end render first in: %s",
+                    m_pipelineState->GetPipelineSettings().pipelineName.c_str());
             return false;
         }
 
