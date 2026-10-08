@@ -4,6 +4,8 @@
 #include "Renderer/Resources/LightTypes.hpp"
 #include "Renderer/Resources/Model.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <cstddef>
 
 namespace Wild
@@ -110,11 +112,14 @@ namespace Wild
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
             desc.height = engine.GetGfxContext()->GetHeight();
+            // Full chain
+            desc.mips = static_cast<uint32_t>(std::floor(std::log2(std::max(desc.width, desc.height)))) + 1;
             desc.format = DXGI_FORMAT_R32_FLOAT;
             desc.name = "Previous frame depth";
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::shaderResource | TextureDesc::readWrite);
             passData->previousDepthTexture = rg.CreateTransientTexture("PreviousFrameDepth", desc);
+            passData->hzbMipCount = desc.mips;
         }
 
         // Render large objects to the depth texture since previous frame data might not always be the same
@@ -124,32 +129,63 @@ namespace Wild
 
          //   });
 
-        // Use the previous frames depth data to test againts occluded objects
-        //rg.AddPass<OcclusionPrepassData>(
-        //    "Create mip chain pass", PassType::Compute, [&renderer, this](const OcclusionPrepassData& passData, CommandList& list) {
-        //        passData.previousDepthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        // Build the hierarchical z buffer from the previous frames depth, used to test against occluded objects
+        rg.AddPass<OcclusionPrepassData>(
+            "Create mip chain pass", PassType::Compute, [&renderer, this](const OcclusionPrepassData& passData, CommandList& list) {
+                PipelineStateSettings settings{};
+                settings.shaderState.computeShader =
+                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/OcclusionCulling/DepthMipChain.slang");
 
-        //        PipelineStateSettings settings{};
-        //        settings.shaderState.computeShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/OcclusionCulling/DepthMipChain.slang");
+                std::vector<Uniform> uniforms;
+                Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DepthMipChainRootConstant)};
+                uniforms.emplace_back(rootConstant);
 
-        //        std::vector<Uniform> uniforms;
-        //        Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DepthMipChainRootConstant)};
-        //        uniforms.emplace_back(rootConstant);
+                // Parent mip that is read from
+                Uniform srcMipUav{0, 0, RootParams::RootResourceType::DescriptorTable};
+                CD3DX12_DESCRIPTOR_RANGE srcRange{};
+                srcRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                srcMipUav.ranges.emplace_back(srcRange);
+                uniforms.emplace_back(srcMipUav);
 
-        //         auto& pipeline = renderer.GetOrCreatePipeline(
-        //            "Create mip chain pass", PipelineStateType::Compute, settings, uniforms);
-        //        list.SetPipelineState(pipeline);
-        //        list.BeginRender();
+                // Mip that is written to
+                Uniform dstMipUav{0, 0, RootParams::RootResourceType::DescriptorTable};
+                CD3DX12_DESCRIPTOR_RANGE dstRange{};
+                dstRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                dstMipUav.ranges.emplace_back(dstRange);
+                uniforms.emplace_back(dstMipUav);
 
-        //        list.SetRootConstant<DepthMipChainRootConstant>(0, m_depthMipRc);
+                auto& pipeline =
+                    renderer.GetOrCreatePipeline("Create mip chain pass", PipelineStateType::Compute, settings, uniforms);
+                list.SetPipelineState(pipeline);
+                list.BeginRender();
 
-        //        // Use 3D texture dimension
-        //        //list.GetList()->Dispatch((desc.width + 7) / 8, (desc.height + 7) / 8, (desc.depthOrArray + 7) / 8);
+                Texture* hzb = passData.previousDepthTexture;
+                hzb->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        //        list.EndRender();
+                glm::uvec2 srcSize{hzb->Width(), hzb->Height()};
+                for (uint32_t mip = 1; mip < passData.hzbMipCount; mip++)
+                {
+                    const glm::uvec2 dstSize = glm::max(srcSize / 2u, glm::uvec2(1u));
 
-        //        // Create a mip chain from previous frame depth data
-        //    });
+                    m_depthMipRc.srcSize = srcSize;
+                    m_depthMipRc.dstSize = dstSize;
+                    list.SetRootConstant<DepthMipChainRootConstant>(0, m_depthMipRc);
+                    list.SetUnorderedAccessView(1, hzb, mip - 1);
+                    list.SetUnorderedAccessView(2, hzb, mip);
+
+                    list.Dispatch((dstSize.x + 7) / 8, (dstSize.y + 7) / 8, 1);
+
+                    // The next mip reads what this dispatch wrote
+                    D3D12_RESOURCE_BARRIER uavBarrier = {};
+                    uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                    uavBarrier.UAV.pResource = hzb->GetResource();
+                    list.GetList()->ResourceBarrier(1, &uavBarrier);
+
+                    srcSize = dstSize;
+                }
+
+                list.EndRender();
+            });
     }
 
     void DeferredPass::PreviousDepthCopyPass(Renderer& renderer, RenderGraph& rg)

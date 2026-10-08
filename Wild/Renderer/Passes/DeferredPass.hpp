@@ -51,13 +51,17 @@ namespace Wild
 
     struct DepthMipChainRootConstant
     {
-        glm::vec2 texelSize{};
+        // Size of the mip that is read from and the mip that is written to
+        glm::uvec2 srcSize{};
+        glm::uvec2 dstSize{};
     };
 
     struct OcclusionPrepassData
     {
-        // Depth of the previous frame, used as the occluder data for this frame
+        // Depth of the previous frame, used as the occluder data for this frame.
+        // Mip 0 holds the copied depth, every other mip stores the farthest depth of its parent (hierarchical z buffer)
         Texture* previousDepthTexture;
+        uint32_t hzbMipCount;
     };
 
     struct PreviousDepthCopyPassData

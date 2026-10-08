@@ -280,6 +280,19 @@ namespace Wild
             else
             {
                 m_uav = std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc);
+
+                // One uav per mip so compute passes can write a mip chain, indexed by mip level
+                if (m_desc.mips > 1 && m_desc.type == TextureType::TEXTURE_2D)
+                {
+                    for (uint32_t mip = 0; mip < m_desc.mips; mip++)
+                    {
+                        uavDesc.Texture2D.MipSlice = mip;
+                        uavDesc.Texture2D.PlaneSlice = 0;
+                        m_uavArray.emplace_back(std::make_shared<UnorderedAccessView>(m_resource->Handle(), uavDesc));
+                    }
+
+                    m_uavArrayAvailiable = true;
+                }
             }
         }
 
