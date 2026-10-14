@@ -114,6 +114,7 @@ namespace Wild
             desc.height = engine.GetGfxContext()->GetHeight();
             // Full chain
             desc.mips = static_cast<uint32_t>(std::floor(std::log2(std::max(desc.width, desc.height)))) + 1;
+            // Use R32 becuase this works better with UAV
             desc.format = DXGI_FORMAT_R32_FLOAT;
             desc.name = "Previous frame depth";
             desc.usage = TextureDesc::gpuOnly;
@@ -123,15 +124,18 @@ namespace Wild
         }
 
         // Render large objects to the depth texture since previous frame data might not always be the same
-         //rg.AddPass<OcclusionPrepassData>(
-         //   "Occlusion depth render prepass", PassType::Graphics, [&renderer, this](const OcclusionPrepassData& passData, CommandList& list) {
-         //       //passData.previousDepthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        // rg.AddPass<OcclusionPrepassData>(
+        //   "Occlusion depth render prepass", PassType::Graphics, [&renderer, this](const OcclusionPrepassData& passData,
+        //   CommandList& list) {
+        //       //passData.previousDepthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-         //   });
+        //   });
 
         // Build the hierarchical z buffer from the previous frames depth, used to test against occluded objects
         rg.AddPass<OcclusionPrepassData>(
-            "Create mip chain pass", PassType::Compute, [&renderer, this](const OcclusionPrepassData& passData, CommandList& list) {
+            "Create mip chain pass",
+            PassType::Compute,
+            [&renderer, this](const OcclusionPrepassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
                 settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/OcclusionCulling/DepthMipChain.slang");
@@ -451,6 +455,9 @@ namespace Wild
 
     void DeferredPass::Add(Renderer& renderer, RenderGraph& rg)
     {
+        // Builts prepass from previous frames depth
+        OcclusionPrepass(renderer, rg);
+
         auto* passData = rg.AllocatePassData<DeferredPassData>();
         auto* grassData = rg.GetPassData<DeferredPassData, RenderGrassData>();
 
@@ -459,8 +466,6 @@ namespace Wild
         passData->emissiveTexture = grassData->emissiveTexture;
         passData->depthTexture = grassData->depthTexture;
 
-        // Passes execute in the order they are added
-        OcclusionPrepass(renderer, rg);
         rg.GetPassData<DeferredPassData, OcclusionPrepassData>();
 
         if (SupportsMeshShaderPath() && !m_forceVertexPath)
@@ -468,6 +473,7 @@ namespace Wild
         else
             DeferredVertexPass(renderer, rg);
 
-       // PreviousDepthCopyPass(renderer, rg);
+        // Copies this frames depth into mip 0 of the hierarchical z buffer, the chain is rebuilt from it next frame
+        PreviousDepthCopyPass(renderer, rg);
     }
 } // namespace Wild

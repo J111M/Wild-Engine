@@ -64,7 +64,7 @@ namespace Wild
         void CreateRaytracingPipeline();
 
         PipelineStateType m_type;
-        const PipelineStateSettings& m_settings;
+        PipelineStateSettings m_settings;
 
         ComPtr<ID3D12PipelineState> m_pso;
         ComPtr<ID3D12RootSignature> m_rootSignature;
