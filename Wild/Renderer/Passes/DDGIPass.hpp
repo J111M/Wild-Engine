@@ -10,9 +10,6 @@ namespace Wild
 {
     class GPUBuffer;
 
-    // No descriptor is ever allocated at this index, the heap hands out slots starting at 1
-    static constexpr uint32_t INVALID_HEAP_INDEX = UINT32_MAX;
-
     struct DDGIProbeData
     {
         glm::vec4 randomRotation{0.0f, 0.0f, 0.0f, 1.0f}; // quaternion (xyz axis*sin(half), w = cos(half))

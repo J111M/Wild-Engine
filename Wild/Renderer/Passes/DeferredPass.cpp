@@ -103,11 +103,58 @@ namespace Wild
         return capabilities.SupportsMeshShaders() && capabilities.CheckResourceBindingSupport(ResourceBindingSupport::Tier3);
     }
 
-    void DeferredPass::OcclusionPrepass(Renderer& renderer, RenderGraph& rg)
+    uint32_t DeferredPass::CountSceneMeshlets() const
     {
-        auto* passData = rg.AllocatePassData<OcclusionPrepassData>();
+        // Has to skip exactly the same entities as the mesh shader pass, otherwise the offsets drift apart
+        uint32_t total = 0;
+        auto meshes = engine.GetECS()->GetRegistry().view<Transform, MeshComponent>();
+        for (auto&& [entity, trans, meshComponent] : meshes.each())
+        {
+            if (!meshComponent.mesh) continue;
+            if (!meshComponent.mesh->GetMeshlets()) continue;
+            total += meshComponent.mesh->GetMeshlets()->GetMeshletData().meshletCount;
+        }
+        return total;
+    }
 
-        // Persists between frames through the transient cache, filled by the previous depth copy pass at the end of the frame
+    void DeferredPass::EnsureMeshletVisibilityBuffer(uint32_t meshletCount)
+    {
+        if (meshletCount == 0 || meshletCount <= m_meshletVisibilityCapacity) return;
+
+        // Grow with some headroom so adding a few entities does not stall the GPU every time
+        const uint32_t capacity = std::max(meshletCount, m_meshletVisibilityCapacity + m_meshletVisibilityCapacity / 2);
+
+        // The old buffer can still be in use by frames in flight
+        if (m_meshletVisibilityBuffer) engine.GetGfxContext()->Flush();
+
+        BufferDesc desc{};
+        desc.size = static_cast<uint64_t>(capacity) * sizeof(uint32_t);
+        desc.stride = sizeof(uint32_t);
+        desc.usage = BufferUsage::ShaderRead | BufferUsage::ShaderWrite | BufferUsage::CopyDst;
+        desc.access = MemoryAccess::GpuOnly;
+        desc.name = "Meshlet visibility buffer";
+        m_meshletVisibilityBuffer = std::make_unique<GPUBuffer>(desc);
+
+        // Everything counts as visible on the first frame, so phase 1 draws it and phase 2 corrects the flags
+        std::vector<uint32_t> visible(capacity, 1u);
+        m_meshletVisibilityBuffer->UploadToGPU(visible.data());
+
+        m_meshletVisibilityCapacity = capacity;
+    }
+
+    /// <summary>
+    /// Draws meshlets that were visible previous frame
+    /// </summary>
+    void DeferredPass::DeferredEarlyPass(Renderer& renderer, RenderGraph& rg) {}
+
+    /// <summary>
+    /// Builds a mip chain of the rendered depth of the previous frame
+    /// </summary>
+    void DeferredPass::BuildHZBPass(Renderer& renderer, RenderGraph& rg)
+    {
+        auto* passData = rg.AllocatePassData<HZBPassData>();
+
+        // Persists between frames through the transient cache, mip 0 is filled by the HZB depth copy pass at the end of the frame
         {
             TextureDesc desc;
             desc.width = engine.GetGfxContext()->GetWidth();
@@ -116,26 +163,26 @@ namespace Wild
             desc.mips = static_cast<uint32_t>(std::floor(std::log2(std::max(desc.width, desc.height)))) + 1;
             // Use R32 becuase this works better with UAV
             desc.format = DXGI_FORMAT_R32_FLOAT;
-            desc.name = "Previous frame depth";
+            desc.name = "HZB texture";
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::shaderResource | TextureDesc::readWrite);
-            passData->previousDepthTexture = rg.CreateTransientTexture("PreviousFrameDepth", desc);
+            passData->hzbTexture = rg.CreateTransientTexture("HZBTexture", desc);
             passData->hzbMipCount = desc.mips;
         }
 
         // Render large objects to the depth texture since previous frame data might not always be the same
-        // rg.AddPass<OcclusionPrepassData>(
-        //   "Occlusion depth render prepass", PassType::Graphics, [&renderer, this](const OcclusionPrepassData& passData,
+        // rg.AddPass<HZBPassData>(
+        //   "Occlusion depth render prepass", PassType::Graphics, [&renderer, this](const HZBPassData& passData,
         //   CommandList& list) {
-        //       //passData.previousDepthTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        //       //passData.hzbTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         //   });
 
         // Build the hierarchical z buffer from the previous frames depth, used to test against occluded objects
-        rg.AddPass<OcclusionPrepassData>(
-            "Create mip chain pass",
+        rg.AddPass<HZBPassData>(
+            "HZB build pass",
             PassType::Compute,
-            [&renderer, this](const OcclusionPrepassData& passData, CommandList& list) {
+            [&renderer, this](const HZBPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
                 settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/OcclusionCulling/DepthMipChain.slang");
@@ -159,11 +206,11 @@ namespace Wild
                 uniforms.emplace_back(dstMipUav);
 
                 auto& pipeline =
-                    renderer.GetOrCreatePipeline("Create mip chain pass", PipelineStateType::Compute, settings, uniforms);
+                    renderer.GetOrCreatePipeline("HZB build pass", PipelineStateType::Compute, settings, uniforms);
                 list.SetPipelineState(pipeline);
                 list.BeginRender();
 
-                Texture* hzb = passData.previousDepthTexture;
+                Texture* hzb = passData.hzbTexture;
                 hzb->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                 glm::uvec2 srcSize{hzb->Width(), hzb->Height()};
@@ -192,19 +239,39 @@ namespace Wild
             });
     }
 
-    void DeferredPass::PreviousDepthCopyPass(Renderer& renderer, RenderGraph& rg)
+    void DeferredPass::DeferredLatePass(Renderer& renderer, RenderGraph& rg) {
+        rg.AddPass<HZBPassData>(
+            "Deferred late pass",
+            PassType::Compute,
+            [&renderer, this](const HZBPassData& passData, CommandList& list) {
+                PipelineStateSettings settings{};
+                settings.shaderState.computeShader =
+                    engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/OcclusionCulling/HZBCullingCompute.slang");
+
+                std::vector<Uniform> uniforms;
+
+                auto& pipeline =
+                    renderer.GetOrCreatePipeline("Deferred late pass", PipelineStateType::Compute, settings, uniforms);
+                list.SetPipelineState(pipeline);
+                list.BeginRender();
+
+                list.EndRender();
+            });
+    }
+
+    void DeferredPass::HZBDepthCopyPass(Renderer& renderer, RenderGraph& rg)
     {
-        auto* passData = rg.AllocatePassData<PreviousDepthCopyPassData>();
-        auto* deferredData = rg.GetPassData<PreviousDepthCopyPassData, DeferredPassData>();
-        auto* occlusionData = rg.GetPassData<PreviousDepthCopyPassData, OcclusionPrepassData>();
+        auto* passData = rg.AllocatePassData<HZBDepthCopyPassData>();
+        auto* deferredData = rg.GetPassData<HZBDepthCopyPassData, DeferredPassData>();
+        auto* hzbData = rg.GetPassData<HZBDepthCopyPassData, HZBPassData>();
 
         passData->depthTexture = deferredData->depthTexture;
-        passData->previousDepthTexture = occlusionData->previousDepthTexture;
+        passData->hzbTexture = hzbData->hzbTexture;
 
-        rg.AddPass<PreviousDepthCopyPassData>(
-            "Previous depth copy pass", PassType::Default, [](const PreviousDepthCopyPassData& passData, CommandList& list) {
+        rg.AddPass<HZBDepthCopyPassData>(
+            "HZB depth copy pass", PassType::Default, [](const HZBDepthCopyPassData& passData, CommandList& list) {
                 passData.depthTexture->Transition(list, D3D12_RESOURCE_STATE_COPY_SOURCE);
-                passData.previousDepthTexture->Transition(list, D3D12_RESOURCE_STATE_COPY_DEST);
+                passData.hzbTexture->Transition(list, D3D12_RESOURCE_STATE_COPY_DEST);
 
                 // Copy into mip 0 only, so the copy keeps working once the target has a mip chain
                 D3D12_TEXTURE_COPY_LOCATION src{};
@@ -213,7 +280,7 @@ namespace Wild
                 src.SubresourceIndex = 0;
 
                 D3D12_TEXTURE_COPY_LOCATION dst{};
-                dst.pResource = passData.previousDepthTexture->GetResource();
+                dst.pResource = passData.hzbTexture->GetResource();
                 dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
                 dst.SubresourceIndex = 0;
 
@@ -284,6 +351,16 @@ namespace Wild
 
                 const bool meshletDebug = m_meshletDebugView && SupportsClusterDebugView();
 
+                uint32_t meshletVisibilityView = INVALID_HEAP_INDEX;
+                if (m_meshletVisibilityBuffer)
+                {
+                    m_meshletVisibilityBuffer->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                    meshletVisibilityView = m_meshletVisibilityBuffer->GetUAView()->View();
+                }
+
+                // Running slot in the visibility buffer
+                uint32_t instanceMeshletOffset = 0;
+
                 auto meshes = engine.GetECS()->GetRegistry().view<Transform, MeshComponent>();
                 for (auto&& [entity, trans, meshComponent] : meshes.each())
                 {
@@ -296,6 +373,9 @@ namespace Wild
                     const glm::mat4& world = trans.GetWorldMatrix();
 
                     DeferredMeshShaderRootConstants rc{};
+                    rc.instanceMeshletOffset = instanceMeshletOffset;
+                    rc.meshletVisibilityView = meshletVisibilityView;
+                    instanceMeshletOffset += meshlets.meshletCount;
                     rc.model = world;
                     rc.invTransposeModel = glm::mat4(glm::transpose(glm::inverse(glm::mat3(world))));
                     rc.cullCameraPosition = glm::vec3(glm::inverse(world) * cameraPosition);
@@ -455,8 +535,8 @@ namespace Wild
 
     void DeferredPass::Add(Renderer& renderer, RenderGraph& rg)
     {
-        // Builts prepass from previous frames depth
-        OcclusionPrepass(renderer, rg);
+        // Builds the hierarchical z buffer, mip 0 still holds the previous frames depth for now
+        BuildHZBPass(renderer, rg);
 
         auto* passData = rg.AllocatePassData<DeferredPassData>();
         auto* grassData = rg.GetPassData<DeferredPassData, RenderGrassData>();
@@ -466,14 +546,17 @@ namespace Wild
         passData->emissiveTexture = grassData->emissiveTexture;
         passData->depthTexture = grassData->depthTexture;
 
-        rg.GetPassData<DeferredPassData, OcclusionPrepassData>();
+        rg.GetPassData<DeferredPassData, HZBPassData>();
 
         if (SupportsMeshShaderPath() && !m_forceVertexPath)
+        {
+            EnsureMeshletVisibilityBuffer(CountSceneMeshlets());
             DeferredMeshShaderPass(renderer, rg, m_useAmplificationShader);
+        }
         else
             DeferredVertexPass(renderer, rg);
 
         // Copies this frames depth into mip 0 of the hierarchical z buffer, the chain is rebuilt from it next frame
-        PreviousDepthCopyPass(renderer, rg);
+        HZBDepthCopyPass(renderer, rg);
     }
 } // namespace Wild

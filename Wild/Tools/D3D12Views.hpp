@@ -6,6 +6,9 @@
 // View abstraction code inspired by https://github.com/t-Boons
 namespace Wild
 {
+    // No descriptor is ever allocated at this index, the heap hands out slots starting at 1
+    static constexpr uint32_t INVALID_HEAP_INDEX = UINT32_MAX;
+
     class ViewBase : private NonCopyable
     {
       public:

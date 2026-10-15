@@ -5,8 +5,6 @@
 
 import DDGI.DDGIProbeData;
 
-static const uint INVALID_HEAP_INDEX = 0xFFFFFFFFu;
-
 cbuffer Constants : register(b0)
 {
     uint emissiveView;

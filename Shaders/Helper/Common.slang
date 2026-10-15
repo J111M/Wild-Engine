@@ -38,3 +38,4 @@ float remap(float value, float inMin, float inMax, float outMin, float outMax)
 }
 
 static const uint MESHLET_DEBUG_DISABLED = 0xFFFFFFFFu;
+static const uint INVALID_HEAP_INDEX = 0xFFFFFFFFu;

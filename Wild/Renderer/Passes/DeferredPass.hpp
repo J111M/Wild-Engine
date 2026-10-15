@@ -26,6 +26,11 @@ namespace Wild
 
         uint32_t meshletOffset{};
         uint32_t meshletDebugView{};
+
+        // First slot of this instance in the meshlet visibility buffer
+        uint32_t instanceMeshletOffset{};
+        // Bindless UAV of the meshlet visibility buffer, INVALID_HEAP_INDEX when there is none
+        uint32_t meshletVisibilityView = INVALID_HEAP_INDEX;
     };
 
     struct DeferredRootConstants
@@ -56,18 +61,33 @@ namespace Wild
         glm::uvec2 dstSize{};
     };
 
-    struct OcclusionPrepassData
+    struct HZBPassData
     {
-        // Depth of the previous frame, used as the occluder data for this frame.
+        // Hierarchical z buffer, used as the occluder data for culling.
         // Mip 0 holds the copied depth, every other mip stores the farthest depth of its parent (hierarchical z buffer)
-        Texture* previousDepthTexture;
+        Texture* hzbTexture;
         uint32_t hzbMipCount;
     };
 
-    struct PreviousDepthCopyPassData
+     struct HZBRootConstant
+    {
+        // Size of the mip that is read from and the mip that is written to
+        glm::uvec2 srcSize{};
+        glm::uvec2 dstSize{};
+    };
+
+    struct HZBCullingPassData
+    {
+        // Hierarchical z buffer, used as the occluder data for culling.
+        // Mip 0 holds the copied depth, every other mip stores the farthest depth of its parent (hierarchical z buffer)
+        Texture* hzbTexture;
+        uint32_t hzbMipCount;
+    };
+
+    struct HZBDepthCopyPassData
     {
         Texture* depthTexture;
-        Texture* previousDepthTexture;
+        Texture* hzbTexture;
     };
 
     class DeferredPass : public RenderFeature
@@ -79,14 +99,22 @@ namespace Wild
         virtual void Add(Renderer& renderer, RenderGraph& rg) override;
         virtual void Update(const float dt) override;
 
-        void OcclusionPrepass(Renderer& renderer, RenderGraph& rg);
-        void PreviousDepthCopyPass(Renderer& renderer, RenderGraph& rg);
+        void DeferredEarlyPass(Renderer& renderer, RenderGraph& rg);
+        void BuildHZBPass(Renderer& renderer, RenderGraph& rg);
+        void DeferredLatePass(Renderer& renderer, RenderGraph& rg);
+
+        void HZBDepthCopyPass(Renderer& renderer, RenderGraph& rg);
 
         void DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg, const bool useAmplification);
         void DeferredVertexPass(Renderer& renderer, RenderGraph& rg);
 
         bool SupportsMeshShaderPath() const;
         bool SupportsClusterDebugView() const;
+
+        // Total meshlets of every drawable instance, one visibility slot is needed per meshlet per instance
+        uint32_t CountSceneMeshlets() const;
+        // Grows the visibility buffer when the scene needs more slots, every slot starts out as visible
+        void EnsureMeshletVisibilityBuffer(uint32_t meshletCount);
 
       private:
         DeferredRootConstants m_rc;
@@ -122,5 +150,9 @@ namespace Wild
 
         // Depth prepass data
         DepthMipChainRootConstant m_depthMipRc{};
+
+        // Persistent visibility of every meshlet per instance, 1 = visible last frame.
+        std::unique_ptr<GPUBuffer> m_meshletVisibilityBuffer;
+        uint32_t m_meshletVisibilityCapacity = 0;
     };
 } // namespace Wild

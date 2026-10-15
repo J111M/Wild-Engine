@@ -1,3 +1,4 @@
+#include "Helper/Common.slang"
 #include "Helper/MeshCommon.slang"
 
 groupshared MeshletPayload sharedPayload;
@@ -69,6 +70,14 @@ void main(uint3 gid: SV_GroupID, uint3 gtid: SV_GroupThreadID) {
     if (groupMeshletStart + gtid.x < meshletCount) {
         Meshlet meshlet = meshlets[groupMeshletOffset + gtid.x];
         float4 sphere = meshlet.meshletBoundingSphere;
+
+        // 1 = visible last frame, not used for culling yet
+        uint32_t visibilityIndex = instanceMeshletOffset + groupMeshletOffset + gtid.x;
+        bool wasVisible = true;
+        if (meshletVisibilityView != INVALID_HEAP_INDEX) {
+            RWStructuredBuffer<uint32_t> meshletVisibility = DescriptorHandle<RWStructuredBuffer<uint32_t>>(meshletVisibilityView);
+            wasVisible = meshletVisibility[visibilityIndex] != 0;
+        }
 
         if (IsInFrustum(sphere.xyz, sphere.w) && IsConeVisible(meshlet)) {
             uint index = visibleMeshletCount.add(1);
