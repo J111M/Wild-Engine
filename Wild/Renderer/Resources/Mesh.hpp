@@ -5,6 +5,7 @@
 #include "Renderer/Resources/Material.hpp"
 #include "Renderer/Resources/Meshlets.hpp"
 
+#include <cfloat>
 #include <cstdint>
 #include <glm/glm.hpp>
 #include <memory>
@@ -25,6 +26,33 @@ namespace Wild
         glm::vec4 tangent{};
     };
 
+    // Axis aligned bounding box in mesh local space
+    struct BoundingBox
+    {
+        glm::vec3 min{FLT_MAX};
+        glm::vec3 max{-FLT_MAX};
+
+        glm::vec3 GetCenter() const { return (min + max) * 0.5f; }
+        glm::vec3 GetExtents() const { return (max - min) * 0.5f; }
+
+        void Expand(const glm::vec3& point)
+        {
+            min = glm::min(min, point);
+            max = glm::max(max, point);
+        }
+
+        // Returns the axis aligned box that encloses this box after transformation
+        BoundingBox Transformed(const glm::mat4& matrix) const
+        {
+            const glm::vec3 center = glm::vec3(matrix * glm::vec4(GetCenter(), 1.0f));
+            const glm::mat3 absMatrix(
+                glm::abs(glm::vec3(matrix[0])), glm::abs(glm::vec3(matrix[1])), glm::abs(glm::vec3(matrix[2])));
+            const glm::vec3 extents = absMatrix * GetExtents();
+
+            return {center - extents, center + extents};
+        }
+    };
+
     class Mesh
     {
       public:
@@ -41,6 +69,8 @@ namespace Wild
 
         const std::vector<glm::vec3>& GetCollisionPositions() const { return m_collisionPositions; }
         const std::vector<uint32_t>& GetCollisionIndices() const { return m_collisionIndices; }
+
+        const BoundingBox& GetBounds() const { return m_bounds; }
 
         const Material& GetMaterial() const { return m_material; }
         void SetMaterial(Material& material) { m_material = material; }
@@ -70,6 +100,8 @@ namespace Wild
 
         std::vector<glm::vec3> m_collisionPositions;
         std::vector<uint32_t> m_collisionIndices;
+
+        BoundingBox m_bounds{};
 
         uint32_t m_blasIndex = UINT32_MAX;
         uint32_t m_meshInfoIndex = UINT32_MAX;

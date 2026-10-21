@@ -48,7 +48,10 @@ namespace Wild
 
         m_collisionPositions.reserve(vertices.size());
         for (const auto& vertex : vertices)
+        {
             m_collisionPositions.push_back(vertex.position);
+            m_bounds.Expand(vertex.position);
+        }
 
         m_collisionIndices = indices;
     }
