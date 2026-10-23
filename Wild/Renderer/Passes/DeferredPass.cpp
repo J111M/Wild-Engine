@@ -4,6 +4,8 @@
 #include "Renderer/Resources/LightTypes.hpp"
 #include "Renderer/Resources/Model.hpp"
 
+#include "Systems/FrustumCullingSystem.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -180,9 +182,7 @@ namespace Wild
 
         // Build the hierarchical z buffer from the previous frames depth, used to test against occluded objects
         rg.AddPass<HZBPassData>(
-            "HZB build pass",
-            PassType::Compute,
-            [&renderer, this](const HZBPassData& passData, CommandList& list) {
+            "HZB build pass", PassType::Compute, [&renderer, this](const HZBPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
                 settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/OcclusionCulling/DepthMipChain.slang");
@@ -205,8 +205,7 @@ namespace Wild
                 dstMipUav.ranges.emplace_back(dstRange);
                 uniforms.emplace_back(dstMipUav);
 
-                auto& pipeline =
-                    renderer.GetOrCreatePipeline("HZB build pass", PipelineStateType::Compute, settings, uniforms);
+                auto& pipeline = renderer.GetOrCreatePipeline("HZB build pass", PipelineStateType::Compute, settings, uniforms);
                 list.SetPipelineState(pipeline);
                 list.BeginRender();
 
@@ -239,11 +238,10 @@ namespace Wild
             });
     }
 
-    void DeferredPass::DeferredLatePass(Renderer& renderer, RenderGraph& rg) {
+    void DeferredPass::DeferredLatePass(Renderer& renderer, RenderGraph& rg)
+    {
         rg.AddPass<HZBPassData>(
-            "Deferred late pass",
-            PassType::Compute,
-            [&renderer, this](const HZBPassData& passData, CommandList& list) {
+            "Deferred late pass", PassType::Compute, [&renderer, this](const HZBPassData& passData, CommandList& list) {
                 PipelineStateSettings settings{};
                 settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/OcclusionCulling/HZBCullingCompute.slang");
@@ -358,24 +356,38 @@ namespace Wild
                     meshletVisibilityView = m_meshletVisibilityBuffer->GetUAView()->View();
                 }
 
+                // Cull against the same view projection the mesh shader reads from the scene data buffer
+                const auto& visibleEntities =
+                    renderer.GetSystems().GetSystem<FrustumCullingSystem>().CullMeshComponents(GetSceneData().viewProjection);
+                size_t nextVisible = 0;
+
                 // Running slot in the visibility buffer
                 uint32_t instanceMeshletOffset = 0;
 
+                // Walks every mesh instead of only the visible ones so each instance keeps the same visibility buffer slots.
+                // The culled list keeps the order of this view, so the next visible entity is always at nextVisible.
                 auto meshes = engine.GetECS()->GetRegistry().view<Transform, MeshComponent>();
                 for (auto&& [entity, trans, meshComponent] : meshes.each())
                 {
                     if (!meshComponent.mesh) continue;
+
+                    const bool isVisible = nextVisible < visibleEntities.size() && visibleEntities[nextVisible] == entity;
+                    if (isVisible) nextVisible++;
+
                     auto& mesh = *meshComponent.mesh;
                     if (!mesh.GetMeshlets()) continue;
                     const auto& meshlets = mesh.GetMeshlets()->GetMeshletData();
                     if (meshlets.meshletCount == 0) continue;
 
+                    const uint32_t meshletSlot = instanceMeshletOffset;
+                    instanceMeshletOffset += meshlets.meshletCount;
+                    if (!isVisible) continue;
+
                     const glm::mat4& world = trans.GetWorldMatrix();
 
                     DeferredMeshShaderRootConstants rc{};
-                    rc.instanceMeshletOffset = instanceMeshletOffset;
+                    rc.instanceMeshletOffset = meshletSlot;
                     rc.meshletVisibilityView = meshletVisibilityView;
-                    instanceMeshletOffset += meshlets.meshletCount;
                     rc.model = world;
                     rc.invTransposeModel = glm::mat4(glm::transpose(glm::inverse(glm::mat3(world))));
                     rc.cullCameraPosition = glm::vec3(glm::inverse(world) * cameraPosition);
@@ -472,6 +484,10 @@ namespace Wild
 
                 const bool clusterDebug = m_meshletDebugView && SupportsClusterDebugView();
 
+                // Cull against the same view projection the vertex shader reads from the scene data buffer
+                const auto& visibleEntities =
+                    renderer.GetSystems().GetSystem<FrustumCullingSystem>().CullMeshComponents(GetSceneData().viewProjection);
+
                 list.SetPipelineState(pipeline);
                 list.BeginRender({passData.albedoRoughnessTexture, passData.normalMetallicTexture, passData.emissiveTexture},
                                  {ClearOperation::Store, ClearOperation::Store, ClearOperation::Store},
@@ -480,10 +496,10 @@ namespace Wild
 
                 list.SetConstantBufferView(2, GetSceneDataAddress());
 
-                auto meshes = ecs->GetRegistry().view<Transform, MeshComponent>();
-                for (auto&& [entity, trans, meshComponent] : meshes.each())
+                auto& registry = ecs->GetRegistry();
+                for (const Entity entity : visibleEntities)
                 {
-                    if (!meshComponent.mesh) continue;
+                    auto [trans, meshComponent] = registry.get<Transform, MeshComponent>(entity);
                     auto& mesh = *meshComponent.mesh;
 
                     m_rc = DeferredRootConstants{};

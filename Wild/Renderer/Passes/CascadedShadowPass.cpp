@@ -5,6 +5,8 @@
 
 #include "Core/Camera.hpp"
 
+#include "Systems/FrustumCullingSystem.hpp"
+
 namespace Wild
 {
     CascadedShadowPass::CascadedShadowPass()
@@ -78,6 +80,9 @@ namespace Wild
                 auto& pipeline =
                     renderer.GetOrCreatePipeline("Cascaded shadow maps pass", PipelineStateType::Graphics, settings, uniforms);
 
+                auto& cullingSystem = renderer.GetSystems().GetSystem<FrustumCullingSystem>();
+                auto& registry = engine.GetECS()->GetRegistry();
+
                 for (size_t i = 0; i < SHADOWMAP_CASCADES; i++)
                 {
                     list.SetPipelineState(pipeline);
@@ -87,10 +92,11 @@ namespace Wild
                                      {passData.shadowMap[i]},
                                      DSClearOperation::DepthClear);
 
-                    auto meshes = engine.GetECS()->GetRegistry().view<Transform, MeshComponent>();
-                    for (auto&& [entity, trans, meshComponent] : meshes.each())
+                    // Every cascade has its own light view projection, so only casters inside that cascade are drawn
+                    const auto& visibleEntities = cullingSystem.CullMeshComponents(m_directLight.viewProj[i]);
+                    for (const Entity entity : visibleEntities)
                     {
-                        if (!meshComponent.mesh) continue;
+                        auto [trans, meshComponent] = registry.get<Transform, MeshComponent>(entity);
                         auto& mesh = *meshComponent.mesh;
 
                         m_rc.localModel = trans.GetWorldMatrix();

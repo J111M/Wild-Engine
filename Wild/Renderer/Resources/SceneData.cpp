@@ -2,6 +2,8 @@
 
 #include "Tools/BufferAllocator.hpp"
 
+#include "Systems/FrustumCullingSystem.hpp"
+
 #include <cstring>
 
 namespace Wild
@@ -21,7 +23,7 @@ namespace Wild
         data.position = glm::vec4(camera.GetPosition(), 1.0f);
         data.nearFarFovAspect = glm::vec4(camera.GetNearFar(), camera.GetFOV(), camera.GetAspect());
 
-        data.frustum = camera.GetFrustum();
+        data.frustum = FrustumCullingSystem::ExtractFrustum(camera.GetCameraMatrix());
 
         return data;
     }
@@ -71,7 +73,5 @@ namespace Wild
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS SceneDataBuffer::GetGpuAddress() const
-    {
-        return m_resource->GetGPUAddress() + m_activeSlot * SLOT_SIZE;
-    }
+    { return m_resource->GetGPUAddress() + m_activeSlot * SLOT_SIZE; }
 } // namespace Wild

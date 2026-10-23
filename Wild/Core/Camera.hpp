@@ -9,15 +9,11 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/vector_angle.hpp>
 
+#include "Renderer/Resources/BoundingFrustum.hpp"
 #include "Renderer/Window.hpp"
 
 namespace Wild
 {
-    struct BoundingFrustum
-    {
-        glm::vec4 planes[6]{};
-    };
-
     class Camera
     {
       public:
@@ -37,8 +33,6 @@ namespace Wild
         float GetAspect() const { return m_aspect; }
 
         const glm::quat& GetCameraQuateurnion();
-
-        BoundingFrustum GetFrustum() const;
 
       private:
         // Prevents the camera from teleporting

@@ -14,6 +14,7 @@
 #include "Renderer/Passes/ProbeDebugPass.hpp"
 #include "Renderer/Passes/ProceduralTerrainPass.hpp"
 #include "Renderer/Passes/SkyboxPass.hpp"
+#include "Systems/FrustumCullingSystem.hpp"
 #include "Systems/GrassManager.hpp"
 #include "Systems/LightSystem.hpp"
 #include "Systems/ProbeSystem.hpp"
@@ -33,6 +34,7 @@ namespace Wild
 
         m_systemManager.AddSystem<ProbeSystem>(glm::vec3(-31.0f, 0.0f, -31.0f), glm::vec3(2.0f), glm::ivec3(32, 16, 32));
         m_systemManager.AddSystem<LightSystem>();
+        m_systemManager.AddSystem<FrustumCullingSystem>();
 
         m_renderFeatures.emplace_back(std::make_unique<DDGIPass>());
         m_renderFeatures.emplace_back(std::make_unique<CascadedShadowPass>());
@@ -130,8 +132,7 @@ namespace Wild
         compositeTexture->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         list.SetPipelineState(pipeline);
-        list.BeginRender(
-            {gfxContext->GetRenderTarget().get()}, {ClearOperation::Store}, nullptr, DSClearOperation::Store);
+        list.BeginRender({gfxContext->GetRenderTarget().get()}, {ClearOperation::Store}, nullptr, DSClearOperation::Store);
         list.GetList()->SetGraphicsRootDescriptorTable(0, compositeTexture->GetSrv()->GetGpuHandle());
         list.GetList()->DrawInstanced(3, 1, 0, 0);
         list.EndRender();

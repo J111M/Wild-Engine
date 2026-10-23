@@ -52,6 +52,7 @@ namespace Wild
             m_collisionPositions.push_back(vertex.position);
             m_bounds.Expand(vertex.position);
         }
+        m_boundingSphere = BoundingSphere::FromBox(m_bounds);
 
         m_collisionIndices = indices;
     }

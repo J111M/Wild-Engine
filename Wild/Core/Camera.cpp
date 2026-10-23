@@ -125,31 +125,4 @@ namespace Wild
 
         return m_quaternion;
     }
-
-    // Extract frustum planes and return them
-    BoundingFrustum Camera::GetFrustum() const
-    {
-        const glm::vec4 r0 = glm::row(m_cameraMatrix, 0);
-        const glm::vec4 r1 = glm::row(m_cameraMatrix, 1);
-        const glm::vec4 r2 = glm::row(m_cameraMatrix, 2);
-        const glm::vec4 r3 = glm::row(m_cameraMatrix, 3);
-
-        BoundingFrustum frustum{};
-        frustum.planes[0] = r3 + r0; // Left
-        frustum.planes[1] = r3 - r0; // Right
-        frustum.planes[2] = r3 + r1; // Bottom
-        frustum.planes[3] = r3 - r1; // Top
-        // Depth runs from 0 to 1 (GLM_FORCE_DEPTH_ZERO_TO_ONE) so the near plane is z >= 0 instead of z >= -w
-        frustum.planes[4] = r2;      // Near
-        frustum.planes[5] = r3 - r2; // Far
-
-        // Normalize frustum planes
-        for (auto& plane : frustum.planes)
-        {
-            const float len = glm::length(glm::vec3(plane));
-            plane /= len;
-        }
-
-        return frustum;
-    }
 } // namespace Wild
