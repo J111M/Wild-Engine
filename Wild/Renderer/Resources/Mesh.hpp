@@ -44,7 +44,6 @@ namespace Wild
         const std::vector<glm::vec3>& GetCollisionPositions() const { return m_collisionPositions; }
         const std::vector<uint32_t>& GetCollisionIndices() const { return m_collisionIndices; }
 
-        const BoundingBox& GetBounds() const { return m_bounds; }
         const BoundingSphere& GetBoundingSphere() const { return m_boundingSphere; }
 
         const Material& GetMaterial() const { return m_material; }
@@ -76,7 +75,6 @@ namespace Wild
         std::vector<glm::vec3> m_collisionPositions;
         std::vector<uint32_t> m_collisionIndices;
 
-        BoundingBox m_bounds{};
         BoundingSphere m_boundingSphere{};
 
         uint32_t m_blasIndex = UINT32_MAX;

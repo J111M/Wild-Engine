@@ -50,9 +50,8 @@ namespace Wild
         for (const auto& vertex : vertices)
         {
             m_collisionPositions.push_back(vertex.position);
-            m_bounds.Expand(vertex.position);
         }
-        m_boundingSphere = BoundingSphere::FromBox(m_bounds);
+        m_boundingSphere = BoundingSphere::GenerateFromPoints(m_collisionPositions);
 
         m_collisionIndices = indices;
     }
