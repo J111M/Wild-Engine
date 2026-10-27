@@ -397,6 +397,7 @@ namespace Wild
                     if (material.m_roughnessMetallic)
                         rc.roughnessMetallicView = material.m_roughnessMetallic->GetSrv()->BindlessView();
                     if (material.m_emissive) rc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
+                    rc.baseColor = material.baseColor;
 
                     rc.meshletDebugView = meshletDebug ? 1u : 0u;
 
@@ -516,6 +517,7 @@ namespace Wild
                         m_rc.roughnessMetallicView = material.m_roughnessMetallic->GetSrv()->BindlessView();
 
                     if (material.m_emissive) m_rc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
+                    m_rc.baseColor = material.baseColor;
 
                     if (clusterDebug && mesh.GetMeshlets())
                     {

@@ -38,6 +38,8 @@ struct MeshInstanceInfo {
 
     float3 emissiveFactor;
     float meshPadding;
+
+    float4 baseColor; // Linear base colour
 };
 
 StructuredBuffer<MeshInstanceInfo> meshTable : register(t1, space0);
@@ -163,9 +165,16 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
         return;
     }
 
+    float3 c0 = asfloat(vb.Load3(v0 + VOFS_COLOR));
+    float3 c1 = asfloat(vb.Load3(v1 + VOFS_COLOR));
+    float3 c2 = asfloat(vb.Load3(v2 + VOFS_COLOR));
+    float3 vertexColor = c0 * b.x + c1 * b.y + c2 * b.z;
+
+    // Same as the deferred pass, the texture is multiplied by the material and vertex colour, which are already linear
     float3 albedo = (mesh.albedoView != 0)
         ? pow(textures[NonUniformResourceIndex(mesh.albedoView)].SampleLevel(linearSampler, uv, 0).rgb, 2.2f)
         : float3(1, 1, 1);
+    albedo *= max(mesh.baseColor.rgb * vertexColor, 0.0f);
 
     float3 emissive = (mesh.emissiveView != 0)
         ? pow(textures[NonUniformResourceIndex(mesh.emissiveView)].SampleLevel(linearSampler, uv, 0).rgb, 2.2f)

@@ -6,23 +6,24 @@
 
 #include <glm/glm.hpp>
 
-namespace Wild {
-	struct Material
-	{
-		std::shared_ptr<Texture> m_albedo = nullptr;
-		std::shared_ptr<Texture> m_normal = nullptr;
-		std::shared_ptr<Texture> m_occlusion = nullptr;
-		std::shared_ptr<Texture> m_emissive = nullptr;
-		std::shared_ptr<Texture> m_roughnessMetallic = nullptr;
+namespace Wild
+{
+    struct Material
+    {
+        std::shared_ptr<Texture> m_albedo = nullptr;
+        std::shared_ptr<Texture> m_normal = nullptr;
+        std::shared_ptr<Texture> m_occlusion = nullptr;
+        std::shared_ptr<Texture> m_emissive = nullptr;
+        std::shared_ptr<Texture> m_roughnessMetallic = nullptr;
 
-		float roughness{};
-		float metallic{};
-		float emissiveStrength{};
-		glm::vec3 emissiveFactor{};
+        float roughness{};
+        float metallic{};
+        float emissiveStrength{};
+        glm::vec3 emissiveFactor{};
 
-		glm::vec3 albedo{};
-		std::string name{};
+        glm::vec4 baseColor{1.0f};
+        std::string name{};
 
-		//Material() = default;
-	};
-}
+        // Material() = default;
+    };
+} // namespace Wild

@@ -29,6 +29,7 @@ cbuffer Constants : register(b0)
     uint normalView;
     uint roughnessMetallicView;
     uint emissiveView;
+    float4 baseColor; // Linear base colour
     uint vertexDataBuffer;
     uint meshletBufferView;
     uint meshletVertexBufferView;

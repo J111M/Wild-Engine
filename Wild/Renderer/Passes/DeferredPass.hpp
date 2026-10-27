@@ -15,6 +15,8 @@ namespace Wild
         uint32_t roughnessMetallicView{};
         uint32_t emissiveView{};
 
+        glm::vec<4, float, glm::packed_highp> baseColor{1.0f};
+
         uint32_t vertexDataBuffer{};
         uint32_t meshletBufferView{};
         uint32_t meshletVertexBufferView{};
@@ -41,6 +43,8 @@ namespace Wild
         uint32_t normalView{};
         uint32_t roughnessMetallicView{};
         uint32_t emissiveView{};
+
+        glm::vec4 baseColor{1.0f};
 
         uint32_t vertexMeshletIdBufferView{};
         uint32_t meshletDebugView{};
@@ -69,7 +73,7 @@ namespace Wild
         uint32_t hzbMipCount;
     };
 
-     struct HZBRootConstant
+    struct HZBRootConstant
     {
         // Size of the mip that is read from and the mip that is written to
         glm::uvec2 srcSize{};

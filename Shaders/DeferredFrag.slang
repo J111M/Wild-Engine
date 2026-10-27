@@ -25,6 +25,7 @@ cbuffer Constants : register(b0)
     uint normalView;
     uint roughnessMetallicView;
     uint emissiveView;
+    float4 baseColor; // Linear base colour
 };
 
 Texture2D textures[4096] : register(t0, space0);
@@ -64,11 +65,12 @@ PSOut main(PSInput input)
         return debugOut;
     }
 
-    float4 albedo = float4(0, 0, 0, 0);
+    // Without a texture the material colour defaults to white
+    float4 albedo = float4(1, 1, 1, 1);
     if (albedoView != 0) { albedo = textures[NonUniformResourceIndex(albedoView)].Sample(anisotropicWrapSampler, input.uv); }
-    else {
-        albedo = float4(1, 1, 1, 1);
-    }
+
+    float3 linearColor = max(baseColor.rgb * input.color, 0.0f);
+    albedo.rgb *= pow(linearColor, float3(1.0f / 2.2f));
 
     float4 normal = float4(0, 0, 0, 0);
     if (normalView != 0)

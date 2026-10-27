@@ -38,6 +38,8 @@ namespace Wild
 
         float emissiveFactor[3]{};
         float meshPadding{};
+
+        float baseColor[4]{1.0f, 1.0f, 1.0f, 1.0f};
     };
 
     class AccelerationStructureManager : public NonCopyable

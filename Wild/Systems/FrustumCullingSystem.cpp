@@ -3,6 +3,10 @@
 #include "Renderer/Resources/Mesh.hpp"
 
 #include <glm/gtc/matrix_access.hpp>
+#include <algorithm>
+#include <execution>
+#include <numeric>
+#include <thread>
 
 namespace Wild
 {

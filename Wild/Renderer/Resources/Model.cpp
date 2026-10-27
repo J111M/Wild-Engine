@@ -197,11 +197,18 @@ namespace Wild
                 auto colors = primitive.findAttribute("COLOR_0");
                 if (colors != primitive.attributes.end())
                 {
-
-                    fastgltf::iterateAccessorWithIndex<glm::vec4>(
-                        model, model.accessors[(*colors).accessorIndex], [&](glm::vec4 v, size_t index) {
+                    auto& colorAccessor = model.accessors[(*colors).accessorIndex];
+                    if (colorAccessor.type == fastgltf::AccessorType::Vec3)
+                    {
+                        fastgltf::iterateAccessorWithIndex<glm::vec3>(
+                            model, colorAccessor, [&](glm::vec3 v, size_t index) { vertexData[index].color = v; });
+                    }
+                    else
+                    {
+                        fastgltf::iterateAccessorWithIndex<glm::vec4>(model, colorAccessor, [&](glm::vec4 v, size_t index) {
                             vertexData[index].color = glm::vec3(v.x, v.y, v.z);
                         });
+                    }
                 }
             }
 
@@ -264,9 +271,14 @@ namespace Wild
 
     Material Model::LoadMaterials(fastgltf::Asset& model, fastgltf::Primitive& primitive)
     {
-        if (!primitive.materialIndex.has_value()) { WD_WARN("No material found."); }
-
         Material materials;
+
+        // Without a material the defaults are used, which renders as plain white
+        if (!primitive.materialIndex.has_value())
+        {
+            WD_WARN("No material found.");
+            return materials;
+        }
 
         auto& material = model.materials[primitive.materialIndex.value()];
 
@@ -277,8 +289,11 @@ namespace Wild
         materials.roughness = material.pbrData.roughnessFactor;
         materials.metallic = material.pbrData.metallicFactor;
         materials.emissiveStrength = material.emissiveStrength;
-        materials.emissiveFactor =
-            glm::vec3(material.emissiveFactor[0], material.emissiveFactor[1], material.emissiveFactor[2]);
+        materials.emissiveFactor = glm::vec3(material.emissiveFactor[0], material.emissiveFactor[1], material.emissiveFactor[2]);
+        materials.baseColor = glm::vec4(material.pbrData.baseColorFactor[0],
+                                        material.pbrData.baseColorFactor[1],
+                                        material.pbrData.baseColorFactor[2],
+                                        material.pbrData.baseColorFactor[3]);
 
         if (material.pbrData.baseColorTexture.has_value())
         {
@@ -402,6 +417,10 @@ namespace Wild
             infoDesc.emissiveFactor[2] = material.emissiveFactor.z;
             infoDesc.metallic = material.metallic;
             infoDesc.roughness = material.roughness;
+            infoDesc.baseColor[0] = material.baseColor.r;
+            infoDesc.baseColor[1] = material.baseColor.g;
+            infoDesc.baseColor[2] = material.baseColor.b;
+            infoDesc.baseColor[3] = material.baseColor.a;
 
             mesh.SetAccelerationData(blasIndex, as->AddMeshInfo(infoDesc));
         }
