@@ -33,6 +33,9 @@ namespace Wild
         uint32_t instanceMeshletOffset{};
         // Bindless UAV of the meshlet visibility buffer, INVALID_HEAP_INDEX when there is none
         uint32_t meshletVisibilityView = INVALID_HEAP_INDEX;
+
+        // Bindless SRV of the HZB, only used in the late pass
+        uint32_t hzbView = INVALID_HEAP_INDEX;
     };
 
     struct DeferredRootConstants
@@ -56,6 +59,11 @@ namespace Wild
         Texture* normalMetallicTexture;
         Texture* emissiveTexture;
         Texture* depthTexture;
+    };
+
+    // Same targets as the deferred pass, the late pass owns DeferredPassData so passes reading the G-buffer wait for it
+    struct DeferredEarlyPassData : DeferredPassData
+    {
     };
 
     struct DepthMipChainRootConstant
@@ -92,6 +100,7 @@ namespace Wild
     {
         Texture* depthTexture;
         Texture* hzbTexture;
+        uint32_t hzbMipCount;
     };
 
     class DeferredPass : public RenderFeature
@@ -110,6 +119,8 @@ namespace Wild
         void HZBDepthCopyPass(Renderer& renderer, RenderGraph& rg);
 
         void DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg, const bool useAmplification);
+        void RecordMeshShaderDraws(Renderer& renderer, const DeferredPassData& passData, CommandList& list,
+                                   const bool useAmplification, const bool latePass, const uint32_t hzbView);
         void DeferredVertexPass(Renderer& renderer, RenderGraph& rg);
 
         bool SupportsMeshShaderPath() const;

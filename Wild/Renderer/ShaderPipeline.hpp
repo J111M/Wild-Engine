@@ -26,10 +26,17 @@ namespace Wild
         std::vector<EntryPointBlob> shaderBlobs{};
     };
 
+    // Preprocessor define passed to the shader compiler
+    struct ShaderDefine
+    {
+        std::string name;
+        std::string value = "1";
+    };
+
     class Shader
     {
       public:
-        Shader(const std::string& shaderPath);
+        Shader(const std::string& shaderPath, const std::vector<ShaderDefine>& defines = {});
         ~Shader() {};
 
         D3D12_SHADER_BYTECODE GetByteCode() { return m_shaderBytecode; }
@@ -37,8 +44,8 @@ namespace Wild
         std::shared_ptr<RTEntryPoints> GetRTEntryPoints() const;
 
       private:
-        void CreateRasterizeShaders(const std::string& shaderPath);
-        void CreateRaytracingShaders(const std::string& shaderPath);
+        void CreateRasterizeShaders(const std::string& shaderPath, const std::vector<slang::PreprocessorMacroDesc>& macros);
+        void CreateRaytracingShaders(const std::string& shaderPath, const std::vector<slang::PreprocessorMacroDesc>& macros);
 
         std::shared_ptr<RTEntryPoints> m_rtEntry{};
 
@@ -53,7 +60,8 @@ namespace Wild
         ShaderTracker() = default;
         ~ShaderTracker() = default;
 
-        std::shared_ptr<Shader> GetOrCreateShader(const std::string& key);
+        // Every set of defines is cached as its own shader variant
+        std::shared_ptr<Shader> GetOrCreateShader(const std::string& key, const std::vector<ShaderDefine>& defines = {});
 
         void RemoveShader(const std::string& key);
         void ClearAllShaders();

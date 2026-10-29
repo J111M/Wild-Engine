@@ -4,8 +4,16 @@ namespace Wild
 {
     static const char* const SHADER_SEARCH_PATHS[] = {"Shaders", SHADER_SOURCE_DIR};
 
-    Shader::Shader(const std::string& shaderPath)
+    Shader::Shader(const std::string& shaderPath, const std::vector<ShaderDefine>& defines)
     {
+        // Points into defines, which outlives the compile below
+        std::vector<slang::PreprocessorMacroDesc> macros;
+        macros.reserve(defines.size());
+        for (const ShaderDefine& define : defines)
+        {
+            macros.push_back({define.name.c_str(), define.value.c_str()});
+        }
+
         // Check if the shader is a raytracing shader
         std::string rtCheck = shaderPath;
         std::transform(rtCheck.begin(), rtCheck.end(), rtCheck.begin(), ::tolower);
@@ -13,10 +21,10 @@ namespace Wild
             rtCheck.find("raytrace") != std::string::npos;
 
         // Check if the shader is a ray tracing shader
-        if (isRaytracingShader) { CreateRaytracingShaders(shaderPath); }
+        if (isRaytracingShader) { CreateRaytracingShaders(shaderPath, macros); }
         else
         {
-            CreateRasterizeShaders(shaderPath);
+            CreateRasterizeShaders(shaderPath, macros);
         }
     }
 
@@ -28,7 +36,7 @@ namespace Wild
             return nullptr;
     }
 
-    void Shader::CreateRasterizeShaders(const std::string& shaderPath)
+    void Shader::CreateRasterizeShaders(const std::string& shaderPath, const std::vector<slang::PreprocessorMacroDesc>& macros)
     {
         ComPtr<slang::IGlobalSession> globalSession;
         slang::createGlobalSession(&globalSession);
@@ -44,6 +52,9 @@ namespace Wild
 
         sessionDesc.searchPaths = SHADER_SEARCH_PATHS;
         sessionDesc.searchPathCount = SLANG_COUNT_OF(SHADER_SEARCH_PATHS);
+
+        sessionDesc.preprocessorMacros = macros.data();
+        sessionDesc.preprocessorMacroCount = static_cast<SlangInt>(macros.size());
 
         slang::ISession* session;
         globalSession->createSession(sessionDesc, &session);
@@ -111,7 +122,7 @@ namespace Wild
         m_shaderBytecode.pShaderBytecode = m_shaderBlob->getBufferPointer();
     }
 
-    void Shader::CreateRaytracingShaders(const std::string& shaderPath)
+    void Shader::CreateRaytracingShaders(const std::string& shaderPath, const std::vector<slang::PreprocessorMacroDesc>& macros)
     {
         ComPtr<slang::IGlobalSession> globalSession;
         slang::createGlobalSession(&globalSession);
@@ -125,6 +136,9 @@ namespace Wild
 
         sessionDesc.searchPaths = SHADER_SEARCH_PATHS;
         sessionDesc.searchPathCount = SLANG_COUNT_OF(SHADER_SEARCH_PATHS);
+
+        sessionDesc.preprocessorMacros = macros.data();
+        sessionDesc.preprocessorMacroCount = static_cast<SlangInt>(macros.size());
 
         slang::ISession* session;
         globalSession->createSession(sessionDesc, &session);
@@ -236,11 +250,17 @@ namespace Wild
     /// Shader tracker
     ///
 
-    std::shared_ptr<Shader> ShaderTracker::GetOrCreateShader(const std::string& key)
+    std::shared_ptr<Shader> ShaderTracker::GetOrCreateShader(const std::string& key, const std::vector<ShaderDefine>& defines)
     {
-        auto& shader = m_trackedShaders[key];
+        std::string variantKey = key;
+        for (const ShaderDefine& define : defines)
+        {
+            variantKey += ";" + define.name + "=" + define.value;
+        }
 
-        if (!shader) shader = std::make_shared<Shader>(key);
+        auto& shader = m_trackedShaders[variantKey];
+
+        if (!shader) shader = std::make_shared<Shader>(key, defines);
 
         return shader;
     }

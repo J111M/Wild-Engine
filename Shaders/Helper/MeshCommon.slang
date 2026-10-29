@@ -42,6 +42,8 @@ cbuffer Constants : register(b0)
 
     uint instanceMeshletOffset; // First slot of this instance in the meshlet visibility buffer
     uint meshletVisibilityView; // Bindless UAV of the meshlet visibility buffer, INVALID_HEAP_INDEX when there is none
+
+    uint hzbView; // Bindless SRV of the HZB, only used in the late pass
 };
 
 ConstantBuffer<SceneCameraData> sceneCamera : register(b1);

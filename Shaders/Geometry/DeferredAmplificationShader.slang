@@ -1,6 +1,11 @@
 #include "Helper/Common.slang"
 #include "Helper/MeshCommon.slang"
 
+// Late pass define macro
+#ifndef LATE_PASS
+#define LATE_PASS 0
+#endif
+
 groupshared MeshletPayload sharedPayload;
 
 // Atomic counter is used to track the next availibale slot
@@ -71,15 +76,33 @@ void main(uint3 gid: SV_GroupID, uint3 gtid: SV_GroupThreadID) {
         Meshlet meshlet = meshlets[groupMeshletOffset + gtid.x];
         float4 sphere = meshlet.meshletBoundingSphere;
 
-        // 1 = visible last frame, not used for culling yet
+        // Draws only what was visible last frame
         uint32_t visibilityIndex = instanceMeshletOffset + groupMeshletOffset + gtid.x;
-        bool wasVisible = true;
+        bool visible = true;
         if (meshletVisibilityView != INVALID_HEAP_INDEX) {
             RWStructuredBuffer<uint32_t> meshletVisibility = DescriptorHandle<RWStructuredBuffer<uint32_t>>(meshletVisibilityView);
-            wasVisible = meshletVisibility[visibilityIndex] != 0;
+            visible = meshletVisibility[visibilityIndex] != 0;
         }
 
-        if (IsInFrustum(sphere.xyz, sphere.w) && IsConeVisible(meshlet)) {
+        const bool inView = IsInFrustum(sphere.xyz, sphere.w) && IsConeVisible(meshlet);
+
+#if LATE_PASS
+        // Late pass, draws what became visible this frame and stores the visibility for the next frame
+        // TODO: occlusion test against the HZB built from the early pass depth
+        const bool visibleNow = inView;
+
+        // Meshlets the early pass already drew are skipped
+        const bool draw = visibleNow && !visible;
+
+        if (meshletVisibilityView != INVALID_HEAP_INDEX) {
+            RWStructuredBuffer<uint32_t> meshletVisibility = DescriptorHandle<RWStructuredBuffer<uint32_t>>(meshletVisibilityView);
+            meshletVisibility[visibilityIndex] = visibleNow ? 1 : 0;
+        }
+#else
+        const bool draw = visible && inView;
+#endif
+
+        if (draw) {
             uint index = visibleMeshletCount.add(1);
             sharedPayload.meshletIndices[index] = gtid.x;
         }
