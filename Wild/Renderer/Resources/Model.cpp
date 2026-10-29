@@ -25,7 +25,11 @@ namespace Wild
         m_filePath = filePath.parent_path().string() + "/";
         m_sourcePath = filePath.string();
 
-        fastgltf::Parser parser{};
+        // Assets that list an extension as required fail to parse unless it is enabled here
+        constexpr auto extensions = fastgltf::Extensions::KHR_texture_transform | fastgltf::Extensions::KHR_lights_punctual |
+                                    fastgltf::Extensions::KHR_materials_unlit |
+                                    fastgltf::Extensions::KHR_materials_emissive_strength;
+        fastgltf::Parser parser{extensions};
 
         auto data = fastgltf::GltfDataBuffer::FromPath(filePath);
 
@@ -40,7 +44,7 @@ namespace Wild
         if (auto error = asset.error(); error != fastgltf::Error::None)
         {
             WD_WARN("Model could not be loaded: {}", filePath.string());
-            WD_WARN("Failed to read the buffer, parsing the JSON, or validating the data!");
+            WD_WARN("fastgltf error: {}", fastgltf::getErrorMessage(error));
             return;
         }
 

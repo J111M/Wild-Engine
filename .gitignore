@@ -49,3 +49,7 @@ spirv/
 
 # Files
 *.user
+
+# Large local-only assets
+/Assets/Models/Demo_City/
+/Assets/Textures/IBL/

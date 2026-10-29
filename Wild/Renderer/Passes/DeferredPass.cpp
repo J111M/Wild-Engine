@@ -59,30 +59,19 @@ namespace Wild
             transform.Name = "Sponza";
         });
 
-        engine.GetSceneManager()->AddScene("Occlusion test", []() {
+        engine.GetSceneManager()->AddScene("Demo city", []() {
             auto ecs = engine.GetECS();
-
-            const glm::vec3 cubeCenter(4.7665f);
-            auto addCube = [&](glm::vec3 center, glm::vec3 scale, const std::string& name) {
-                auto entity = ecs->CreateEntity();
-                ecs->AddComponent<SceneObject>(entity);
-                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
-                ecs->AddComponent<Model>(entity, "Assets/Models/Cube/scene.gltf", entity);
-                transform.SetScale(scale);
-                transform.SetPosition(center - cubeCenter * scale);
-                transform.Name = name;
-            };
-
-            addCube(glm::vec3(-15.25f, 0.0f, -10.0f), glm::vec3(3.2f, 6.0f, 0.1f), "Wall");
-            for (int x = 0; x < 20; x++)
-                for (int y = 0; y < 20; y++)
-                    for (int z = 0; z < 20; z++)
-                        addCube(glm::vec3(x * 2.0f - 19.0f, y * 2.0f - 19.0f, -25.0f - z * 2.0f),
-                                glm::vec3(0.1f),
-                                "Cube " + std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(z));
+            auto entity = ecs->CreateEntity();
+            ecs->AddComponent<SceneObject>(entity);
+            auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+            ecs->AddComponent<Model>(entity, "Assets/Models/Demo_City/Demo_City.gltf", entity);
+            transform.SetScale(glm::vec3(1, 1, 1));
+            transform.SetPosition(glm::vec3(0, 1, 0));
+            // transform.SetRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
+            transform.Name = "Demo city";
         });
 
-        engine.GetSceneManager()->LoadScene("Occlusion test");
+        engine.GetSceneManager()->LoadScene("Demo city");
     }
 
     void DeferredPass::Update(const float dt)
