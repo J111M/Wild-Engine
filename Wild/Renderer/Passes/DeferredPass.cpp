@@ -173,10 +173,28 @@ namespace Wild
     void DeferredPass::BuildHZBPass(Renderer& renderer, RenderGraph& rg)
     {
         auto* passData = rg.AllocatePassData<HZBPassData>();
-        auto* copyData = rg.GetPassData<HZBPassData, HZBDepthCopyPassData>();
+        auto* earlyData = rg.GetPassData<HZBPassData, DeferredEarlyPassData>();
 
-        passData->hzbTexture = copyData->hzbTexture;
-        passData->hzbMipCount = copyData->hzbMipCount;
+        passData->depthTexture = earlyData->depthTexture;
+
+        {
+            const uint32_t screenWidth = engine.GetGfxContext()->GetWidth();
+            const uint32_t screenHeight = engine.GetGfxContext()->GetHeight();
+
+            TextureDesc desc;
+            // Power of two below the screen size, so every mip exactly halves and uv maps to the same texel on every mip
+            desc.width = 1u << static_cast<uint32_t>(std::floor(std::log2(screenWidth)));
+            desc.height = 1u << static_cast<uint32_t>(std::floor(std::log2(screenHeight)));
+            // Full chain
+            desc.mips = static_cast<uint32_t>(std::log2(std::max(desc.width, desc.height))) + 1;
+            // Use R32 becuase this works with UAV resources
+            desc.format = DXGI_FORMAT_R32_FLOAT;
+            desc.name = "HZB texture";
+            desc.usage = TextureDesc::gpuOnly;
+            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::shaderResource | TextureDesc::readWrite);
+            passData->hzbTexture = rg.CreateTransientTexture("HZBTexture", desc);
+            passData->hzbMipCount = desc.mips;
+        }
 
         // Render large objects to the depth texture since previous frame data might not always be the same
         // rg.AddPass<HZBPassData>(
@@ -189,6 +207,55 @@ namespace Wild
         // Build the hierarchical z buffer from the early pass depth, used to test against occluded objects
         rg.AddPass<HZBPassData>(
             "HZB build pass", PassType::Compute, [&renderer, this](const HZBPassData& passData, CommandList& list) {
+                Texture* hzb = passData.hzbTexture;
+
+                // Reduces the full resolution depth into mip 0
+                {
+                    PipelineStateSettings settings{};
+                    settings.shaderState.computeShader = engine.GetShaderTracker()->GetOrCreateShader(
+                        "Shaders/Geometry/OcclusionCulling/HZBDepthReduce.slang");
+
+                    std::vector<Uniform> uniforms;
+                    Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DepthMipChainRootConstant)};
+                    uniforms.emplace_back(rootConstant);
+
+                    Uniform depthSrv{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE depthRange{};
+                    depthRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                    depthSrv.ranges.emplace_back(depthRange);
+                    uniforms.emplace_back(depthSrv);
+
+                    Uniform dstMipUav{0, 0, RootParams::RootResourceType::DescriptorTable};
+                    CD3DX12_DESCRIPTOR_RANGE dstRange{};
+                    dstRange.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+                    dstMipUav.ranges.emplace_back(dstRange);
+                    uniforms.emplace_back(dstMipUav);
+
+                    auto& pipeline =
+                        renderer.GetOrCreatePipeline("HZB depth reduce pass", PipelineStateType::Compute, settings, uniforms);
+                    list.SetPipelineState(pipeline);
+                    list.BeginRender();
+
+                    Texture* depth = passData.depthTexture;
+                    depth->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+                    m_depthMipRc.srcSize = {depth->Width(), depth->Height()};
+                    m_depthMipRc.dstSize = {hzb->Width(), hzb->Height()};
+                    list.SetRootConstant<DepthMipChainRootConstant>(0, m_depthMipRc);
+                    list.GetList()->SetComputeRootDescriptorTable(1, depth->GetSrv()->GetGpuHandle());
+                    list.SetUnorderedAccessView(2, hzb, 0);
+
+                    list.Dispatch((hzb->Width() + 7) / 8, (hzb->Height() + 7) / 8, 1);
+
+                    // The mip chain reads what this dispatch wrote
+                    D3D12_RESOURCE_BARRIER uavBarrier = {};
+                    uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                    uavBarrier.UAV.pResource = hzb->GetResource();
+                    list.GetList()->ResourceBarrier(1, &uavBarrier);
+
+                    list.EndRender();
+                }
+
                 PipelineStateSettings settings{};
                 settings.shaderState.computeShader =
                     engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/OcclusionCulling/DepthMipChain.slang");
@@ -214,9 +281,6 @@ namespace Wild
                 auto& pipeline = renderer.GetOrCreatePipeline("HZB build pass", PipelineStateType::Compute, settings, uniforms);
                 list.SetPipelineState(pipeline);
                 list.BeginRender();
-
-                Texture* hzb = passData.hzbTexture;
-                hzb->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                 glm::uvec2 srcSize{hzb->Width(), hzb->Height()};
                 for (uint32_t mip = 1; mip < passData.hzbMipCount; mip++)
@@ -267,49 +331,6 @@ namespace Wild
                 }
 
                 RecordMeshShaderDraws(renderer, passData, list, true, true, hzbData);
-            });
-    }
-
-    void DeferredPass::HZBDepthCopyPass(Renderer& renderer, RenderGraph& rg)
-    {
-        auto* passData = rg.AllocatePassData<HZBDepthCopyPassData>();
-        auto* deferredData = rg.GetPassData<HZBDepthCopyPassData, DeferredEarlyPassData>();
-
-        passData->depthTexture = deferredData->depthTexture;
-
-        // Mip 0 is filled by this pass, the rest of the chain is built from it by the HZB build pass
-        {
-            TextureDesc desc;
-            desc.width = engine.GetGfxContext()->GetWidth();
-            desc.height = engine.GetGfxContext()->GetHeight();
-            // Full chain
-            desc.mips = static_cast<uint32_t>(std::floor(std::log2(std::max(desc.width, desc.height)))) + 1;
-            // Use R32 becuase this works better with UAV
-            desc.format = DXGI_FORMAT_R32_FLOAT;
-            desc.name = "HZB texture";
-            desc.usage = TextureDesc::gpuOnly;
-            desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::shaderResource | TextureDesc::readWrite);
-            passData->hzbTexture = rg.CreateTransientTexture("HZBTexture", desc);
-            passData->hzbMipCount = desc.mips;
-        }
-
-        rg.AddPass<HZBDepthCopyPassData>(
-            "HZB depth copy pass", PassType::Default, [](const HZBDepthCopyPassData& passData, CommandList& list) {
-                passData.depthTexture->Transition(list, D3D12_RESOURCE_STATE_COPY_SOURCE);
-                passData.hzbTexture->Transition(list, D3D12_RESOURCE_STATE_COPY_DEST);
-
-                // Copy into mip 0 only, so the copy keeps working once the target has a mip chain
-                D3D12_TEXTURE_COPY_LOCATION src{};
-                src.pResource = passData.depthTexture->GetResource();
-                src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-                src.SubresourceIndex = 0;
-
-                D3D12_TEXTURE_COPY_LOCATION dst{};
-                dst.pResource = passData.hzbTexture->GetResource();
-                dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-                dst.SubresourceIndex = 0;
-
-                list.GetList()->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
             });
     }
 
@@ -617,8 +638,7 @@ namespace Wild
         {
             DeferredEarlyPass(renderer, rg);
 
-            // Copies the early pass depth into mip 0 of the hierarchical z buffer and builds the chain from it
-            HZBDepthCopyPass(renderer, rg);
+            // Builds the hierarchical z buffer from the early pass depth
             BuildHZBPass(renderer, rg);
 
             DeferredLatePass(renderer, rg);

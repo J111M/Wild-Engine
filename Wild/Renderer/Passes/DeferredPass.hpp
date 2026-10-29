@@ -78,8 +78,12 @@ namespace Wild
 
     struct HZBPassData
     {
+        // Early pass depth the HZB is built from
+        Texture* depthTexture;
+
         // Hierarchical z buffer, used as the occluder data for culling.
-        // Mip 0 holds the copied depth, every other mip stores the farthest depth of its parent (hierarchical z buffer)
+        // Mip 0 is the power of two below the screen size holding the farthest depth of the pixels it covers,
+        // every other mip stores the farthest depth of its parent
         Texture* hzbTexture;
         uint32_t hzbMipCount;
     };
@@ -99,13 +103,6 @@ namespace Wild
         uint32_t hzbMipCount;
     };
 
-    struct HZBDepthCopyPassData
-    {
-        Texture* depthTexture;
-        Texture* hzbTexture;
-        uint32_t hzbMipCount;
-    };
-
     class DeferredPass : public RenderFeature
     {
       public:
@@ -118,8 +115,6 @@ namespace Wild
         void DeferredEarlyPass(Renderer& renderer, RenderGraph& rg);
         void BuildHZBPass(Renderer& renderer, RenderGraph& rg);
         void DeferredLatePass(Renderer& renderer, RenderGraph& rg);
-
-        void HZBDepthCopyPass(Renderer& renderer, RenderGraph& rg);
 
         void DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg, const bool useAmplification);
         void RecordMeshShaderDraws(Renderer& renderer, const DeferredPassData& passData, CommandList& list,
