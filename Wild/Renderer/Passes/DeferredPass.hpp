@@ -143,6 +143,9 @@ namespace Wild
         // Only ever takes effect when the mesh shader path is active.
         bool m_useAmplificationShader = true;
 
+        // Stops updating the meshlet visibility so the camera can move around the last culling result
+        bool m_freezeCulling = false;
+
         std::unique_ptr<Texture> m_texture;
 
         // Indirect rendering resources

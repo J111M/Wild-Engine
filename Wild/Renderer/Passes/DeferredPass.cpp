@@ -59,7 +59,30 @@ namespace Wild
             transform.Name = "Sponza";
         });
 
-        engine.GetSceneManager()->LoadScene("Sponza");
+        engine.GetSceneManager()->AddScene("Occlusion test", []() {
+            auto ecs = engine.GetECS();
+
+            const glm::vec3 cubeCenter(4.7665f);
+            auto addCube = [&](glm::vec3 center, glm::vec3 scale, const std::string& name) {
+                auto entity = ecs->CreateEntity();
+                ecs->AddComponent<SceneObject>(entity);
+                auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+                ecs->AddComponent<Model>(entity, "Assets/Models/Cube/scene.gltf", entity);
+                transform.SetScale(scale);
+                transform.SetPosition(center - cubeCenter * scale);
+                transform.Name = name;
+            };
+
+            addCube(glm::vec3(-15.25f, 0.0f, -10.0f), glm::vec3(3.2f, 6.0f, 0.1f), "Wall");
+            for (int x = 0; x < 20; x++)
+                for (int y = 0; y < 20; y++)
+                    for (int z = 0; z < 20; z++)
+                        addCube(glm::vec3(x * 2.0f - 19.0f, y * 2.0f - 19.0f, -25.0f - z * 2.0f),
+                                glm::vec3(0.1f),
+                                "Cube " + std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(z));
+        });
+
+        engine.GetSceneManager()->LoadScene("Occlusion test");
     }
 
     void DeferredPass::Update(const float dt)
@@ -88,6 +111,10 @@ namespace Wild
 
             ImGui::BeginDisabled(m_forceVertexPath);
             ImGui::Checkbox("Use amplification shader", &m_useAmplificationShader);
+
+            ImGui::BeginDisabled(!m_useAmplificationShader);
+            ImGui::Checkbox("Freeze culling", &m_freezeCulling);
+            ImGui::EndDisabled();
             ImGui::EndDisabled();
         });
     }
@@ -159,12 +186,11 @@ namespace Wild
 
         EnsureMeshletVisibilityBuffer(CountSceneMeshlets());
 
-        rg.AddPass<DeferredEarlyPassData>(
-            "Deferred early pass",
-            PassType::MeshShader,
-            [&renderer, this](const DeferredEarlyPassData& passData, CommandList& list) {
-                RecordMeshShaderDraws(renderer, passData, list, true, false, nullptr);
-            });
+        rg.AddPass<DeferredEarlyPassData>("Deferred early pass",
+                                          PassType::MeshShader,
+                                          [&renderer, this](const DeferredEarlyPassData& passData, CommandList& list) {
+                                              RecordMeshShaderDraws(renderer, passData, list, true, false, nullptr);
+                                          });
     }
 
     /// <summary>
@@ -212,8 +238,8 @@ namespace Wild
                 // Reduces the full resolution depth into mip 0
                 {
                     PipelineStateSettings settings{};
-                    settings.shaderState.computeShader = engine.GetShaderTracker()->GetOrCreateShader(
-                        "Shaders/Geometry/OcclusionCulling/HZBDepthReduce.slang");
+                    settings.shaderState.computeShader =
+                        engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/OcclusionCulling/HZBDepthReduce.slang");
 
                     std::vector<Uniform> uniforms;
                     Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(DepthMipChainRootConstant)};
@@ -315,35 +341,33 @@ namespace Wild
     {
         const HZBPassData* hzbData = rg.GetPassData<DeferredPassData, HZBPassData>();
 
-        rg.AddPass<DeferredPassData>(
-            "Deferred late pass",
-            PassType::MeshShader,
-            [&renderer, this, hzbData](const DeferredPassData& passData, CommandList& list) {
-                hzbData->hzbTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        rg.AddPass<DeferredPassData>("Deferred late pass",
+                                     PassType::MeshShader,
+                                     [&renderer, this, hzbData](const DeferredPassData& passData, CommandList& list) {
+                                         hzbData->hzbTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-                // The early pass read the visibility flags that this pass overwrites
-                if (m_meshletVisibilityBuffer)
-                {
-                    D3D12_RESOURCE_BARRIER uavBarrier = {};
-                    uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-                    uavBarrier.UAV.pResource = m_meshletVisibilityBuffer->GetBuffer();
-                    list.GetList()->ResourceBarrier(1, &uavBarrier);
-                }
+                                         // The early pass read the visibility flags that this pass overwrites
+                                         if (m_meshletVisibilityBuffer)
+                                         {
+                                             D3D12_RESOURCE_BARRIER uavBarrier = {};
+                                             uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                                             uavBarrier.UAV.pResource = m_meshletVisibilityBuffer->GetBuffer();
+                                             list.GetList()->ResourceBarrier(1, &uavBarrier);
+                                         }
 
-                RecordMeshShaderDraws(renderer, passData, list, true, true, hzbData);
-            });
+                                         RecordMeshShaderDraws(renderer, passData, list, true, true, hzbData);
+                                     });
     }
 
     void DeferredPass::DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg, const bool useAmplification)
     {
         const char* passName = useAmplification ? "Deferred amplification pass" : "Deferred mesh shader pass";
 
-        rg.AddPass<DeferredPassData>(
-            passName,
-            PassType::MeshShader,
-            [&renderer, this, useAmplification](const DeferredPassData& passData, CommandList& list) {
-                RecordMeshShaderDraws(renderer, passData, list, useAmplification, false, nullptr);
-            });
+        rg.AddPass<DeferredPassData>(passName,
+                                     PassType::MeshShader,
+                                     [&renderer, this, useAmplification](const DeferredPassData& passData, CommandList& list) {
+                                         RecordMeshShaderDraws(renderer, passData, list, useAmplification, false, nullptr);
+                                     });
     }
 
     void DeferredPass::RecordMeshShaderDraws(Renderer& renderer, const DeferredPassData& passData, CommandList& list,
@@ -413,6 +437,13 @@ namespace Wild
         list.SetBindlessHeap(1);
         list.SetConstantBufferView(2, GetSceneDataAddress());
 
+        // Only the late pass writes the visibility buffer, skipping it keeps the early pass drawing the frozen set
+        if (latePass && m_freezeCulling)
+        {
+            list.EndRender();
+            return;
+        }
+
         const glm::vec4 cameraPosition = GetSceneData().position;
 
         const bool meshletDebug = m_meshletDebugView && SupportsClusterDebugView();
@@ -468,8 +499,7 @@ namespace Wild
             const auto& material = mesh.GetMaterial();
             if (material.m_albedo) rc.albedoView = material.m_albedo->GetSrv()->BindlessView();
             if (material.m_normal) rc.normalView = material.m_normal->GetSrv()->BindlessView();
-            if (material.m_roughnessMetallic)
-                rc.roughnessMetallicView = material.m_roughnessMetallic->GetSrv()->BindlessView();
+            if (material.m_roughnessMetallic) rc.roughnessMetallicView = material.m_roughnessMetallic->GetSrv()->BindlessView();
             if (material.m_emissive) rc.emissiveView = material.m_emissive->GetSrv()->BindlessView();
             rc.baseColor = material.baseColor;
 
@@ -626,6 +656,17 @@ namespace Wild
 
     void DeferredPass::Add(Renderer& renderer, RenderGraph& rg)
     {
+        const bool occlusionCulling = SupportsMeshShaderPath() && !m_forceVertexPath && m_useAmplificationShader;
+
+        // Passes execute in the order their data is allocated, so the early pass and HZB build are allocated first
+        if (occlusionCulling)
+        {
+            DeferredEarlyPass(renderer, rg);
+
+            // Builds the hierarchical z buffer from the early pass depth
+            BuildHZBPass(renderer, rg);
+        }
+
         auto* passData = rg.AllocatePassData<DeferredPassData>();
         auto* grassData = rg.GetPassData<DeferredPassData, RenderGrassData>();
 
@@ -634,15 +675,8 @@ namespace Wild
         passData->emissiveTexture = grassData->emissiveTexture;
         passData->depthTexture = grassData->depthTexture;
 
-        if (SupportsMeshShaderPath() && !m_forceVertexPath && m_useAmplificationShader)
-        {
-            DeferredEarlyPass(renderer, rg);
-
-            // Builds the hierarchical z buffer from the early pass depth
-            BuildHZBPass(renderer, rg);
-
+        if (occlusionCulling)
             DeferredLatePass(renderer, rg);
-        }
         else if (SupportsMeshShaderPath() && !m_forceVertexPath)
             DeferredMeshShaderPass(renderer, rg, false);
         else
