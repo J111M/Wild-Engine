@@ -36,6 +36,9 @@ namespace Wild
 
         // Bindless SRV of the HZB, only used in the late pass
         uint32_t hzbView = INVALID_HEAP_INDEX;
+        // Size of HZB mip 0 and the amount of mips, used to pick the mip a bounding sphere covers
+        glm::vec<2, uint32_t, glm::packed_highp> hzbSize{};
+        uint32_t hzbMipCount{};
     };
 
     struct DeferredRootConstants
@@ -120,7 +123,7 @@ namespace Wild
 
         void DeferredMeshShaderPass(Renderer& renderer, RenderGraph& rg, const bool useAmplification);
         void RecordMeshShaderDraws(Renderer& renderer, const DeferredPassData& passData, CommandList& list,
-                                   const bool useAmplification, const bool latePass, const uint32_t hzbView);
+                                   const bool useAmplification, const bool latePass, const HZBPassData* hzbData);
         void DeferredVertexPass(Renderer& renderer, RenderGraph& rg);
 
         bool SupportsMeshShaderPath() const;

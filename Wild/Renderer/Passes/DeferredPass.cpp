@@ -163,7 +163,7 @@ namespace Wild
             "Deferred early pass",
             PassType::MeshShader,
             [&renderer, this](const DeferredEarlyPassData& passData, CommandList& list) {
-                RecordMeshShaderDraws(renderer, passData, list, true, false, INVALID_HEAP_INDEX);
+                RecordMeshShaderDraws(renderer, passData, list, true, false, nullptr);
             });
     }
 
@@ -249,14 +249,13 @@ namespace Wild
     /// </summary>
     void DeferredPass::DeferredLatePass(Renderer& renderer, RenderGraph& rg)
     {
-        auto* hzbData = rg.GetPassData<DeferredPassData, HZBPassData>();
-        Texture* hzbTexture = hzbData->hzbTexture;
+        const HZBPassData* hzbData = rg.GetPassData<DeferredPassData, HZBPassData>();
 
         rg.AddPass<DeferredPassData>(
             "Deferred late pass",
             PassType::MeshShader,
-            [&renderer, this, hzbTexture](const DeferredPassData& passData, CommandList& list) {
-                hzbTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            [&renderer, this, hzbData](const DeferredPassData& passData, CommandList& list) {
+                hzbData->hzbTexture->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
                 // The early pass read the visibility flags that this pass overwrites
                 if (m_meshletVisibilityBuffer)
@@ -267,7 +266,7 @@ namespace Wild
                     list.GetList()->ResourceBarrier(1, &uavBarrier);
                 }
 
-                RecordMeshShaderDraws(renderer, passData, list, true, true, hzbTexture->GetSrv()->View());
+                RecordMeshShaderDraws(renderer, passData, list, true, true, hzbData);
             });
     }
 
@@ -322,12 +321,12 @@ namespace Wild
             passName,
             PassType::MeshShader,
             [&renderer, this, useAmplification](const DeferredPassData& passData, CommandList& list) {
-                RecordMeshShaderDraws(renderer, passData, list, useAmplification, false, INVALID_HEAP_INDEX);
+                RecordMeshShaderDraws(renderer, passData, list, useAmplification, false, nullptr);
             });
     }
 
     void DeferredPass::RecordMeshShaderDraws(Renderer& renderer, const DeferredPassData& passData, CommandList& list,
-                                             const bool useAmplification, const bool latePass, const uint32_t hzbView)
+                                             const bool useAmplification, const bool latePass, const HZBPassData* hzbData)
     {
         // Each phase compiles its own amplification shader variant, so each needs its own pipeline
         const char* passName = !useAmplification ? "Deferred mesh shader pass"
@@ -374,6 +373,14 @@ namespace Wild
 
         Uniform staticSampler{0, 0, RootParams::RootResourceType::StaticSampler};
         uniforms.emplace_back(staticSampler);
+
+        // Samples the HZB in the late pass amplification shader
+        Uniform hzbSampler{1, 0, RootParams::RootResourceType::StaticSampler};
+        hzbSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+        hzbSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        hzbSampler.samplerState.addressModeW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        hzbSampler.visibility = D3D12_SHADER_VISIBILITY_AMPLIFICATION;
+        uniforms.emplace_back(hzbSampler);
 
         auto pipeline = renderer.GetOrCreatePipeline(passName, PipelineStateType::MeshPipeline, settings, uniforms);
 
@@ -428,7 +435,12 @@ namespace Wild
             DeferredMeshShaderRootConstants rc{};
             rc.instanceMeshletOffset = meshletSlot;
             rc.meshletVisibilityView = meshletVisibilityView;
-            rc.hzbView = hzbView;
+            if (hzbData)
+            {
+                rc.hzbView = hzbData->hzbTexture->GetSrv()->View();
+                rc.hzbSize = {hzbData->hzbTexture->Width(), hzbData->hzbTexture->Height()};
+                rc.hzbMipCount = hzbData->hzbMipCount;
+            }
             rc.model = world;
             rc.invTransposeModel = glm::mat4(glm::transpose(glm::inverse(glm::mat3(world))));
             rc.cullCameraPosition = glm::vec3(glm::inverse(world) * cameraPosition);
