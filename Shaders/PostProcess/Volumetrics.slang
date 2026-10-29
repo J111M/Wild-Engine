@@ -122,8 +122,8 @@ float ShadowCalculation(float3 marchPosition)
 
 float LinearizeDepth(float depth)
 {
-    const float2 nearFar = sceneCamera.nearFarFovAspect.xy;
-    return (nearFar.x * nearFar.y) / (nearFar.y - depth * (nearFar.y - nearFar.x));
+    // Infinite projection: depth = 1 - near / linearDepth
+    return sceneCamera.nearFarFovAspect.x / (1.0 - depth);
 }
 
 // Exponentiol height falloff
@@ -158,6 +158,9 @@ void main(uint3 id: SV_DispatchThreadID)
     float4 srcTexture = textures[NonUniformResourceIndex(srcTextureView)].Load(int3(coords, 0));
 
     float rawDepth = textures[NonUniformResourceIndex(depthView)].Load(int3(coords, 0)).r;
+
+    const float maxDepth = 1.0 - sceneCamera.nearFarFovAspect.x / sceneCamera.nearFarFovAspect.y;
+    rawDepth = min(rawDepth, maxDepth);
     float2 ndc = (float2(coords) + 0.5) / float2(textureSize) * 2.0 - 1.0;
     ndc.y = -ndc.y;
 

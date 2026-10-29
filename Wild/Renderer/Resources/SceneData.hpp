@@ -28,7 +28,7 @@ namespace Wild
         // xyz = world space position, w = 1
         glm::vec4 position{0.0f, 0.0f, 0.0f, 1.0f};
 
-        // x = near, y = far, z = vertical fov in radians, w = aspect ratio
+        // x = near, y = shadow distance (the projection has no far plane), z = vertical fov in radians, w = aspect ratio
         glm::vec4 nearFarFovAspect{};
 
         // Normalized world space planes in the order left, right, bottom, top, near, far

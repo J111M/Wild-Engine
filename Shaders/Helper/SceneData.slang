@@ -16,7 +16,7 @@ struct SceneCameraData
 
     float4 position;
 
-    // x = near, y = far, z = vertical fov in radians, w = aspect ratio
+    // x = near, y = shadow distance (the projection has no far plane), z = vertical fov in radians, w = aspect ratio
     float4 nearFarFovAspect;
 
     // Normalized world space planes in the order left, right, bottom, top, near, far

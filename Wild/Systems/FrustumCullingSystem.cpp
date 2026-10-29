@@ -2,9 +2,9 @@
 
 #include "Renderer/Resources/Mesh.hpp"
 
-#include <glm/gtc/matrix_access.hpp>
 #include <algorithm>
 #include <execution>
+#include <glm/gtc/matrix_access.hpp>
 #include <numeric>
 #include <thread>
 
@@ -54,6 +54,14 @@ namespace Wild
         for (auto& plane : frustum.planes)
         {
             const float len = glm::length(glm::vec3(plane));
+
+            // An infinite projection has no far plane never cull it
+            if (len < 1e-6f)
+            {
+                plane = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+                continue;
+            }
+
             plane /= len;
         }
 

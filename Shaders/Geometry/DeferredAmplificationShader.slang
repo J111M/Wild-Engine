@@ -86,7 +86,9 @@ void ExtractFrustumPlanes()
 
     for (int i = 0; i < 6; i++)
     {
-        frustumPlanes[i] /= length(frustumPlanes[i].xyz);
+        // An infinite projection has no far plane never cull it
+        const float len = length(frustumPlanes[i].xyz);
+        frustumPlanes[i] = len < 1e-6f ? float4(0.0f, 0.0f, 0.0f, 1.0f) : frustumPlanes[i] / len;
     }
 }
 

@@ -7,15 +7,17 @@ namespace Wild
 {
     Camera::Camera(glm::vec3 pos) { m_position = pos; }
 
-    void Camera::UpdateMatrix(float fov, float aspect, float nearF, float farF)
+    void Camera::UpdateMatrix(float fov, float aspect, float nearF, float shadowDistance)
     {
         m_viewMatrix = glm::lookAt(m_position, m_position + m_orientation, m_up);
-        m_projectionMatrix = glm::perspective(fov, aspect, nearF, farF);
+        // No far plane, depth goes from 0 at the near plane to 1 at infinity
+        m_projectionMatrix = glm::infinitePerspectiveRH_ZO(fov, aspect, nearF);
 
         m_cameraMatrix = m_projectionMatrix * m_viewMatrix;
 
+        // The shadow cascades and volumetrics only cover this distance, the projection itself is infinite
         m_nearFar.x = nearF;
-        m_nearFar.y = farF;
+        m_nearFar.y = shadowDistance;
         m_fov = fov;
         m_aspect = aspect;
 

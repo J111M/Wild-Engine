@@ -198,7 +198,7 @@ namespace Wild
 
         // GLM_FORCE_DEPTH_ZERO_TO_ONE (see Camera.hpp) means NDC z runs [0,1], not [-1,1]
         glm::vec4 nearPoint = invViewProj * glm::vec4(ndc.x, ndc.y, 0.0f, 1.0f);
-        glm::vec4 farPoint = invViewProj * glm::vec4(ndc.x, ndc.y, 1.0f, 1.0f);
+        glm::vec4 farPoint = invViewProj * glm::vec4(ndc.x, ndc.y, 0.5f, 1.0f);
         nearPoint /= nearPoint.w;
         farPoint /= farPoint.w;
 
