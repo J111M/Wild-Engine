@@ -68,6 +68,7 @@ namespace Wild
         m_shaderCacheSupported = ConvertShaderCacheSupport(featureSupport.ShaderCacheSupportFlags());
         m_rayTracingSupport = ConvertRayTracingTier(featureSupport.RaytracingTier());
         m_resourceBindingSupport = ConvertResourceBindingSupport(featureSupport.ResourceBindingTier());
+        m_minMaxFilteringSupported = featureSupport.TiledResourcesTier() >= D3D12_TILED_RESOURCES_TIER_2;
 
         return true;
     }

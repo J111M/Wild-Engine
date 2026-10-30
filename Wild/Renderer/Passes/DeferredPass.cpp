@@ -370,11 +370,15 @@ namespace Wild
         // Meshlets handled by one group of the first stage, the task shader culls 64 meshlets per group
         const uint32_t meshletsPerGroup = useAmplification ? 64u : 1u;
 
+        // A max reduction sampler fetches the farthest depth of a 2x2 HZB block in one tap
+        const bool hzbReductionSampler = engine.GetGfxContext()->GetCapabilities().SupportsMinMaxFiltering();
+
         PipelineStateSettings settings{};
         if (useAmplification)
         {
             settings.shaderState.amplificationShader = engine.GetShaderTracker()->GetOrCreateShader(
-                "Shaders/Geometry/DeferredAmplificationShader.slang", {{"LATE_PASS", latePass ? "1" : "0"}});
+                "Shaders/Geometry/DeferredAmplificationShader.slang",
+                {{"LATE_PASS", latePass ? "1" : "0"}, {"HZB_REDUCTION_SAMPLER", hzbReductionSampler ? "1" : "0"}});
             settings.shaderState.meshShader =
                 engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/DeferredMeshShader.slang");
         }
@@ -410,7 +414,8 @@ namespace Wild
 
         // Samples the HZB in the late pass amplification shader
         Uniform hzbSampler{1, 0, RootParams::RootResourceType::StaticSampler};
-        hzbSampler.samplerState.filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+        hzbSampler.samplerState.filter =
+            hzbReductionSampler ? D3D12_FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MIN_MAG_MIP_POINT;
         hzbSampler.samplerState.addressMode = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
         hzbSampler.samplerState.addressModeW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
         hzbSampler.visibility = D3D12_SHADER_VISIBILITY_AMPLIFICATION;

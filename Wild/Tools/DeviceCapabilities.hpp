@@ -55,10 +55,14 @@ namespace Wild
         bool CheckLibraryPSOCacheSupport() const { return m_shaderCacheSupported == ShaderCacheSupport::Library; }
         bool CheckDriverManagedPSOCacheSupport() const { return m_shaderCacheSupported == ShaderCacheSupport::DriverManaged; }
 
+        // Min/max reduction samplers, D3D12 ties these to tiled resources tier 2
+        bool SupportsMinMaxFiltering() const { return m_minMaxFilteringSupported; }
+
       protected:
         MeshShaderSupport m_meshShaderSupported = MeshShaderSupport::TierNotSupported;
         ShaderCacheSupport m_shaderCacheSupported = ShaderCacheSupport::NotSupported;
         RayTracingSupport m_rayTracingSupport = RayTracingSupport::TierNotSupported;
         ResourceBindingSupport m_resourceBindingSupport = ResourceBindingSupport::TierNotSupported;
+        bool m_minMaxFilteringSupported = false;
     };
 } // namespace Wild

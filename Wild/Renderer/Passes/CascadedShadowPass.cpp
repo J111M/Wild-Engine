@@ -87,10 +87,7 @@ namespace Wild
                 {
                     list.SetPipelineState(pipeline);
 
-                    list.BeginRender({},
-                                     {ClearOperation::Store},
-                                     {passData.shadowMap[i]},
-                                     DSClearOperation::DepthClear);
+                    list.BeginRender({}, {ClearOperation::Store}, {passData.shadowMap[i]}, DSClearOperation::DepthClear);
 
                     // Every cascade has its own light view projection, so only casters inside that cascade are drawn
                     const auto& visibleEntities = cullingSystem.CullMeshComponents(m_directLight.viewProj[i]);
@@ -258,8 +255,8 @@ namespace Wild
                 nearFar[nf] = nearField;
             }
 
-            cascadeProjections = glm::perspectiveRH_ZO(
-                sceneData.nearFarFovAspect.z, sceneData.nearFarFovAspect.w, nearFar[0], nearFar[1]);
+            cascadeProjections =
+                glm::perspectiveRH_ZO(sceneData.nearFarFovAspect.z, sceneData.nearFarFovAspect.w, nearFar[0], nearFar[1]);
             cascadeFarDistances = nearFar[1];
 
             const glm::mat4 cascadeViewProj = GetCascadeMatrix(glm::vec3(m_directLight.lightDirectionIntensity.x,

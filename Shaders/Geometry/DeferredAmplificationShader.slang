@@ -6,9 +6,34 @@
 #define LATE_PASS 0
 #endif
 
+// Set when the device supports min/max filtering, the HZB sampler then returns the farthest depth of a 2x2 footprint
+#ifndef HZB_REDUCTION_SAMPLER
+#define HZB_REDUCTION_SAMPLER 0
+#endif
+
 #if LATE_PASS
-// Point sampling so the HZB returns the stored farthest depth
-SamplerState hzbPointSampler : register(s1);
+// Max reduction sampler when HZB_REDUCTION_SAMPLER is set, point sampler otherwise
+SamplerState hzbSampler : register(s1);
+
+// Picks the mip where the rectangle covers at most 2x2 texels, so the four texels around its center cover all of it
+float GetOcclusionMip(float4 aabb)
+{
+    const float2 sizeUV = aabb.zw - aabb.xy;
+    const float2 sizePixels = sizeUV * float2(hzbSize);
+
+    // A rectangle of at most one texel can still straddle a 2x2 block when it is offset
+    float level = ceil(log2(max(max(sizePixels.x, sizePixels.y), 1.0f)));
+
+    // The finer mip used when the rectangle only touches 2 texels per axis there, which gives a tighter test.
+    // Mips stop halving once an axis reaches 1 texel, so the size is clamped the same way.
+    if (level > 0.0f)
+    {
+        const float2 finerSize = max(floor(float2(hzbSize) * exp2(1.0f - level)), 1.0f);
+        if (all(frac(aabb.xy * finerSize) + sizeUV * finerSize <= 2.0f)) level -= 1.0f;
+    }
+
+    return clamp(level, 0.0f, float(hzbMipCount - 1));
+}
 
 // Tests an object space bounding sphere against the HZB built from the early pass depth
 bool IsOcclusionCulled(float3 center, float radius)
@@ -42,18 +67,22 @@ bool IsOcclusionCulled(float3 center, float radius)
     float4 aabb = float4(minX * P00, maxY * P11, maxX * P00, minY * P11) * float4(0.5f, -0.5f, 0.5f, -0.5f) + 0.5f;
     aabb = saturate(aabb);
 
-    // Mip where the rectangle is at most one texel wide, so its corners land in a 2x2 block
-    const float2 sizePixels = (aabb.zw - aabb.xy) * float2(hzbSize);
-    const float level = clamp(ceil(log2(max(max(sizePixels.x, sizePixels.y), 1.0f))), 0.0f, float(hzbMipCount - 1));
+    const float level = GetOcclusionMip(aabb);
 
     Texture2D<float> hzb = DescriptorHandle<Texture2D<float>>(hzbView);
-    const float s0 = hzb.SampleLevel(hzbPointSampler, aabb.xy, level);
-    const float s1 = hzb.SampleLevel(hzbPointSampler, aabb.zy, level);
-    const float s2 = hzb.SampleLevel(hzbPointSampler, aabb.xw, level);
-    const float s3 = hzb.SampleLevel(hzbPointSampler, aabb.zw, level);
 
-    // Farthest occluder depth in the block
+    // Farthest occluder depth in the 2x2 block
+#if HZB_REDUCTION_SAMPLER
+    // A bilinear footprint at the center is exactly the 2x2 block the rectangle touches, the sampler reduces it with max
+    const float maxZ = hzb.SampleLevel(hzbSampler, (aabb.xy + aabb.zw) * 0.5f, level);
+#else
+    // The corners land in the same 2x2 block
+    const float s0 = hzb.SampleLevel(hzbSampler, aabb.xy, level);
+    const float s1 = hzb.SampleLevel(hzbSampler, aabb.zy, level);
+    const float s2 = hzb.SampleLevel(hzbSampler, aabb.xw, level);
+    const float s3 = hzb.SampleLevel(hzbSampler, aabb.zw, level);
     const float maxZ = max(max(s0, s1), max(s2, s3));
+#endif
 
     // Depth of the sphere point closest to the camera
     const float4 nearestClip = mul(sceneCamera.projection, float4(0.0f, 0.0f, -(c.z - r), 1.0f));
