@@ -85,37 +85,37 @@ namespace Wild
 
                 for (size_t i = 0; i < SHADOWMAP_CASCADES; i++)
                 {
-                    list.SetPipelineState(pipeline);
+                    // list.SetPipelineState(pipeline);
 
-                    list.BeginRender({}, {ClearOperation::Store}, {passData.shadowMap[i]}, DSClearOperation::DepthClear);
+                    // list.BeginRender({}, {ClearOperation::Store}, {passData.shadowMap[i]}, DSClearOperation::DepthClear);
 
-                    // Every cascade has its own light view projection, so only casters inside that cascade are drawn
-                    const auto& visibleEntities = cullingSystem.CullMeshComponents(m_directLight.viewProj[i]);
-                    for (const Entity entity : visibleEntities)
-                    {
-                        auto [trans, meshComponent] = registry.get<Transform, MeshComponent>(entity);
-                        auto& mesh = *meshComponent.mesh;
+                    //// Every cascade has its own light view projection, so only casters inside that cascade are drawn
+                    // const auto& visibleEntities = cullingSystem.CullMeshComponents(m_directLight.viewProj[i]);
+                    // for (const Entity entity : visibleEntities)
+                    //{
+                    //     auto [trans, meshComponent] = registry.get<Transform, MeshComponent>(entity);
+                    //     auto& mesh = *meshComponent.mesh;
 
-                        m_rc.localModel = trans.GetWorldMatrix();
-                        m_rc.projView = m_directLight.viewProj[i];
-                        m_rc.cascadeIndex = i;
+                    //    m_rc.localModel = trans.GetWorldMatrix();
+                    //    m_rc.projView = m_directLight.viewProj[i];
+                    //    m_rc.cascadeIndex = i;
 
-                        list.SetRootConstant<CsmRootConstants>(0, m_rc);
+                    //    list.SetRootConstant<CsmRootConstants>(0, m_rc);
 
-                        list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
+                    //    list.GetList()->IASetVertexBuffers(0, 1, &mesh.GetVertexBuffer()->GetVBView()->View());
 
-                        if (mesh.HasIndexBuffer())
-                        {
-                            list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
-                            list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
-                        }
-                        else
-                        {
-                            list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
-                        }
-                    }
+                    //    if (mesh.HasIndexBuffer())
+                    //    {
+                    //        list.GetList()->IASetIndexBuffer(&mesh.GetIndexBuffer()->GetIBView()->View());
+                    //        list.GetList()->DrawIndexedInstanced(mesh.GetDrawCount(), 1, 0, 0, 0);
+                    //    }
+                    //    else
+                    //    {
+                    //        list.GetList()->DrawInstanced(mesh.GetDrawCount(), 1, 0, 0);
+                    //    }
+                    //}
 
-                    list.EndRender();
+                    // list.EndRender();
 
                     passData.shadowMap[i]->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 }
