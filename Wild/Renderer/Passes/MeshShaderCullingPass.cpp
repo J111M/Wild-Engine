@@ -1,5 +1,6 @@
-#include "Renderer/Passes/MeshShaderCullingPass.hpp"
+#include "MeshShaderCullingPass.hpp"
 #include "Renderer/Passes/DeferredPass.hpp"
+#include "Renderer/Passes/MeshShaderCullingPass.hpp"
 
 #include "Renderer/Passes/GrassPass.hpp"
 
@@ -36,6 +37,8 @@ namespace Wild
         else
             AddMeshShaderPass(renderer, rg);
     }
+
+    void MeshShaderCullingPass::AddEarlyCullPass(Renderer& renderer, RenderGraph& rg) {}
 
     /// <summary>
     /// Draws meshlets that were visible previous frame
@@ -108,7 +111,8 @@ namespace Wild
                 "Shaders/Geometry/DeferredAmplificationShader.slang",
                 {{"LATE_PASS", latePass ? "1" : "0"}, {"HZB_REDUCTION_SAMPLER", hzbReductionSampler ? "1" : "0"}});
         }
-        settings.shaderState.meshShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/DeferredMeshShader.slang");
+        settings.shaderState.meshShader =
+            engine.GetShaderTracker()->GetOrCreateShader("Shaders/Geometry/DeferredMeshShader.slang");
         settings.shaderState.fragShader = engine.GetShaderTracker()->GetOrCreateShader("Shaders/DeferredFrag.slang");
         settings.depthStencilState.depthEnable = true;
 
@@ -443,4 +447,6 @@ namespace Wild
                 list.EndRender();
             });
     }
+
+    void MeshShaderCullingPass::AddLateCullPass(Renderer& renderer, RenderGraph& rg) {}
 } // namespace Wild

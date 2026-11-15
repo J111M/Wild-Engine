@@ -91,8 +91,10 @@ namespace Wild
         bool& FreezeCulling() { return m_freezeCulling; }
 
       private:
+        void AddEarlyCullPass(Renderer& renderer, RenderGraph& rg);
         void AddEarlyPass(Renderer& renderer, RenderGraph& rg);
         void AddBuildHZBPass(Renderer& renderer, RenderGraph& rg);
+        void AddLateCullPass(Renderer& renderer, RenderGraph& rg);
         void AddLatePass(Renderer& renderer, RenderGraph& rg);
         void AddMeshShaderPass(Renderer& renderer, RenderGraph& rg);
 
