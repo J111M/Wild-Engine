@@ -48,6 +48,9 @@ namespace Wild
         AccelerationStructureManager();
         ~AccelerationStructureManager() {};
 
+        /// Returned by the Add* functions when ray tracing is not supported (matches Mesh's "no index" value)
+        static constexpr uint32_t InvalidIndex = UINT32_MAX;
+
         /// <summary>
         /// Adds mesh info into the mesh info buffer
         /// </summary>

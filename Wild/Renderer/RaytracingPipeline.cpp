@@ -88,7 +88,7 @@ namespace Wild
         m_rayGenSBT = std::make_unique<GPUBuffer>(rayGenDesc);
 
         m_rayGenSBT->Map();
-        m_rayGenSBT->WriteData(rayGenId);
+        m_rayGenSBT->WriteData(rayGenId, shaderIdSize);
         m_rayGenSBT->Unmap();
 
         // Miss table
@@ -114,7 +114,7 @@ namespace Wild
         m_missSBT = std::make_unique<GPUBuffer>(missDesc);
 
         m_missSBT->Map();
-        m_missSBT->WriteData(missData.data());
+        m_missSBT->WriteData(missData.data(), missData.size());
         m_missSBT->Unmap();
 
         // Combined hit group table
@@ -139,7 +139,7 @@ namespace Wild
         m_hitGroupSBT = std::make_unique<GPUBuffer>(hitGroupDesc);
 
         m_hitGroupSBT->Map();
-        m_hitGroupSBT->WriteData(hitGroupData.data());
+        m_hitGroupSBT->WriteData(hitGroupData.data(), hitGroupData.size());
         m_hitGroupSBT->Unmap();
 
         // Setup the dispatch description

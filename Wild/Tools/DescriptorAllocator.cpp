@@ -44,6 +44,16 @@ namespace Wild
             return firstFreedValue;
         }
 
+        // Slot indices run from 0 to NumDescriptors - 1, so the heap is full once the next index reaches NumDescriptors.
+        // This is the single allocation path for every Create* function and AllocateHandle, so the check lives here.
+        if (m_nextFreeIndex >= m_desc.NumDescriptors)
+        {
+            const std::string msg = "Descriptor heap of type " + std::to_string(static_cast<int>(m_desc.Type)) +
+                                    " is full (" + std::to_string(m_desc.NumDescriptors) + " descriptors).";
+            WD_FATAL(msg);
+            throw std::runtime_error(msg);
+        }
+
         return m_nextFreeIndex++;
     }
 
@@ -59,8 +69,6 @@ namespace Wild
 
     uint32_t DescriptorAllocatorRtv::CreateRtv(const ComPtr<ID3D12Resource> resource, const D3D12_RENDER_TARGET_VIEW_DESC* desc)
     {
-        if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors)) WD_FATAL("Rtv heap has overflown.");
-
         const uint32_t nextFreeValue = NextFreeHandle();
 
         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
@@ -82,8 +90,6 @@ namespace Wild
 
     uint32_t DescriptorAllocatorDsv::CreateDsv(const ComPtr<ID3D12Resource> resource, const D3D12_DEPTH_STENCIL_VIEW_DESC* desc)
     {
-        if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors)) WD_FATAL("Rtv heap has overflown.");
-
         const uint32_t nextFreeValue = NextFreeHandle();
 
         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
@@ -104,8 +110,6 @@ namespace Wild
 
     uint32_t DescriptorAllocatorCbvSrvUav::CreateCBV(uint32_t numBytes, const ComPtr<ID3D12Resource> resource)
     {
-        if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors)) WD_FATAL("Heap has overflown.");
-
         IFCHECK(numBytes % 256 == 0, "Constant buffer views should always have a 256 byte alignment.");
 
         D3D12_CONSTANT_BUFFER_VIEW_DESC desc;
@@ -125,8 +129,6 @@ namespace Wild
     uint32_t DescriptorAllocatorCbvSrvUav::CreateSRV(const ComPtr<ID3D12Resource> resource,
                                                      const D3D12_SHADER_RESOURCE_VIEW_DESC* desc)
     {
-        if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors)) WD_FATAL("Heap has overflown.");
-
         const uint32_t nextFreeHandle = NextFreeHandle();
 
         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
@@ -139,8 +141,6 @@ namespace Wild
     uint32_t DescriptorAllocatorCbvSrvUav::CreateUAV(const ComPtr<ID3D12Resource> resource,
                                                      const D3D12_UNORDERED_ACCESS_VIEW_DESC* desc)
     {
-        if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors)) WD_FATAL("Heap has overflown.");
-
         const uint32_t nextFreeHandle = NextFreeHandle();
 
         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
@@ -152,8 +152,6 @@ namespace Wild
 
     uint32_t DescriptorAllocatorCbvSrvUav::CreateMesh(const ComPtr<ID3D12Resource> resource, uint32_t sizeInBytes)
     {
-        if (m_nextFreeIndex > static_cast<uint32_t>(m_desc.NumDescriptors)) WD_FATAL("Heap has overflown.");
-
         const uint32_t nextFreeHandle = NextFreeHandle();
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srv{};

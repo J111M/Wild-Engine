@@ -108,7 +108,7 @@ namespace Wild
             if (ImGui::Button("Recompute blades")) { m_recomputeGrassBlades = true; }
         });
 
-        m_windDataBuffer[device->GetBackBufferIndex()]->Allocate(&m_windData);
+        m_windDataBuffer[device->GetBackBufferIndex()]->Allocate(&m_windData, sizeof(m_windData));
 
         m_accumulatedTime += dt * 1;
         m_rc.time = m_accumulatedTime;

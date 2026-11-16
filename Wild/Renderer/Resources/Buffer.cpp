@@ -76,8 +76,6 @@ namespace Wild
         m_desc.size = indices.size() * sizeof(uint32_t);
         m_dataSize = static_cast<uint32_t>(m_desc.size);
 
-        WriteData((void*)indices.data(), m_desc.size);
-
         m_resource = bufferAllocator->CreateBuffer(m_desc);
 
         // Upload staging resource, kept alive until the copy has finished at the end of this scope
@@ -87,8 +85,9 @@ namespace Wild
                                                                 D3D12_RESOURCE_STATE_GENERIC_READ,
                                                                 "Upload resource: " + m_desc.name);
 
+        // The index data is copied straight from the vector, it only has to live until the copy below finishes
         D3D12_SUBRESOURCE_DATA indexData = {};
-        indexData.pData = m_data;
+        indexData.pData = indices.data();
         indexData.RowPitch = m_desc.size;
         indexData.SlicePitch = indexData.RowPitch;
 
@@ -122,20 +121,35 @@ namespace Wild
     }
 
     // Allocate data
-    void GPUBuffer::Allocate(void* dataSrc, size_t size)
+    void GPUBuffer::Allocate(const void* dataSrc, size_t sizeInBytes)
     {
         Map();
-        WriteData(dataSrc, size);
+        WriteData(dataSrc, sizeInBytes);
         Unmap();
     }
 
     // Upload data straight to a GPU buffer
-    void GPUBuffer::UploadToGPU(void* dataSrc, size_t size)
+    void GPUBuffer::UploadToGPU(const void* dataSrc, size_t size)
     {
+        if (!m_resource)
+        {
+            WD_ERROR("UploadToGPU called on buffer '{}' that has no GPU resource.", m_desc.name);
+            return;
+        }
+
         auto gfxContext = engine.GetGfxContext();
         auto bufferAllocator = gfxContext->GetBufferAllocator();
 
-        size_t uploadSize = static_cast<size_t>(m_desc.size);
+        // Honour the requested size, but never copy more than the buffer holds
+        const size_t bufferSize = static_cast<size_t>(m_desc.size);
+        if (size > bufferSize)
+        {
+            WD_ERROR("UploadToGPU on buffer '{}': {} bytes requested but the buffer holds {}, clamping.",
+                     m_desc.name,
+                     size,
+                     bufferSize);
+        }
+        const size_t uploadSize = (size == 0) ? bufferSize : std::min(size, bufferSize);
 
         // Upload staging buffer
         AllocatedResource upload = bufferAllocator->AllocateRaw(D3D12_HEAP_TYPE_UPLOAD,
@@ -169,8 +183,8 @@ namespace Wild
 
     void GPUBuffer::Map(CD3DX12_RANGE* readRange)
     {
+        ThrowIfFailed(m_resource->Handle()->Map(0, readRange, &m_data), "Failed to map GPU buffer");
         m_dataIsMapped = true;
-        m_resource->Handle()->Map(0, readRange, &m_data);
     }
 
     void GPUBuffer::Unmap()
@@ -180,17 +194,31 @@ namespace Wild
             m_resource->Handle()->Unmap(0, nullptr);
             m_dataIsMapped = false;
         }
+
+        // The pointer is invalidated once the buffer is unmapped
+        m_data = nullptr;
     }
 
-    void GPUBuffer::WriteData(void* dataSrc, size_t size)
+    void GPUBuffer::WriteData(const void* dataSrc, size_t sizeInBytes)
     {
-        // TODO change to just use 1 standard instead of being able to overwrite it
-        if (size > 0) m_desc.size = size;
+        if (!m_dataIsMapped || !m_data)
+        {
+            WD_ERROR("WriteData called on buffer '{}' that is not mapped.", m_desc.name);
+            return;
+        }
 
-        // Make sure the pointer has allocated data
-        if (!m_data) m_data = malloc(static_cast<size_t>(m_desc.size));
+        // m_desc.size is the allocated size and never changes, so a write can never run past the end of the buffer
+        const size_t bufferSize = static_cast<size_t>(m_desc.size);
+        if (sizeInBytes > bufferSize)
+        {
+            WD_ERROR("WriteData on buffer '{}': {} bytes requested but the buffer holds {}, clamping.",
+                     m_desc.name,
+                     sizeInBytes,
+                     bufferSize);
+            sizeInBytes = bufferSize;
+        }
 
-        if (m_data) { memcpy(m_data, dataSrc, static_cast<size_t>(m_desc.size)); }
+        memcpy(m_data, dataSrc, sizeInBytes);
     }
 
     std::shared_ptr<VertexBufferView> GPUBuffer::GetVBView() const

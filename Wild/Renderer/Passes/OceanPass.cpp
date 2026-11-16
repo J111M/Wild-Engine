@@ -161,7 +161,7 @@ namespace Wild
             break;
         }
 
-        m_oceanRenderDataBuffer->Allocate(&m_oceanRenderData);
+        m_oceanRenderDataBuffer->Allocate(&m_oceanRenderData, sizeof(m_oceanRenderData));
     }
 
     void OceanPass::CalculateIntitialSpectrum(Renderer& renderer, RenderGraph& rg)

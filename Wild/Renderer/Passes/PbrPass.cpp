@@ -54,7 +54,7 @@ namespace Wild
             break;
         }
 
-        m_pbrDataBuffer[frameIndex]->Allocate(&m_pbrData);
+        m_pbrDataBuffer[frameIndex]->Allocate(&m_pbrData, sizeof(m_pbrData));
     }
 
     void PbrPass::Add(Renderer& renderer, RenderGraph& rg)
@@ -176,7 +176,7 @@ namespace Wild
                     envData.brdfView = renderer.brdfLut->GetSrv()->BindlessView();
                 }
 
-                m_environmentData->Allocate(&envData);
+                m_environmentData->Allocate(&envData, sizeof(envData));
 
                 list.SetPipelineState(pipeline);
                 list.BeginRender(

@@ -19,15 +19,16 @@ namespace Wild
             const auto rotation = glm::toMat4(m_rotation);
             const auto scale = glm::scale(glm::mat4(1.0f), m_scale);
 
-            glm::mat4 localMatrix = position * rotation * scale;
+            const glm::mat4 localMatrix = position * rotation * scale;
 
-            if (m_parent == entt::null) { m_matrix = position * rotation * scale; }
+            if (m_parent == entt::null) { m_matrix = localMatrix; }
             else
             {
                 auto& registry = engine.GetECS()->GetRegistry();
 
                 assert(registry.valid(m_parent));
-                auto parent = registry.get<Transform>(m_parent);
+
+                Transform& parent = registry.get<Transform>(m_parent);
 
                 m_matrix = parent.GetWorldMatrix() * localMatrix;
             }
@@ -54,13 +55,14 @@ namespace Wild
         m_scale.y = glm::length(glm::vec3(matrix4[1][0], matrix4[1][1], matrix4[1][2]));
         m_scale.z = glm::length(glm::vec3(matrix4[2][0], matrix4[2][1], matrix4[2][2]));
 
+        // Each column holds one scaled basis axis, so every element of column i is divided by that axis' scale
         glm::mat4 rotation(matrix4[0][0] / m_scale.x,
                            matrix4[0][1] / m_scale.x,
-                           matrix4[0][2] / m_scale.z,
+                           matrix4[0][2] / m_scale.x,
                            0,
                            matrix4[1][0] / m_scale.y,
                            matrix4[1][1] / m_scale.y,
-                           matrix4[1][2] / m_scale.z,
+                           matrix4[1][2] / m_scale.y,
                            0,
                            matrix4[2][0] / m_scale.z,
                            matrix4[2][1] / m_scale.z,

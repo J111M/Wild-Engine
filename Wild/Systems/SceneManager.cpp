@@ -6,16 +6,20 @@
 #include "Systems/Physics/PhysicsTypes.hpp"
 
 #include <algorithm>
+#include <unordered_set>
 
 namespace Wild
 {
     namespace
     {
-        void CollectDescendants(entt::registry& registry, Entity entity, std::vector<Entity>& toDestroy)
+        void CollectDescendants(entt::registry& registry, Entity entity, std::vector<Entity>& toDestroy,
+                                std::unordered_set<Entity>& visited)
         {
+            if (!visited.insert(entity).second) return;
+
             auto& transform = registry.get<Transform>(entity);
             for (auto child : transform.GetChildren())
-                CollectDescendants(registry, child, toDestroy);
+                CollectDescendants(registry, child, toDestroy, visited);
             toDestroy.push_back(entity);
         }
 
@@ -48,8 +52,9 @@ namespace Wild
     void DestroySceneObjectsRecursive(entt::registry& registry)
     {
         std::vector<Entity> toDestroy;
+        std::unordered_set<Entity> visited;
         for (auto entity : registry.view<SceneObject>())
-            CollectDescendants(registry, entity, toDestroy);
+            CollectDescendants(registry, entity, toDestroy, visited);
 
         if (toDestroy.empty()) return;
 
@@ -69,7 +74,8 @@ namespace Wild
         if (!registry.valid(entity)) return;
 
         std::vector<Entity> toDestroy;
-        CollectDescendants(registry, entity, toDestroy);
+        std::unordered_set<Entity> visited;
+        CollectDescendants(registry, entity, toDestroy, visited);
 
         RemoveAccelerationInstances(registry, toDestroy);
         RemovePhysicsBodies(registry, toDestroy);

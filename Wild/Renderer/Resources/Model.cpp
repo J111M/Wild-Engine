@@ -73,9 +73,9 @@ namespace Wild
 
         transform.SetFromMatrix(glm::make_mat4(matrix.data()));
 
-        // Recurse over child nodes
-        for (uint32_t node : node.children)
-            LoadNode(model, node, parent);
+        // Recurse over child nodes, they are parented to this node so its transform is applied to them
+        for (const auto childIndex : node.children)
+            LoadNode(model, static_cast<uint32_t>(childIndex), nodeEntity);
 
         if (!node.meshIndex.has_value())
         {

@@ -54,7 +54,7 @@ namespace Wild
 
         m_terrainTexturesView.noiseBlendTexture = noiseBlendTexture->GetSrv()->BindlessView();
 
-        m_terrainTexturesCbv->Allocate(&m_terrainTexturesView);
+        m_terrainTexturesCbv->Allocate(&m_terrainTexturesView, sizeof(m_terrainTexturesView));
     }
 
     void ProceduralTerrainPass::Update(const float dt)

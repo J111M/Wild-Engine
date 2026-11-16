@@ -25,13 +25,19 @@ namespace Wild
 
         void CreateIndexBuffer(std::vector<uint32_t> indices);
 
-        void Allocate(void* dataSrc, size_t size = 0);
-        void UploadToGPU(void* dataSrc, size_t size = 0);
+        /// Maps the buffer, copies sizeInBytes bytes from dataSrc into it and unmaps it again.
+        /// The size is required: the buffer is often larger than the source (constant buffers are rounded up to 256 bytes).
+        void Allocate(const void* dataSrc, size_t sizeInBytes);
+
+        /// Copies data into a GPU-only buffer through a temporary upload buffer.
+        /// A size of 0 copies the whole buffer, so dataSrc must then be at least as large as the buffer.
+        void UploadToGPU(const void* dataSrc, size_t size = 0);
 
         void Map(CD3DX12_RANGE* readRange = nullptr);
         void Unmap();
 
-        void WriteData(void* dataSrc, size_t size = 0);
+        /// Copies sizeInBytes bytes from dataSrc into the mapped buffer. Map() must have been called first.
+        void WriteData(const void* dataSrc, size_t sizeInBytes);
 
         ID3D12Resource* GetBuffer() { return m_resource->Handle().Get(); }
         void Transition(CommandList& list, D3D12_RESOURCE_STATES newState);
@@ -101,10 +107,9 @@ namespace Wild
                                                                     D3D12_RESOURCE_STATE_GENERIC_READ,
                                                                     uploadResourceName);
 
-            WriteData((void*)vertices.data(), m_desc.size);
-
+            // The vertex data is copied straight from the caller's vector, it only has to live until the copy below finishes
             D3D12_SUBRESOURCE_DATA data = {};
-            data.pData = reinterpret_cast<BYTE*>(m_data);
+            data.pData = vertices.data();
             data.RowPitch = m_desc.size;
             data.SlicePitch = m_desc.size;
 

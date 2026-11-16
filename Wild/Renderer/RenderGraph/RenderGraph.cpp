@@ -21,7 +21,7 @@ namespace Wild
     void Graph::ExecuteGraph()
     {
         auto list = engine.GetGfxContext()->GetCommandList();
-        for (auto& pass : Passes)
+        for (auto& pass : SortedPasses)
         {
             if (!pass->IsValid()) continue;
 
@@ -42,7 +42,10 @@ namespace Wild
         return &m_graph->ResourceInitializer.GetOrCreateTexture(key, desc);
     }
 
-    // Function from https://www.geeksforgeeks.org/dsa/topological-sorting-indegree-based-solution/
+    // Kahn's algorithm (https://www.geeksforgeeks.org/dsa/topological-sorting-indegree-based-solution/).
+    // Uses a min-heap instead of a FIFO queue so the sort is stable: whenever several passes are ready, the one
+    // added first runs first. If the insertion order already satisfies every dependency it is returned unchanged.
+    // Returns an empty vector when the graph contains a cycle.
     std::vector<int> RenderGraph::TopologicalSort(int num, std::vector<std::vector<int>>& adj)
     {
         // Create an adjacency list representation of the graph
@@ -58,75 +61,75 @@ namespace Wild
             indegree[edge[1]]++;               // Increment indegree of the destination node
         }
 
-        // Queue to store nodes with indegree 0 (ready to be processed)
-        std::queue<int> q;
+        // Nodes with indegree 0 (ready to be processed), lowest index first
+        std::priority_queue<int, std::vector<int>, std::greater<int>> ready;
 
-        // Add all nodes with indegree 0 to the queue
         for (int i = 0; i < num; i++)
         {
-            if (indegree[i] == 0) { q.push(i); }
+            if (indegree[i] == 0) { ready.push(i); }
         }
-
-        [[maybe_unused]] int processedCount = 0; // To track the number of processed nodes
 
         // Vector to store the topological order
         std::vector<int> topoOrder;
+        topoOrder.reserve(num);
 
-        // Process nodes in the queue
-        while (!q.empty())
+        while (!ready.empty())
         {
-            int node = q.front(); // Get the front node
-            q.pop();
-            topoOrder.push_back(node); // Add the node to the topological order
-            processedCount++;          // Increment the count of processed nodes
+            const int node = ready.top();
+            ready.pop();
+            topoOrder.push_back(node);
 
             // Reduce the indegree of its neighbors
             for (int neighbor : graph[node])
             {
-                indegree[neighbor]--; // Remove the edge to the neighbor
-                if (indegree[neighbor] == 0)
-                {
-                    q.push(neighbor); // Add neighbor to the queue
-                }
+                if (--indegree[neighbor] == 0) { ready.push(neighbor); }
             }
         }
 
-        // CheckMsg(processedCount == n, "Cycle detected: topological sort not possible.");
-        return topoOrder; // Return the valid topological order
+        // Nodes left unprocessed are part of a cycle
+        if (static_cast<int>(topoOrder.size()) != num) { return {}; }
+
+        return topoOrder;
     }
 
     void RenderGraph::SortRenderPasses()
     {
         const uint32_t numPasses = static_cast<uint32_t>(m_graph->Passes.size());
 
-        std::vector<std::vector<int>> passes;
-        passes.reserve(numPasses);
+        // Edges as {dependency, dependent} pairs, so a dependency is always ordered before the pass that reads it
+        std::vector<std::vector<int>> edges;
 
-        // Store all the passes into the new vector container with their dependecy to prepare for the Topological sort
         for (int i = 0; i < static_cast<int>(numPasses); i++)
         {
-            if (m_graph->Passes[i]->m_dependencies.empty()) continue;
-
-            std::vector<int> deps;
-            for (int j = 0; j < m_graph->Passes[i]->m_dependencies.size(); j++)
+            for (const auto& dependencyType : m_graph->Passes[i]->m_dependencies)
             {
-                passes.push_back({m_graph->PassTypes[m_graph->Passes[i]->m_dependencies[j]], i});
+                const auto it = m_graph->PassTypes.find(dependencyType);
+                if (it == m_graph->PassTypes.end()) continue;
+                if (it->second == i) continue; // A pass reading its own data is not an ordering constraint
+
+                edges.push_back({it->second, i});
             }
         }
 
-        std::vector<int> sortedIndices{};
-        if (passes.size() > 0) { sortedIndices = TopologicalSort(numPasses, passes); }
-        else
+        std::vector<int> sortedIndices = TopologicalSort(static_cast<int>(numPasses), edges);
+
+        // On a dependency cycle fall back to insertion order, so every pass still runs (and is deleted) exactly once
+        if (sortedIndices.size() != numPasses)
         {
-            sortedIndices.push_back(0);
+            WD_ERROR("Render graph has a dependency cycle, falling back to insertion order.");
+
+            sortedIndices.resize(numPasses);
+            for (uint32_t i = 0; i < numPasses; i++)
+                sortedIndices[i] = static_cast<int>(i);
         }
 
         // Add the sorted passes to the render graph
+        m_graph->SortedPasses.clear();
         m_graph->SortedPasses.reserve(numPasses);
 
-        for (uint32_t i = 0; i < numPasses; i++)
+        for (const int index : sortedIndices)
         {
-            m_graph->SortedPasses.push_back(m_graph->Passes[sortedIndices[i]]);
+            m_graph->SortedPasses.push_back(m_graph->Passes[index]);
         }
     }
 

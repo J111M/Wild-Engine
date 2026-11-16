@@ -71,7 +71,7 @@ namespace Wild
             transform.Name = "Demo city";
         });
 
-        engine.GetSceneManager()->LoadScene("Culling test");
+        engine.GetSceneManager()->LoadScene("Demo city");
     }
 
     void DeferredPass::Update(const float dt)

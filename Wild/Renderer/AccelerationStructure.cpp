@@ -15,6 +15,8 @@ namespace Wild
 
             return static_cast<uint32_t>(m_tlasMeshData.size() - 1);
         }
+
+        return InvalidIndex;
     }
 
     uint32_t AccelerationStructureManager::AddTopLevelAS(uint32_t blasIndex, const glm::mat4& transform, uint32_t instanceID,
@@ -26,6 +28,8 @@ namespace Wild
             m_markDirty = true;
             return static_cast<uint32_t>(m_dynamicTlasInstances.size() - 1);
         }
+
+        return InvalidIndex;
     }
 
     // TODO add support for different geometry types than opaque
@@ -85,6 +89,8 @@ namespace Wild
             // Return index for tlas instance
             return index;
         }
+
+        return InvalidIndex;
     }
 
     void AccelerationStructureManager::UpdateTransform(uint32_t instanceIndex, const glm::mat4& transform)

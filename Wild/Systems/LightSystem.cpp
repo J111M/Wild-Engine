@@ -30,7 +30,9 @@ namespace Wild
             lightData.emplace_back(gpuLight);
         }
 
-        m_pointLightCount = static_cast<uint32_t>(lightData.size());
-        if (!lightData.empty()) { m_pointLightBuffer->Allocate(lightData.data()); }
+        // The GPU buffer holds MAX_POINT_LIGHTS lights, extra lights are dropped so the shader never reads past the end
+        const size_t lightCount = std::min(lightData.size(), static_cast<size_t>(MAX_POINT_LIGHTS));
+        m_pointLightCount = static_cast<uint32_t>(lightCount);
+        if (lightCount > 0) { m_pointLightBuffer->Allocate(lightData.data(), lightCount * sizeof(PointLight)); }
     }
 } // namespace Wild

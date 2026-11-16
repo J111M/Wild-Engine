@@ -51,13 +51,7 @@ namespace Wild
 
     PipelineState::~PipelineState() { SerializePSO(); }
 
-    std::shared_ptr<RaytracingPipeline> PipelineState::GetRTPipeline() const
-    {
-        if (m_rtPipeline)
-            return m_rtPipeline;
-        else
-            nullptr;
-    }
+    std::shared_ptr<RaytracingPipeline> PipelineState::GetRTPipeline() const { return m_rtPipeline; }
 
     void PipelineState::SerializePSO()
     {

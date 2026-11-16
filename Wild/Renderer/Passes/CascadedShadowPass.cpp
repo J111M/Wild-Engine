@@ -271,7 +271,7 @@ namespace Wild
             m_directLight.cascadeDistance[cascade] = cascadeFarDistances;
         }
 
-        m_directionalLightBuffers[engine.GetGfxContext()->GetBackBufferIndex()]->Allocate(&m_directLight);
+        m_directionalLightBuffers[engine.GetGfxContext()->GetBackBufferIndex()]->Allocate(&m_directLight, sizeof(m_directLight));
     }
 
     // Function taken from https://learnopengl.com/Guest-Articles/2021/CSM and modified to work in my case
