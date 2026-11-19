@@ -1,5 +1,7 @@
 #include "Renderer/GfxContext.hpp"
 
+#include "Core/Engine.hpp"
+
 #include <codecvt>
 #include <fstream>
 #include <initguid.h>
@@ -9,6 +11,8 @@
 
 namespace Wild
 {
+    uint32_t GetFrameIndex() { return engine.GetGfxContext()->GetBackBufferIndex(); }
+
     // Prevent copy by using move
     GfxContext::GfxContext(std::shared_ptr<Window> window) : m_window(std::move(window))
     {
@@ -31,6 +35,11 @@ namespace Wild
     void GfxContext::Shutdown()
     {
         // CachePipelineLibrary();
+
+        // Wait for the GPU and release everything still queued while the allocators and heaps are alive,
+        // from here on every free happens immediately
+        Flush();
+        m_deferReleases = false;
 
         // Release resources manually since we are working with static objects
         for (int i = 0; i < BACK_BUFFER_COUNT; i++)
@@ -95,6 +104,8 @@ namespace Wild
             m_directCommandList[i] = std::make_shared<CommandList>(D3D12_COMMAND_LIST_TYPE_DIRECT);
             // m_computeCommandList[i] = std::make_shared<CommandList>(D3D12_COMMAND_LIST_TYPE_COMPUTE);
         }
+
+        m_deferReleases = true;
     }
 
     void GfxContext::BeginFrame()
@@ -102,7 +113,22 @@ namespace Wild
         m_currentFrame = m_backBufferIndex;
         m_backBufferIndex = GetBackBufferIndex();
 
+        auto queue = GetCommandQueue(QueueType::Direct);
+
+        // Only wait for the last frame that used this back buffer
+        // the previous frame can still be running on the GPU while this one is recorded
+        queue->WaitForValue(m_frameFenceValues[m_backBufferIndex]);
+
+        ProcessDeferredReleases();
+
         auto currentCommandList = m_directCommandList[m_backBufferIndex];
+
+        // The allocator is free to reset now that its last frame finished. A list that was never submitted is still
+        // open from its creation and can't be reset
+        if (currentCommandList->IsReady()) currentCommandList->ResetList();
+
+        m_frameOpen = true;
+
         auto backBuffer = m_renderTargets[m_backBufferIndex];
 
         backBuffer->Transition(*currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -122,12 +148,25 @@ namespace Wild
         // Present frame
         backBuffer->Transition(*currentCommandList, D3D12_RESOURCE_STATE_PRESENT);
 
-        ThrowIfFailed(currentCommandList->GetList()->Close());
+        // Through the wrapper so the list is marked closed, BeginFrame relies on that to know it can be reset
+        currentCommandList->Close();
 
         ID3D12CommandList* const commandLists[] = {currentCommandList->GetList().Get()};
 
-        GetCommandQueue(QueueType::Direct)->GetQueue()->ExecuteCommandLists(_countof(commandLists), commandLists);
-        GetCommandQueue(QueueType::Direct)->WaitForFence();
+        auto queue = GetCommandQueue(QueueType::Direct);
+        queue->GetQueue()->ExecuteCommandLists(_countof(commandLists), commandLists);
+
+        const uint64_t frameFenceValue = queue->Signal();
+        m_frameFenceValues[m_backBufferIndex] = frameFenceValue;
+
+        // Everything freed while this frame was recorded may be referenced by it, release it once it has finished
+        if (!m_pendingReleases.empty())
+        {
+            m_queuedReleases.push_back({frameFenceValue, std::move(m_pendingReleases)});
+            m_pendingReleases.clear();
+        }
+
+        m_frameOpen = false;
 
         uint32_t flags = DXGI_PRESENT_ALLOW_TEARING;
         UINT sync_interval = 0;
@@ -138,10 +177,7 @@ namespace Wild
             sync_interval = 1;
         }
 
-        ThrowIfFailed(m_swapchain->Present(sync_interval, flags));
-
-        // Reset allocator and list
-        currentCommandList->ResetList();
+        ThrowIfFailed(m_swapchain->Present(sync_interval, flags), "Present failed");
     }
 
     bool GfxContext::ResizeWindow()
@@ -185,7 +221,62 @@ namespace Wild
         return false;
     }
 
-    void GfxContext::Flush() { GetCommandQueue(QueueType::Direct)->WaitForFence(); }
+    void GfxContext::Flush()
+    {
+        GetCommandQueue(QueueType::Direct)->WaitForFence();
+
+        ProcessDeferredReleases();
+
+        // Between frames nothing references the pending frees anymore, inside a frame the open list still might
+        if (!m_frameOpen) Release(m_pendingReleases);
+    }
+
+    void GfxContext::DeferRelease(ComPtr<ID3D12Resource> resource, ComPtr<D3D12MA::Allocation> allocation)
+    {
+        // Arguments go out of scope here and release immediately
+        if (!m_deferReleases) return;
+
+        DeferredRelease release{};
+        release.resource = std::move(resource);
+        release.allocation = std::move(allocation);
+        m_pendingReleases.push_back(std::move(release));
+    }
+
+    void GfxContext::DeferDescriptorFree(DescriptorAllocator* allocator, uint32_t handle)
+    {
+        if (!m_deferReleases)
+        {
+            allocator->ReleaseHandle(handle);
+            return;
+        }
+
+        DeferredRelease release{};
+        release.descriptorAllocator = allocator;
+        release.descriptorHandle = handle;
+        m_pendingReleases.push_back(std::move(release));
+    }
+
+    void GfxContext::ProcessDeferredReleases()
+    {
+        const uint64_t completedValue = GetCommandQueue(QueueType::Direct)->GetCompletedValue();
+
+        while (!m_queuedReleases.empty() && m_queuedReleases.front().fenceValue <= completedValue)
+        {
+            Release(m_queuedReleases.front().releases);
+            m_queuedReleases.pop_front();
+        }
+    }
+
+    void GfxContext::Release(std::vector<DeferredRelease>& releases)
+    {
+        for (auto& release : releases)
+        {
+            if (release.descriptorAllocator) release.descriptorAllocator->ReleaseHandle(release.descriptorHandle);
+        }
+
+        // Dropping the ComPtrs releases the resources and their memory
+        releases.clear();
+    }
 
     void GfxContext::SetupFactory()
     {
@@ -263,8 +354,10 @@ namespace Wild
     {
         if (m_swapchain)
         {
-            m_swapchain->ResizeBuffers(
-                BACK_BUFFER_COUNT, m_window->GetWidth(), m_window->GetHeight(), DXGI_FORMAT_UNKNOWN, 0); // ThrowIfFailed();
+            // Fails if anything still references the old back buffers, so the resize path must Flush first
+            ThrowIfFailed(m_swapchain->ResizeBuffers(
+                              BACK_BUFFER_COUNT, m_window->GetWidth(), m_window->GetHeight(), DXGI_FORMAT_UNKNOWN, 0),
+                          "Swapchain ResizeBuffers failed");
         }
         else
         {
@@ -318,7 +411,7 @@ namespace Wild
         desc.flag = TextureDesc::renderTarget;
 
         ComPtr<ID3D12Resource> scBuffer = nullptr;
-        m_swapchain->GetBuffer(index, IID_PPV_ARGS(&scBuffer));
+        ThrowIfFailed(m_swapchain->GetBuffer(index, IID_PPV_ARGS(&scBuffer)), "Swapchain GetBuffer failed");
 
         m_renderTargets[index] = std::make_shared<Texture>(desc, scBuffer, D3D12_RESOURCE_STATE_PRESENT);
 

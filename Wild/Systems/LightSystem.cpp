@@ -12,7 +12,8 @@ namespace Wild
         desc.size = sizeof(PointLight) * MAX_POINT_LIGHTS;
         desc.usage = BufferUsage::Constant;
         desc.access = MemoryAccess::CpuToGpu;
-        m_pointLightBuffer = std::make_shared<GPUBuffer>(desc);
+        for (auto& buffer : m_pointLightBuffers)
+            buffer = std::make_shared<GPUBuffer>(desc);
     }
 
     void LightSystem::Update()
@@ -33,6 +34,6 @@ namespace Wild
         // The GPU buffer holds MAX_POINT_LIGHTS lights, extra lights are dropped so the shader never reads past the end
         const size_t lightCount = std::min(lightData.size(), static_cast<size_t>(MAX_POINT_LIGHTS));
         m_pointLightCount = static_cast<uint32_t>(lightCount);
-        if (lightCount > 0) { m_pointLightBuffer->Allocate(lightData.data(), lightCount * sizeof(PointLight)); }
+        if (lightCount > 0) { GetPointLightBuffer()->Allocate(lightData.data(), lightCount * sizeof(PointLight)); }
     }
 } // namespace Wild

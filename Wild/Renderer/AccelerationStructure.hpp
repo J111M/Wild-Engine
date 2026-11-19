@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Renderer/PerFrame.hpp"
 #include "Renderer/Resources/Buffer.hpp"
 
 namespace Wild
@@ -88,7 +89,9 @@ namespace Wild
         std::vector<TLASInstance> m_dynamicTlasInstances{};
 
         // TLAS buffer
-        std::unique_ptr<GPUBuffer> m_instanceDescsBuffer;
+        // Instance descriptions the TLAS build reads, written by the CPU every frame the TLAS is dirty. Upload heap, so
+        // no staging copy and no GPU wait one per frame in flight because the previous frame's build may still read it.
+        PerFrame<std::unique_ptr<GPUBuffer>> m_instanceDescsBuffers;
         std::unique_ptr<GPUBuffer> m_tlasScratch;
         std::unique_ptr<GPUBuffer> m_tlasUpdateScratch;
         std::unique_ptr<GPUBuffer> m_tlasResult;

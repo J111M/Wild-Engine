@@ -260,4 +260,16 @@ namespace Wild
         WD_WARN("Trying to access invalid shader resource view.");
         return nullptr;
     }
+
+    void EnsureUploadBuffer(std::unique_ptr<GPUBuffer>& buffer, uint64_t size, const std::string& name)
+    {
+        if (buffer && buffer->GetSize() >= size) return;
+
+        BufferDesc desc{};
+        desc.size = size + size / 2;
+        desc.usage = BufferUsage::None;
+        desc.access = MemoryAccess::CpuToGpu;
+        desc.name = name;
+        buffer = std::make_unique<GPUBuffer>(desc);
+    }
 } // namespace Wild

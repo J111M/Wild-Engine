@@ -11,6 +11,8 @@ namespace Wild
     {
       public:
         void FreeHandle(uint32_t handle);
+
+        void ReleaseHandle(uint32_t handle);
         ComPtr<ID3D12DescriptorHeap> GetHeap() const { return m_heap; }
 
         // Reserves a raw slot without creating a view, the caller writes the

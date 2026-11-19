@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Renderer/PerFrame.hpp"
 #include "Systems/SystemManager.hpp"
 
 #include <cstdint>
@@ -18,11 +19,13 @@ namespace Wild
 
         void Update();
 
-        std::shared_ptr<GPUBuffer> GetPointLightBuffer() { return m_pointLightBuffer; }
+        // The point light buffer of the frame that is being recorded
+        std::shared_ptr<GPUBuffer> GetPointLightBuffer() { return m_pointLightBuffers.Get(); }
         uint32_t GetPointLightCount() const noexcept { return m_pointLightCount; }
 
       private:
-        std::shared_ptr<GPUBuffer> m_pointLightBuffer{};
+        // One copy per frame in flight
+        PerFrame<std::shared_ptr<GPUBuffer>> m_pointLightBuffers;
         uint32_t m_pointLightCount{};
     };
 } // namespace Wild

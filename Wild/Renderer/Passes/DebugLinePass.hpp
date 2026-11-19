@@ -34,6 +34,7 @@ namespace Wild
       private:
         std::vector<DebugVertex> m_lines;
 
-        std::unique_ptr<GPUBuffer> m_lineVertexBuffer;
+        // One upload-heap buffer per frame in flight, grown when needed
+        PerFrame<std::unique_ptr<GPUBuffer>> m_lineVertexBuffers;
     };
 } // namespace Wild

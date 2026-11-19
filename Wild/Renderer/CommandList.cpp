@@ -32,17 +32,14 @@ namespace Wild
         }
     }
 
-    CommandList::~CommandList()
-    {
-        Close();
-
-        ResetList();
-    }
+    // Nothing to reset here: resetting the allocator is only valid once the GPU has finished with it, and the owner
+    // guarantees that before dropping the list (temporary lists wait on their submit, frame lists are flushed at shutdown)
+    CommandList::~CommandList() = default;
 
     void CommandList::ResetList()
     {
-        m_allocator->Reset();
-        m_commandList->Reset(m_allocator.Get(), nullptr);
+        ThrowIfFailed(m_allocator->Reset(), "Command allocator reset failed (is the GPU still using it?)");
+        ThrowIfFailed(m_commandList->Reset(m_allocator.Get(), nullptr), "Command list reset failed");
         m_pipelineState = nullptr;
         m_pipelineIsSet = false;
         m_commandListClosed = false;
@@ -52,7 +49,7 @@ namespace Wild
     {
         if (!m_commandListClosed)
         {
-            m_commandList->Close();
+            ThrowIfFailed(m_commandList->Close(), "Command list close failed (an invalid command was recorded)");
             m_commandListClosed = true;
         }
     }

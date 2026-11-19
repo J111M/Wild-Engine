@@ -10,9 +10,15 @@
 
 namespace Wild
 {
-    DDGIPass::DDGIPass() {}
+    DDGIPass::DDGIPass()
+    {
+        for (auto& buffer : m_traceConstantBuffers) buffer = CreateConstantBuffer(sizeof(DDGITraceConstants), "DDGI trace constants");
+        for (auto& buffer : m_irradianceConstantBuffers) buffer = CreateConstantBuffer(sizeof(DDGIUpdateConstants), "DDGI update irradiance constants");
+        for (auto& buffer : m_distanceConstantBuffers) buffer = CreateConstantBuffer(sizeof(DDGIUpdateConstants), "DDGI update distance constants");
+        for (auto& buffer : m_probeDataBuffers) buffer = CreateConstantBuffer(sizeof(DDGIProbeData), "DDGI probe data");
+    }
 
-    std::shared_ptr<GPUBuffer> DDGIPass::CreateConstantBuffer(size_t size, const std::string& name)
+    std::unique_ptr<GPUBuffer> DDGIPass::CreateConstantBuffer(size_t size, const std::string& name)
     {
         BufferDesc desc{};
 
@@ -22,15 +28,13 @@ namespace Wild
         desc.access = MemoryAccess::CpuToGpu;
         desc.name = name;
 
-        return std::make_shared<GPUBuffer>(desc);
+        return std::make_unique<GPUBuffer>(desc);
     }
 
     // TODO replace function
     uint32_t DDGIPass::GetOrCreateProbeDataView()
     {
-        if (!m_probeDataBuffer) m_probeDataBuffer = CreateConstantBuffer(sizeof(DDGIProbeData), "DDGI probe data");
-
-        auto probeDataCbv = m_probeDataBuffer->GetCBView();
+        auto probeDataCbv = m_probeDataBuffers.Get()->GetCBView();
         return probeDataCbv ? probeDataCbv->View() : INVALID_HEAP_INDEX;
     }
 
@@ -48,7 +52,7 @@ namespace Wild
         m_probeData.irradianceView = irradianceSrv ? irradianceSrv->View() : INVALID_HEAP_INDEX;
         m_probeData.distanceView = distanceSrv ? distanceSrv->View() : INVALID_HEAP_INDEX;
 
-        m_probeDataBuffer->Allocate(&m_probeData, sizeof(DDGIProbeData));
+        m_probeDataBuffers.Get()->Allocate(&m_probeData, sizeof(DDGIProbeData));
     }
 
     // TODO replace function
@@ -262,12 +266,8 @@ namespace Wild
 
                 m_traceRc.probeDataView = passData.probeDataView;
 
-                if (!m_traceConstantBuffer)
-                {
-                    m_traceConstantBuffer = CreateConstantBuffer(sizeof(DDGITraceConstants), "DDGI trace constants");
-                }
-
-                m_traceConstantBuffer->Allocate(&m_traceRc, sizeof(DDGITraceConstants));
+                GPUBuffer& traceConstantBuffer = *m_traceConstantBuffers.Get();
+                traceConstantBuffer.Allocate(&m_traceRc, sizeof(DDGITraceConstants));
 
                 PipelineStateSettings settings{};
 
@@ -330,7 +330,7 @@ namespace Wild
                 list.SetPipelineState(pipeline);
                 list.BeginRender();
 
-                list.SetConstantBufferView(0, m_traceConstantBuffer.get());
+                list.SetConstantBufferView(0, &traceConstantBuffer);
                 list.GetList()->SetComputeRootShaderResourceView(1, engine.GetAccelerationStructureManager()->GetTLASAddress());
                 list.SetShaderResourceView(2, engine.GetAccelerationStructureManager()->GetMeshIdBuffer().get());
                 list.SetShaderResourceView(3, probeSystem->GetProbeBuffer().get());
@@ -403,13 +403,8 @@ namespace Wild
                 ddgiData->iradianceTexture[readIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 ddgiData->iradianceTexture[writeIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-                if (!m_irradianceConstantBuffer)
-                {
-                    m_irradianceConstantBuffer =
-                        CreateConstantBuffer(sizeof(DDGIUpdateConstants), "DDGI update irradiance constants");
-                }
-
-                m_irradianceConstantBuffer->Allocate(&m_updateRc, sizeof(DDGIUpdateConstants));
+                GPUBuffer& irradianceConstantBuffer = *m_irradianceConstantBuffers.Get();
+                irradianceConstantBuffer.Allocate(&m_updateRc, sizeof(DDGIUpdateConstants));
 
                 PipelineStateSettings settings{};
                 settings.shaderState.computeShader =
@@ -432,7 +427,7 @@ namespace Wild
                 list.SetPipelineState(pipeline);
                 list.BeginRender();
 
-                list.SetConstantBufferView(0, m_irradianceConstantBuffer.get());
+                list.SetConstantBufferView(0, &irradianceConstantBuffer);
                 list.SetShaderResourceView(1, probeSystem->GetProbeRayDataBuffer().get());
                 list.SetUnorderedAccessView(2, probeSystem->GetProbeIrradianceBuffer().get());
 
@@ -497,13 +492,8 @@ namespace Wild
                 ddgiData->visibilityTexture[readIndex]->Transition(list, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 ddgiData->visibilityTexture[writeIndex]->Transition(list, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-                if (!m_distanceConstantBuffer)
-                {
-                    m_distanceConstantBuffer =
-                        CreateConstantBuffer(sizeof(DDGIUpdateConstants), "DDGI update distance constants");
-                }
-
-                m_distanceConstantBuffer->Allocate(&m_updateRc, sizeof(DDGIUpdateConstants));
+                GPUBuffer& distanceConstantBuffer = *m_distanceConstantBuffers.Get();
+                distanceConstantBuffer.Allocate(&m_updateRc, sizeof(DDGIUpdateConstants));
 
                 PipelineStateSettings settings{};
                 settings.shaderState.computeShader =
@@ -526,7 +516,7 @@ namespace Wild
                 list.SetPipelineState(pipeline);
                 list.BeginRender();
 
-                list.SetConstantBufferView(0, m_distanceConstantBuffer.get());
+                list.SetConstantBufferView(0, &distanceConstantBuffer);
                 list.SetShaderResourceView(1, probeSystem->GetProbeRayDataBuffer().get());
                 list.SetUnorderedAccessView(2, probeSystem->GetProbeIrradianceBuffer().get());
 

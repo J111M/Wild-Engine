@@ -14,10 +14,8 @@ namespace Wild
             desc.size = sizeof(PBRData);
             desc.usage = BufferUsage::Constant;
             desc.access = MemoryAccess::CpuToGpu;
-            for (int i = 0; i < BACK_BUFFER_COUNT; i++)
-            {
-                m_pbrDataBuffer[i] = std::make_unique<GPUBuffer>(desc);
-            }
+            for (auto& buffer : m_pbrDataBuffer)
+                buffer = std::make_unique<GPUBuffer>(desc);
         }
 
         {
@@ -25,18 +23,16 @@ namespace Wild
             desc.size = sizeof(EnvironmentData);
             desc.usage = BufferUsage::Constant;
             desc.access = MemoryAccess::CpuToGpu;
-            m_environmentData = std::make_unique<GPUBuffer>(desc);
+            for (auto& buffer : m_environmentData)
+                buffer = std::make_unique<GPUBuffer>(desc);
         }
     }
 
     void PbrPass::Update(const float dt)
     {
-        auto context = engine.GetGfxContext();
         auto ecs = engine.GetECS();
 
         m_pbrData.numOfPointLights = engine.GetRenderer()->GetSystems().GetSystem<LightSystem>().GetPointLightCount();
-
-        int frameIndex = context->GetBackBufferIndex();
 
         engine.GetImGui()->AddPanel("Pbr settings", [this]() {
             const char* debugModes[] = {"None", "Albedo", "Normals", "Roughness", "Metallic", "AO", "Depth"};
@@ -54,7 +50,7 @@ namespace Wild
             break;
         }
 
-        m_pbrDataBuffer[frameIndex]->Allocate(&m_pbrData, sizeof(m_pbrData));
+        m_pbrDataBuffer.Get()->Allocate(&m_pbrData, sizeof(m_pbrData));
     }
 
     void PbrPass::Add(Renderer& renderer, RenderGraph& rg)
@@ -176,7 +172,8 @@ namespace Wild
                     envData.brdfView = renderer.brdfLut->GetSrv()->BindlessView();
                 }
 
-                m_environmentData->Allocate(&envData, sizeof(envData));
+                auto& environmentData = m_environmentData.Get();
+                environmentData->Allocate(&envData, sizeof(envData));
 
                 list.SetPipelineState(pipeline);
                 list.BeginRender(
@@ -208,12 +205,9 @@ namespace Wild
 
                 list.SetRootConstant<PbrRootConstants>(0, m_rc);
 
-                auto context = engine.GetGfxContext();
-                int frameIndex = context->GetBackBufferIndex();
-
                 list.SetConstantBufferView(1, GetSceneDataAddress());
-                list.SetConstantBufferView(2, m_pbrDataBuffer[frameIndex].get());
-                list.SetConstantBufferView(3, m_environmentData.get());
+                list.SetConstantBufferView(2, m_pbrDataBuffer.Get().get());
+                list.SetConstantBufferView(3, environmentData.get());
                 list.SetConstantBufferView(4, renderer.GetSystems().GetSystem<LightSystem>().GetPointLightBuffer().get());
                 list.SetConstantBufferView(5, shadowMapData->directLightBuffer.get());
                 list.SetBindlessHeap(6);

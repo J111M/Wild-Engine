@@ -40,15 +40,19 @@ namespace Wild
 
         rg.AddPass<DebugLinePassData>(
             "Debug line pass", PassType::Graphics, [&renderer, this](DebugLinePassData& passData, CommandList& list) {
-                if (m_lineVertexBuffer) m_lineVertexBuffer.reset();
+                // Write this frame's lines straight into an upload-heap buffer: no per-frame allocation and no GPU wait
+                const uint64_t lineDataSize = static_cast<uint64_t>(m_lines.size()) * sizeof(DebugVertex);
 
-                if (m_lines.size() > 0)
+                D3D12_VERTEX_BUFFER_VIEW lineVertexView{};
+                if (lineDataSize > 0)
                 {
-                    BufferDesc vDesc{};
-                    vDesc.usage = BufferUsage::Vertex;
-                    vDesc.access = MemoryAccess::GpuOnly;
-                    m_lineVertexBuffer = std::make_unique<GPUBuffer>(vDesc);
-                    m_lineVertexBuffer->CreateVertexBuffer<DebugVertex>(m_lines);
+                    auto& vertexBuffer = m_lineVertexBuffers.Get();
+                    EnsureUploadBuffer(vertexBuffer, lineDataSize, "Debug line vertices");
+                    vertexBuffer->Allocate(m_lines.data(), lineDataSize);
+
+                    lineVertexView.BufferLocation = vertexBuffer->GetBuffer()->GetGPUVirtualAddress();
+                    lineVertexView.SizeInBytes = static_cast<UINT>(lineDataSize);
+                    lineVertexView.StrideInBytes = sizeof(DebugVertex);
                 }
 
                 PipelineStateSettings settings{};
@@ -81,9 +85,9 @@ namespace Wild
                 list.GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 
                 list.SetConstantBufferView(0, GetSceneDataAddress());
-                if (m_lineVertexBuffer)
+                if (lineDataSize > 0)
                 {
-                    list.GetList()->IASetVertexBuffers(0, 1, &m_lineVertexBuffer->GetVBView()->View());
+                    list.GetList()->IASetVertexBuffers(0, 1, &lineVertexView);
                     list.GetList()->DrawInstanced(static_cast<UINT>(m_lines.size()), 1, 0, 0);
                 }
 

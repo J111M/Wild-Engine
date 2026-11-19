@@ -71,7 +71,7 @@ namespace Wild
             transform.Name = "Demo city";
         });
 
-        engine.GetSceneManager()->LoadScene("Demo city");
+        engine.GetSceneManager()->LoadScene("Sponza");
     }
 
     void DeferredPass::Update(const float dt)

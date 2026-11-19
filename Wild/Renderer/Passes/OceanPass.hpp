@@ -223,7 +223,8 @@ namespace Wild
         uint32_t m_drawCount[MAX_OCEAN_LOD]{};
 
         OceanRenderData m_oceanRenderData{};
-        std::unique_ptr<GPUBuffer> m_oceanRenderDataBuffer;
+        // One copy per back buffer
+        PerFrame<std::unique_ptr<GPUBuffer>> m_oceanRenderDataBuffer;
     };
 
 } // namespace Wild

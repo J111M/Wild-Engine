@@ -1,7 +1,5 @@
 #include "Renderer/CommandQueue.hpp"
 
-#include "Renderer/Fence.hpp"
-
 namespace Wild
 {
     CommandQueue::CommandQueue(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE listType, const std::string& resourceName)
@@ -12,6 +10,8 @@ namespace Wild
         queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
         ThrowIfFailed(device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue)));
         m_commandQueue->SetName(StringToWString(resourceName).c_str());
+
+        m_fence = std::make_unique<Fence>(device.Get());
 
         WD_INFO("Command queue create: {0}", resourceName.c_str());
     }
@@ -27,9 +27,4 @@ namespace Wild
             WD_ERROR("Command list is not ready for execution but is still called!");
     }
 
-    void CommandQueue::WaitForFence() const
-    {
-        Fence fence;
-        fence.SignalAndWait(*this);
-    }
 } // namespace Wild

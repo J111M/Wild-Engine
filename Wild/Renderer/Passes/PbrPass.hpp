@@ -56,8 +56,7 @@ namespace Wild
         PbrRootConstants m_rc{};
         PBRData m_pbrData{};
 
-        std::unique_ptr<GPUBuffer> m_pbrDataBuffer[BACK_BUFFER_COUNT];
-
-        std::unique_ptr<GPUBuffer> m_environmentData;
+        PerFrame<std::unique_ptr<GPUBuffer>> m_pbrDataBuffer;
+        PerFrame<std::unique_ptr<GPUBuffer>> m_environmentData;
     };
 } // namespace Wild

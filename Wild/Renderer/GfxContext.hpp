@@ -2,6 +2,7 @@
 
 #include "Renderer/CommandList.hpp"
 #include "Renderer/CommandQueue.hpp"
+#include "Renderer/PerFrame.hpp"
 #include "Renderer/Resources/Texture.hpp"
 #include "Renderer/Window.hpp"
 
@@ -14,10 +15,11 @@
 
 #include <D3D12MemAlloc.h>
 
+#include <deque>
+#include <vector>
+
 namespace Wild
 {
-    constexpr int BACK_BUFFER_COUNT = 2;
-
     class GfxContext
     {
       public:
@@ -61,7 +63,13 @@ namespace Wild
         int GetWidth() const { return glm::max(m_clientWidth, 1); }
         int GetHeight() const { return glm::max(m_clientHeight, 1); }
 
-        void Flush();
+       void Flush();
+
+        void DeferRelease(ComPtr<ID3D12Resource> resource, ComPtr<D3D12MA::Allocation> allocation);
+
+        void DeferDescriptorFree(DescriptorAllocator* allocator, uint32_t handle);
+
+        bool IsDeferringReleases() const { return m_deferReleases; }
 
         std::shared_ptr<DescriptorAllocatorRtv> GetRtvAllocator() { return m_descriptorAllocatorsRtv; }
         std::shared_ptr<DescriptorAllocatorDsv> GetDsvAllocator() { return m_descriptorAllocatorsDsv; }
@@ -135,6 +143,38 @@ namespace Wild
 
         UINT m_backBufferIndex{};
         UINT m_currentFrame{};
+
+        uint64_t m_frameFenceValues[BACK_BUFFER_COUNT]{};
+
+        // True between BeginFrame and EndFrame, while the frame's command list is open
+        bool m_frameOpen = false;
+
+        // Deferred release queue
+        struct DeferredRelease
+        {
+            ComPtr<ID3D12Resource> resource;
+            ComPtr<D3D12MA::Allocation> allocation;
+            DescriptorAllocator* descriptorAllocator = nullptr;
+            uint32_t descriptorHandle = 0;
+        };
+
+        struct DeferredReleaseBatch
+        {
+            uint64_t fenceValue = 0; // Safe to release once the direct queue fence reaches this value
+            std::vector<DeferredRelease> releases;
+        };
+
+        // Frees since the last EndFrame, they get the fence value of the frame that is submitted next
+        std::vector<DeferredRelease> m_pendingReleases;
+
+        // Frees tagged with a fence value, oldest first
+        std::deque<DeferredReleaseBatch> m_queuedReleases;
+
+        bool m_deferReleases = false;
+
+        // Releases every queued batch whose fence value the GPU has completed
+        void ProcessDeferredReleases();
+        static void Release(std::vector<DeferredRelease>& releases);
 
         bool m_vsyncEnabled = true;
         bool m_hdrEnabled = false;

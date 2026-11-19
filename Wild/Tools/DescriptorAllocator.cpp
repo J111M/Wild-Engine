@@ -4,9 +4,22 @@ namespace Wild
 {
     void DescriptorAllocator::FreeHandle(uint32_t handle)
     {
-        IFCHECK(handle <= m_nextFreeIndex, "Handle is higher than the existing index.");
+        // The GPU may still read this descriptor in a frame that is in flight, so the slot can't be reused yet
+        if (auto gfxContext = engine.GetGfxContext())
+        {
+            gfxContext->DeferDescriptorFree(this, handle);
+            return;
+        }
+
+        ReleaseHandle(handle);
+    }
+
+    void DescriptorAllocator::ReleaseHandle(uint32_t handle)
+    {
+        IFCHECK(handle < m_nextFreeIndex, "Freed descriptor handle {} was never allocated.", handle);
         IFCHECK(std::find(m_freedDiscriptors.begin(), m_freedDiscriptors.end(), handle) == m_freedDiscriptors.end(),
-                "Handle is higher than existing index");
+                "Descriptor handle {} is freed twice.",
+                handle);
 
         m_freedDiscriptors.push_back(handle);
     }

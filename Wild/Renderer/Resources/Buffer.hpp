@@ -40,6 +40,7 @@ namespace Wild
         void WriteData(const void* dataSrc, size_t sizeInBytes);
 
         ID3D12Resource* GetBuffer() { return m_resource->Handle().Get(); }
+        uint64_t GetSize() const { return m_desc.size; }
         void Transition(CommandList& list, D3D12_RESOURCE_STATES newState);
 
         std::shared_ptr<VertexBufferView> GetVBView() const;
@@ -131,4 +132,6 @@ namespace Wild
             CreateViews();
         }
     };
+
+    void EnsureUploadBuffer(std::unique_ptr<GPUBuffer>& buffer, uint64_t size, const std::string& name);
 } // namespace Wild

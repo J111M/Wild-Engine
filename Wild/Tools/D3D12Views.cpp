@@ -4,6 +4,18 @@ namespace Wild
 {
     ViewBase::ViewBase(ComPtr<ID3D12Resource> resource) : m_resource(resource) {}
 
+    namespace
+    {
+        // Frees a view's descriptor slot
+        template <typename GetAllocator> void FreeViewHandle(GetAllocator getAllocator, uint32_t handle)
+        {
+            auto gfxContext = engine.GetGfxContext();
+            if (!gfxContext) return;
+
+            if (auto allocator = ((*gfxContext).*getAllocator)()) allocator->FreeHandle(handle);
+        }
+    } // namespace
+
     ///
     /// RenderTargetView
     ///
@@ -15,7 +27,7 @@ namespace Wild
         m_cpuHandle = engine.GetGfxContext()->GetRtvAllocator()->CpuHandle(m_viewIndex);
     }
 
-    RenderTargetView::~RenderTargetView() { engine.GetGfxContext()->GetRtvAllocator()->FreeHandle(m_viewIndex); }
+    RenderTargetView::~RenderTargetView() { FreeViewHandle(&GfxContext::GetRtvAllocator, m_viewIndex); }
 
     ///
     /// DepthStencilView
@@ -28,7 +40,7 @@ namespace Wild
         m_cpuHandle = engine.GetGfxContext()->GetDsvAllocator()->CpuHandle(m_viewIndex);
     }
 
-    DepthStencilView::~DepthStencilView() { engine.GetGfxContext()->GetDsvAllocator()->FreeHandle(m_viewIndex); }
+    DepthStencilView::~DepthStencilView() { FreeViewHandle(&GfxContext::GetDsvAllocator, m_viewIndex); }
 
     ///
     /// ShaderResourceView
@@ -42,7 +54,7 @@ namespace Wild
         m_cpuHandle = engine.GetGfxContext()->GetCbvSrvUavAllocator()->CpuHandle(m_viewIndex);
     }
 
-    ShaderResourceView::~ShaderResourceView() { engine.GetGfxContext()->GetCbvSrvUavAllocator()->FreeHandle(m_viewIndex); }
+    ShaderResourceView::~ShaderResourceView() { FreeViewHandle(&GfxContext::GetCbvSrvUavAllocator, m_viewIndex); }
 
     ///
     /// ConstantBufferView
@@ -56,7 +68,7 @@ namespace Wild
         m_cpuHandle = engine.GetGfxContext()->GetCbvSrvUavAllocator()->CpuHandle(m_viewIndex);
     }
 
-    ConstantBufferView::~ConstantBufferView() { engine.GetGfxContext()->GetCbvSrvUavAllocator()->FreeHandle(m_viewIndex); }
+    ConstantBufferView::~ConstantBufferView() { FreeViewHandle(&GfxContext::GetCbvSrvUavAllocator, m_viewIndex); }
 
     ///
     /// UnorderedAccessView
@@ -70,7 +82,7 @@ namespace Wild
         m_cpuHandle = engine.GetGfxContext()->GetCbvSrvUavAllocator()->CpuHandle(m_viewIndex);
     }
 
-    UnorderedAccessView::~UnorderedAccessView() { engine.GetGfxContext()->GetCbvSrvUavAllocator()->FreeHandle(m_viewIndex); }
+    UnorderedAccessView::~UnorderedAccessView() { FreeViewHandle(&GfxContext::GetCbvSrvUavAllocator, m_viewIndex); }
 
     IndexBufferView::IndexBufferView(ComPtr<ID3D12Resource> resource, uint32_t sizeInBytes, DXGI_FORMAT format)
         : ViewBase(resource)

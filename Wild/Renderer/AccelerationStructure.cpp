@@ -142,22 +142,19 @@ namespace Wild
                 desc.AccelerationStructure = m_blasEntries[inst.blasIndex].result->GetBuffer()->GetGPUVirtualAddress();
             }
 
-            // Upload instance descs
-            BufferDesc instanceBuffDesc{};
-            instanceBuffDesc.size = static_cast<uint64_t>(sizeof(D3D12_RAYTRACING_INSTANCE_DESC)) * instanceDescs.size();
-            instanceBuffDesc.stride = sizeof(D3D12_RAYTRACING_INSTANCE_DESC);
-            instanceBuffDesc.usage = BufferUsage::ShaderWrite;
-            instanceBuffDesc.access = MemoryAccess::GpuOnly;
+            // Write the instance descs into this frame's upload buffer, growing it when the instance count outgrows it
+            const uint64_t instanceDataSize =
+                static_cast<uint64_t>(sizeof(D3D12_RAYTRACING_INSTANCE_DESC)) * instanceDescs.size();
 
-            // Upload buffer
-            m_instanceDescsBuffer = std::make_unique<GPUBuffer>(instanceBuffDesc);
-            m_instanceDescsBuffer->UploadToGPU(instanceDescs.data());
+            auto& instanceDescsBuffer = m_instanceDescsBuffers.Get();
+            EnsureUploadBuffer(instanceDescsBuffer, instanceDataSize, "TLAS instance descs");
+            instanceDescsBuffer->Allocate(instanceDescs.data(), instanceDataSize);
 
             D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
             inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
             inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
             inputs.NumDescs = static_cast<uint32_t>(m_dynamicTlasInstances.size());
-            inputs.InstanceDescs = m_instanceDescsBuffer->GetBuffer()->GetGPUVirtualAddress();
+            inputs.InstanceDescs = instanceDescsBuffer->GetBuffer()->GetGPUVirtualAddress();
             inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE |
                 D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
 

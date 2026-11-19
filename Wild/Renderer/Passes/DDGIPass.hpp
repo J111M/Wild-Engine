@@ -97,11 +97,11 @@ namespace Wild
         bool enabled = true;
 
       private:
-        std::shared_ptr<GPUBuffer> m_traceConstantBuffer{};
-        std::shared_ptr<GPUBuffer> m_irradianceConstantBuffer{};
-        std::shared_ptr<GPUBuffer> m_distanceConstantBuffer{};
-
-        std::shared_ptr<GPUBuffer> m_probeDataBuffer{};
+        // One copy per frame in flight
+        PerFrame<std::unique_ptr<GPUBuffer>> m_traceConstantBuffers;
+        PerFrame<std::unique_ptr<GPUBuffer>> m_irradianceConstantBuffers;
+        PerFrame<std::unique_ptr<GPUBuffer>> m_distanceConstantBuffers;
+        PerFrame<std::unique_ptr<GPUBuffer>> m_probeDataBuffers;
 
         DDGIProbeData m_probeData{};
 
@@ -116,7 +116,7 @@ namespace Wild
 
         void UploadProbeData(const ProbeSystem& probeSystem, const DDGIPassData& ddgiData);
 
-        static std::shared_ptr<GPUBuffer> CreateConstantBuffer(size_t size, const std::string& name);
+        static std::unique_ptr<GPUBuffer> CreateConstantBuffer(size_t size, const std::string& name);
 
         int m_raysPerProbe = 64;
         float m_hysteresis = 0.97f;

@@ -1,25 +1,29 @@
 #pragma once
 
-#include "Renderer/CommandQueue.hpp"
+#include "Tools/D3D12Common.hpp"
 
-#include <chrono>
+#include <cstdint>
 
 namespace Wild
 {
     class Fence : private NonCopyable
     {
       public:
-        Fence();
+        explicit Fence(ID3D12Device* device);
         ~Fence();
 
-        void Signal(const CommandQueue& m_commandQueue);
-        void SignalAndWait(const CommandQueue& m_commandQueue);
+        /// Queues a signal of the next fence value on the queue and returns that value
+        uint64_t Signal(ID3D12CommandQueue* queue);
 
-        void WaitForFenceValue(std::chrono::milliseconds duration = std::chrono::milliseconds::max());
+        /// Blocks the CPU until the GPU has completed the given fence value
+        void Wait(uint64_t value);
+
+        uint64_t GetCompletedValue() const { return m_fence->GetCompletedValue(); }
+        uint64_t GetLastSignaledValue() const { return m_lastSignaledValue; }
 
       private:
         ComPtr<ID3D12Fence> m_fence;
-        uint64_t m_fenceValue;
-        HANDLE m_fenceEvent;
+        uint64_t m_lastSignaledValue = 0;
+        HANDLE m_fenceEvent = nullptr;
     };
 } // namespace Wild

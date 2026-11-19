@@ -36,7 +36,8 @@ namespace Wild
             desc.size = sizeof(OceanRenderData);
             desc.usage = BufferUsage::Constant;
             desc.access = MemoryAccess::CpuToGpu;
-            m_oceanRenderDataBuffer = std::make_unique<GPUBuffer>(desc);
+            for (auto& buffer : m_oceanRenderDataBuffer)
+                buffer = std::make_unique<GPUBuffer>(desc);
         }
 
         GenerateOceanPlane(64);
@@ -161,7 +162,7 @@ namespace Wild
             break;
         }
 
-        m_oceanRenderDataBuffer->Allocate(&m_oceanRenderData, sizeof(m_oceanRenderData));
+        m_oceanRenderDataBuffer.Get()->Allocate(&m_oceanRenderData, sizeof(m_oceanRenderData));
     }
 
     void OceanPass::CalculateIntitialSpectrum(Renderer& renderer, RenderGraph& rg)
@@ -680,10 +681,8 @@ namespace Wild
                     m_oceanChunkSystem->Update(glm::vec3(sceneData.position), sceneData.frustum, m_frustumCullingEnabled);
 
                     list.SetPipelineState(pipeline);
-                    list.BeginRender({passData.finalTexture},
-                                     {ClearOperation::Store},
-                                     passData.depthTexture,
-                                     DSClearOperation::Store);
+                    list.BeginRender(
+                        {passData.finalTexture}, {ClearOperation::Store}, passData.depthTexture, DSClearOperation::Store);
 
                     m_oceanRC.displacementMapView = fftOceanData->displacementTexture->GetSrv()->BindlessView();
                     m_oceanRC.slopeMapView = fftOceanData->slopeTexture->GetSrv()->BindlessView();
@@ -700,7 +699,7 @@ namespace Wild
 
                             list.SetRootConstant<OceanRenderRootConstants>(0, m_oceanRC);
                             list.SetConstantBufferView(1, GetSceneDataAddress());
-                            list.SetConstantBufferView(2, m_oceanRenderDataBuffer.get());
+                            list.SetConstantBufferView(2, m_oceanRenderDataBuffer.Get().get());
                             list.SetBindlessHeap(3);
 
                             list.GetList()->IASetVertexBuffers(0, 1, &m_oceanVertices[chunk.lod]->GetVBView()->View());

@@ -10,7 +10,8 @@ namespace Wild {
 	public:
 
 		D3D12Resource(D3D12_RESOURCE_STATES initialState);
-		~D3D12Resource() {};
+		// Hands the resource to GfxContext's deferred release queue, so it survives until the GPU is done with it
+		~D3D12Resource();
 
 		ComPtr<ID3D12Resource>& Handle() { return m_resource; }
 
