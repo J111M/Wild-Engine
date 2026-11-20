@@ -32,7 +32,7 @@ namespace Wild
             ImGui::BeginDisabled(!probePass->drawProbes);
             ImGui::SliderFloat(
                 "Probe Exposure", &probePass->irradianceExposure, 0.1f, 500.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
-            ImGui::SliderFloat("Probe Size", &probePass->probeScale, 0.02f, 0.5f);
+            ImGui::SliderFloat("Probe Size", &probePass->probeScale, 0.01f, 0.25f);
 
             const int maxCascade = static_cast<int>(ProbeSystem::MAX_CASCADES) - 1;
             ImGui::SliderInt("Probe Cascade", &probePass->debugCascade, -1, maxCascade, probePass->debugCascade < 0 ? "All" : "%d");
