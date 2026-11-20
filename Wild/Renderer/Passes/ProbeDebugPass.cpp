@@ -27,7 +27,7 @@ namespace Wild
                 if (!drawProbes) return;
 
                 auto* probeSystem = renderer.GetSystems().TryGetSystem<ProbeSystem>();
-                if (!probeSystem || probeSystem->GetProbeCount() == 0) return;
+                if (!probeSystem || probeSystem->GetTotalProbeCount() == 0) return;
 
                 // The shader resolves the atlas straight from the descriptor heap
                 if (!engine.GetGfxContext()->GetCapabilities().CheckResourceBindingSupport(ResourceBindingSupport::Tier3))
@@ -81,10 +81,6 @@ namespace Wild
                 Uniform rootConstant{0, 0, RootParams::RootResourceType::Constants, sizeof(ProbeDebugRootConstants)};
                 uniforms.emplace_back(rootConstant);
 
-                // Probe positions structured buffer, indexed with the instance id
-                Uniform probeBuffer{0, 0, RootParams::RootResourceType::ShaderResourceView};
-                uniforms.emplace_back(probeBuffer);
-
                 Uniform sceneCameraUni{1, 0, RootParams::RootResourceType::ConstantBufferView};
                 sceneCameraUni.visibility = D3D12_SHADER_VISIBILITY_VERTEX;
                 uniforms.emplace_back(sceneCameraUni);
@@ -103,6 +99,10 @@ namespace Wild
 
                 m_rc.probeDataView = ddgiData->probeDataView;
                 m_rc.irradianceExposure = irradianceExposure;
+                m_rc.probeScale = probeScale;
+
+                const int cascadeCount = static_cast<int>(probeSystem->GetCascadeCount());
+                m_rc.debugCascade = debugCascade >= cascadeCount ? cascadeCount - 1 : debugCascade;
 
                 // A graphics pass reads it, so the trace pass' NON_PIXEL_SHADER_RESOURCE is not enough
                 irradianceAtlas->Transition(list, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -115,10 +115,11 @@ namespace Wild
                                  DSClearOperation::Store);
 
                 list.SetRootConstant<ProbeDebugRootConstants>(0, m_rc);
-                list.SetShaderResourceView(1, probeSystem->GetProbeBuffer().get());
-                list.SetConstantBufferView(2, GetSceneDataAddress());
+                list.SetConstantBufferView(1, GetSceneDataAddress());
 
-                list.GetList()->DrawInstanced(12 * 8 * 6, probeSystem->GetProbeCount(), 0, 0);
+                const uint32_t instanceCount =
+                    m_rc.debugCascade >= 0 ? probeSystem->GetProbesPerCascade() : probeSystem->GetTotalProbeCount();
+                list.GetList()->DrawInstanced(12 * 8 * 6, instanceCount, 0, 0);
 
                 list.EndRender();
             });

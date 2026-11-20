@@ -1,3 +1,4 @@
+// Include file since multiple shaders share the same root constant
 cbuffer DDGIUpdateConstants : register(b0) {
     uint irradianceReadView;
     uint irradianceWriteView;
@@ -5,9 +6,7 @@ cbuffer DDGIUpdateConstants : register(b0) {
     uint distanceReadView;
     uint distanceWriteView;
 
-    float probeMaxRayDistance;
-
     uint probeDataView;
 
-    uint2 updatePadding;
+    uint3 updatePadding;
 };

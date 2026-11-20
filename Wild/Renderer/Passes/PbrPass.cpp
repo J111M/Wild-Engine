@@ -212,7 +212,7 @@ namespace Wild
                 list.SetConstantBufferView(5, shadowMapData->directLightBuffer.get());
                 list.SetBindlessHeap(6);
 
-                auto probeSystem = renderer.GetSystems().GetSystem<ProbeSystem>();
+                auto& probeSystem = renderer.GetSystems().GetSystem<ProbeSystem>();
                 list.SetShaderResourceView(7, probeSystem.GetProbeIrradianceBuffer().get());
 
                 list.GetList()->DrawInstanced(3, 1, 0, 0);

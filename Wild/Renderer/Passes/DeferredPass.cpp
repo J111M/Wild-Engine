@@ -59,6 +59,18 @@ namespace Wild
             transform.Name = "Sponza";
         });
 
+        engine.GetSceneManager()->AddScene("Bazaar", []() {
+            auto ecs = engine.GetECS();
+            auto entity = ecs->CreateEntity();
+            ecs->AddComponent<SceneObject>(entity);
+            auto& transform = ecs->AddComponent<Transform>(entity, glm::vec3(0, 0, 0), entity);
+            ecs->AddComponent<Model>(entity, "Assets/Models/bazaar/LV_Bazaar.gltf", entity);
+            transform.SetScale(glm::vec3(1, 1, 1));
+            transform.SetPosition(glm::vec3(0, 1, 0));
+            // transform.SetRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
+            transform.Name = "Bazaar";
+        });
+
         engine.GetSceneManager()->AddScene("Demo city", []() {
             auto ecs = engine.GetECS();
             auto entity = ecs->CreateEntity();

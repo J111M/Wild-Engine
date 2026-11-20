@@ -41,17 +41,21 @@ static const uint4 BORDER_OFFSETS[BORDER_TEXELS] =
 	uint4(7, 14, 8, 15),  uint4(6, 14, 9, 15), uint4(5, 14, 10, 15), uint4(4, 14, 11, 15), uint4(3, 14, 12, 15), uint4(2, 14, 13, 15), uint4(1, 14, 14, 15),
 };
 
+// Dispatched as (counts.x, counts.z, counts.y * cascadeCount)
 [shader("compute")]
 [numthreads(PROBE_DISTANCE_TEXELS, PROBE_DISTANCE_TEXELS, 1)]
 void main(CSInput input) {
     DDGIProbeData probeData = GetDDGIProbeData(probeDataView);
 
-    uint3 probeGridCoords = uint3(input.GroupId.x, input.GroupId.z, input.GroupId.y);
+    uint cascade = input.GroupId.z / uint(probeData.probeCounts.y);
+    int3 storageCoord = int3(input.GroupId.x, input.GroupId.z % uint(probeData.probeCounts.y), input.GroupId.y);
+    uint probeIndex = probeData.GetStorageIndex(storageCoord);
 
-    uint probeIndex = probeGridCoords.x + probeGridCoords.y * probeData.probeCounts.x +
-                      probeGridCoords.z * probeData.probeCounts.x * probeData.probeCounts.y;
+    DDGICascadeData cascadeData = probeData.cascades[cascade];
+    int traceSlot = cascadeData.originCell.w;
+    float probeMaxRayDistance = cascadeData.spacing.y;
 
-    uint3 texelLocation = GetProbeTexel(probeGridCoords, PROBE_DISTANCE_TEXELS);
+    uint3 texelLocation = GetProbeTexel(probeData.GetAtlasCoord(cascade, storageCoord), PROBE_DISTANCE_TEXELS);
     uint3 cornerTexelLocation = texelLocation - uint3(1, 1, 0);
     texelLocation.xy += input.GroupThreadId.xy;
 
@@ -60,62 +64,75 @@ void main(CSInput input) {
     RWTexture2DArray<float2> newDistance = DescriptorHandle<RWTexture2DArray<float2>>(distanceWriteView);
 
     float2 prevDistance = distanceHistory[texelLocation];
-    bool invalidHistory = any(isnan(prevDistance)) || any(isinf(prevDistance)) || any(prevDistance < 0.0f);
-    prevDistance = invalidHistory ? float2(0, 0) : prevDistance;
+    float2 result = prevDistance;
 
-    float3 probeDirection = OctNormalDecode(((input.GroupThreadId.xy + 0.5f) / (float)PROBE_DISTANCE_TEXELS) * 2 - 1);
-
-    float weightedSum = 0;
-    float2 result = 0;
-
-    uint remainingRays = probeData.raysPerProbe;
-    uint offset = 0;
-
-    while (remainingRays > 0)
+    // Untraced cascades copy their history so the ping-pong pair stays in sync
+    if (traceSlot >= 0)
     {
-        uint numRays = min(CACHE_SIZE, remainingRays);
+        // A slot that wrapped around while scrolling holds another probe's history
+        int3 worldCell = probeData.GetWorldCellFromStorage(storageCoord, cascadeData.newOriginCell.xyz);
+        bool scrolledIn = any(worldCell < cascadeData.originCell.xyz) ||
+                          any(worldCell >= cascadeData.originCell.xyz + probeData.probeCounts.xyz);
 
-        // Wait for the previous batch to be consumed before overwriting the caches.
-        GroupMemoryBarrierWithGroupSync();
+        bool invalidHistory = scrolledIn || any(isnan(prevDistance)) || any(isinf(prevDistance)) || any(prevDistance < 0.0f);
+        prevDistance = invalidHistory ? float2(0, 0) : prevDistance;
 
-        if (input.GroupIndex < numRays)
+        uint rayBase = (uint(traceSlot) * probeData.GetProbesPerCascade() + probeIndex) * probeData.GetMaxRaysPerProbe();
+
+        float3 probeDirection = OctNormalDecode(((input.GroupThreadId.xy + 0.5f) / (float)PROBE_DISTANCE_TEXELS) * 2 - 1);
+
+        float weightedSum = 0;
+        result = 0;
+
+        uint remainingRays = probeData.raysPerProbe;
+        uint offset = 0;
+
+        while (remainingRays > 0)
         {
-            uint rayIndex = offset + input.GroupIndex;
+            uint numRays = min(CACHE_SIZE, remainingRays);
 
-            float rayDepth = probeRayData[probeIndex * probeData.GetMaxRaysPerProbe() + rayIndex].hitDistance;
-            bool invalidRay = isnan(rayDepth) || isinf(rayDepth);
-            SharedDepthCache[input.GroupIndex] = invalidRay ? probeMaxRayDistance : rayDepth;
-            // Rebuilding the raydirection to be the same as the initial trace rotation
-            SharedDirectionCache[input.GroupIndex] =
-                GetRayDirection(rayIndex, probeData.raysPerProbe, probeData.randomRotation);
-        }
+            // Wait for the previous batch to be consumed before overwriting the caches.
+            GroupMemoryBarrierWithGroupSync();
 
-        GroupMemoryBarrierWithGroupSync();
-
-        // Accumulating the weight of each cached radiance
-        for (uint i = 0; i < numRays; ++i)
-        {
-            float depth = min(abs(SharedDepthCache[i]), probeMaxRayDistance);
-            float3 direction = SharedDirectionCache[i];
-            float weight = saturate(dot(probeDirection, direction));
-            weight = pow(weight, 64);
-
-            if (weight > MIN_WEIGHT)
+            if (input.GroupIndex < numRays)
             {
-                weightedSum += weight;
-                result += float2(depth, Pow2(depth)) * weight;
+                uint rayIndex = offset + input.GroupIndex;
+
+                float rayDepth = probeRayData[rayBase + rayIndex].hitDistance;
+                bool invalidRay = isnan(rayDepth) || isinf(rayDepth);
+                SharedDepthCache[input.GroupIndex] = invalidRay ? probeMaxRayDistance : rayDepth;
+                // Rebuilding the raydirection to be the same as the initial trace rotation
+                SharedDirectionCache[input.GroupIndex] =
+                    GetRayDirection(rayIndex, probeData.raysPerProbe, probeData.randomRotation);
             }
+
+            GroupMemoryBarrierWithGroupSync();
+
+            // Accumulating the weight of each cached radiance
+            for (uint i = 0; i < numRays; ++i)
+            {
+                float depth = min(abs(SharedDepthCache[i]), probeMaxRayDistance);
+                float3 direction = SharedDirectionCache[i];
+                float weight = saturate(dot(probeDirection, direction));
+                weight = pow(weight, 64);
+
+                if (weight > MIN_WEIGHT)
+                {
+                    weightedSum += weight;
+                    result += float2(depth, Pow2(depth)) * weight;
+                }
+            }
+
+            remainingRays -= numRays;
+            offset += numRays;
         }
 
-        remainingRays -= numRays;
-        offset += numRays;
+        const float epsilon = 1e-9f * float(probeData.raysPerProbe);
+        result *= 1.0f / max(2.0f * weightedSum, epsilon);
+
+        const float historyBlendWeight = invalidHistory ? 1.0f : saturate(1.0f - probeData.hysteresis);
+        result = (weightedSum > MIN_WEIGHT || invalidHistory) ? lerp(prevDistance, result, historyBlendWeight) : prevDistance;
     }
-
-    const float epsilon = 1e-9f * float(probeData.raysPerProbe);
-    result *= 1.0f / max(2.0f * weightedSum, epsilon);
-
-    const float historyBlendWeight = invalidHistory ? 1.0f : saturate(1.0f - probeData.hysteresis);
-    result = (weightedSum > MIN_WEIGHT || invalidHistory) ? lerp(prevDistance, result, historyBlendWeight) : prevDistance;
 
     newDistance[texelLocation] = result;
 

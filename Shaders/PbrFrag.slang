@@ -4,6 +4,7 @@
 #include "ShadowInc.slang"
 
 import DDGI.DDGIProbeData;
+import DDGI.DDGISampling;
 
 cbuffer Constants : register(b0)
 {
@@ -128,118 +129,6 @@ float ShadowCalculation(float3 worldSpaceFragPosition, float3 normal, out int sh
     return shadow;
 }
 
-// TODO get from raytracing utils need to resolve multiple include issue of static data
-static const uint PROBE_IRRADIANCE_TEXELS = 6;
-static const uint PROBE_DISTANCE_TEXELS = 14;
-static const float PROBE_IRRADIANCE_GAMMA = 5.0f;
-
-float3 DDGIProbePosition(DDGIProbeData probeData, uint3 probeGridCoord)
-{
-    return probeData.probeOrigin.xyz + probeData.probeSpacing.xyz * float3(probeGridCoord);
-}
-
-float3 DDGIAtlasUV(DDGIProbeData probeData, uint3 probeGridCoord, float3 direction, uint interiorTexels)
-{
-    uint probeTexels = interiorTexels + 2;
-    float2 atlasSize = float2(probeData.probeCounts.x, probeData.probeCounts.z) * probeTexels;
-    float2 texel = float2(probeGridCoord.xz * probeTexels + 1) + OctEncode(normalize(direction)).xy * interiorTexels;
-    return float3(texel / atlasSize, float(probeGridCoord.y));
-}
-
-float3 DDGISurfaceBias(DDGIProbeData probeData, float3 N, float3 V)
-{
-    float minSpacing = min(probeData.probeSpacing.x, min(probeData.probeSpacing.y, probeData.probeSpacing.z));
-    float3 bias = (N * probeData.normalBias + V * probeData.viewBias) * minSpacing;
-    float maxLength = 0.5f * minSpacing;
-    float biasLength = length(bias);
-    return (biasLength > maxLength) ? bias * (maxLength / biasLength) : bias;
-}
-
-float DDGIVolumeWeight(DDGIProbeData probeData, float3 X)
-{
-    float3 relativeCoordinates = (X - probeData.probeOrigin.xyz) / probeData.probeSpacing.xyz;
-
-    float volumeWeight = 1.0f;
-    for (uint axis = 0; axis < 3; ++axis)
-    {
-        volumeWeight *= saturate(relativeCoordinates[axis]);
-        volumeWeight *= saturate(float(probeData.probeCounts[axis]) - 1.0f - relativeCoordinates[axis]);
-    }
-
-    return volumeWeight;
-}
-
-float3 SampleDDGIIrradiance(DDGIProbeData probeData, float3 N, float3 V, float3 X)
-{
-    float volumeWeight = DDGIVolumeWeight(probeData, X);
-    if (volumeWeight <= 0.0f) return float3(0.0f, 0.0f, 0.0f);
-
-    float3 biasedPosition = X + DDGISurfaceBias(probeData, N, V);
-    float3 biasedRelativeCoordinates = (biasedPosition - probeData.probeOrigin.xyz) / probeData.probeSpacing.xyz;
-
-    int3 baseProbeCoord = clamp(int3(floor(biasedRelativeCoordinates)), int3(0, 0, 0), probeData.probeCounts.xyz - 1);
-    float3 baseProbePosition = DDGIProbePosition(probeData, uint3(baseProbeCoord));
-    float3 alpha = saturate((biasedPosition - baseProbePosition) / probeData.probeSpacing.xyz);
-
-    Texture2DArray<float4> irradianceAtlas = DescriptorHandle<Texture2DArray<float4>>(probeData.irradianceView);
-    Texture2DArray<float2> distanceAtlas = DescriptorHandle<Texture2DArray<float2>>(probeData.distanceView);
-
-    float3 sumIrradiance = float3(0.0f, 0.0f, 0.0f);
-    float sumWeight = 0.0f;
-
-    for (uint i = 0; i < 8; ++i)
-    {
-        int3 offset = int3(i, i >> 1u, i >> 2u) & 1;
-        uint3 probeGridCoord = uint3(clamp(baseProbeCoord + offset, int3(0, 0, 0), probeData.probeCounts.xyz - 1));
-        float3 probePosition = DDGIProbePosition(probeData, probeGridCoord);
-
-        float3 directionToProbe = normalize(probePosition - X);
-        float3 biasedToProbe = probePosition - biasedPosition;
-        float biasedDistance = length(biasedToProbe);
-        float3 biasedDirectionToProbe = biasedToProbe / max(biasedDistance, 1e-6f);
-
-        float3 trilinear = max(0.001f, lerp(1.0f - alpha, alpha, float3(offset)));
-        float trilinearWeight = trilinear.x * trilinear.y * trilinear.z;
-
-        float wrapShading = (dot(directionToProbe, N) + 1.0f) * 0.5f;
-        float weight = wrapShading * wrapShading + 0.2f;
-
-        float3 distanceUV = DDGIAtlasUV(probeData, probeGridCoord, -biasedDirectionToProbe, PROBE_DISTANCE_TEXELS);
-        float2 moments = 2.0f * distanceAtlas.SampleLevel(pointSampler, distanceUV, 0).xy;
-
-        float chebyshev = 1.0f;
-        if (biasedDistance > moments.x)
-        {
-            float variance = abs(moments.x * moments.x - moments.y);
-            float distanceDelta = biasedDistance - moments.x;
-            chebyshev = variance / (variance + distanceDelta * distanceDelta);
-            chebyshev = max(chebyshev * chebyshev * chebyshev, 0.0f);
-        }
-        weight *= max(chebyshev, 0.05f);
-        weight = max(weight, 0.000001f);
-
-        const float crushThreshold = 0.2f;
-        if (weight < crushThreshold) { weight *= weight * weight * (1.0f / (crushThreshold * crushThreshold)); }
-
-        weight *= trilinearWeight;
-
-        float3 irradianceUV = DDGIAtlasUV(probeData, probeGridCoord, N, PROBE_IRRADIANCE_TEXELS);
-        float3 irradiance = irradianceAtlas.SampleLevel(pointSampler, irradianceUV, 0).rgb;
-        irradiance = pow(max(irradiance, 0.0f), PROBE_IRRADIANCE_GAMMA * 0.5f);
-
-        sumIrradiance += irradiance * weight;
-        sumWeight += weight;
-    }
-
-    if (sumWeight <= 0.0f) return float3(0.0f, 0.0f, 0.0f);
-
-    float3 result = sumIrradiance * (1.0f / sumWeight);
-    result *= result;
-    result *= 2.0f * PI;
-
-    return result * volumeWeight * probeData.intensity;
-}
-
 [shader("fragment")]
 float4 main(VSOutput input) : SV_TARGET0
 {
@@ -312,8 +201,16 @@ float4 main(VSOutput input) : SV_TARGET0
     if (probeDataView != INVALID_HEAP_INDEX)
     {
         DDGIProbeData probeData = GetDDGIProbeData(probeDataView);
-        ddgiIrradiance = SampleDDGIIrradiance(probeData, N, V, positionWS);
+        float4 ddgi = SampleDDGIIrradiance(probeData, pointSampler, positionWS, N, V);
+        ddgiIrradiance = ddgi.rgb * probeData.intensity;
         irradiance = ddgiIrradiance / PI;
+
+        // Fall back to the sky outside the cascades
+        float uncovered = 1.0f - ddgi.a;
+        if (uncovered > 0.0f && irradianceMapView > 0)
+        {
+            irradiance += uncovered * cubeTextures[irradianceMapView].Sample(pointSampler, N).rgb;
+        }
     }
     else if (irradianceMapView > 0)
     {

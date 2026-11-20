@@ -40,9 +40,34 @@ namespace Wild
 
     void DDGIPass::UploadProbeData(const ProbeSystem& probeSystem, const DDGIPassData& ddgiData)
     {
-        m_probeData.probeOrigin = glm::vec4(probeSystem.GetOrigin(), 0.0f);
-        m_probeData.probeSpacing = glm::vec4(probeSystem.GetSpacing(), 0.0f);
         m_probeData.probeCounts = glm::ivec4(probeSystem.GetCounts(), static_cast<int32_t>(ProbeSystem::MAX_RAYS_PER_PROBE));
+        m_probeData.cascadeCount = probeSystem.GetCascadeCount();
+        m_probeData.cascadeBlendCells = m_cascadeBlendCells;
+
+        const auto& traced = probeSystem.GetTracedCascades();
+        m_probeData.tracedCascadeCount = static_cast<uint32_t>(traced.size());
+        m_probeData.tracedCascades = glm::uvec4(0u);
+        for (size_t slot = 0; slot < traced.size() && slot < 4; ++slot)
+        {
+            m_probeData.tracedCascades[static_cast<glm::length_t>(slot)] = traced[slot];
+        }
+
+        for (uint32_t i = 0; i < ProbeSystem::MAX_CASCADES; ++i)
+        {
+            DDGICascadeData& gpuCascade = m_probeData.cascades[i];
+            if (i >= probeSystem.GetCascadeCount())
+            {
+                gpuCascade = DDGICascadeData{};
+                continue;
+            }
+
+            const ProbeSystem::Cascade& cascade = probeSystem.GetCascade(i);
+            gpuCascade.originCell = glm::ivec4(cascade.originCell, cascade.traceSlot);
+            gpuCascade.newOriginCell = glm::ivec4(cascade.newOriginCell, 0);
+
+            const float distanceUpdateMaxRayDistance = glm::sqrt(3.0f) * cascade.spacing * 1.5f;
+            gpuCascade.spacing = glm::vec4(cascade.spacing, distanceUpdateMaxRayDistance, 0.0f, 0.0f);
+        }
 
         const uint32_t historyIndex = ddgiData.frameParity;
 
@@ -58,9 +83,6 @@ namespace Wild
     // TODO replace function
     void DDGIPass::FillUpdateConstants(const DDGIPassData& ddgiData, const ProbeSystem& probeSystem)
     {
-        // TODO modify max ray distance
-        m_updateRc.probeMaxRayDistance = glm::length(probeSystem.GetSpacing()) * 1.5f;
-
         const uint32_t readIndex = ddgiData.frameParity;
         const uint32_t writeIndex = ddgiData.frameParity ^ 1u;
 
@@ -127,18 +149,47 @@ namespace Wild
         m_probeData.viewBias = m_viewBias;
         m_traceRc.emissiveIntensity = m_emissiveIntensity;
 
-        if (enabled) m_frameParity ^= 1u;
+        if (enabled)
+        {
+            m_frameParity ^= 1u;
+
+            // Cascades advance together with the ping-pong atlases
+            if (auto* probeSystem = engine.GetRenderer()->GetSystems().TryGetSystem<ProbeSystem>())
+            {
+                probeSystem->Update(glm::vec3(GetSceneData().position));
+            }
+        }
 
         engine.GetImGui()->AddPanel("DDGI Settings", [this]() {
             ImGui::Checkbox("Enabled", &enabled);
 
             if (auto* probeSystem = engine.GetRenderer()->GetSystems().TryGetSystem<ProbeSystem>())
             {
-                glm::vec3 origin = probeSystem->GetOrigin();
-                if (ImGui::DragFloat3("Volume Origin", &origin.x, 0.25f)) probeSystem->SetOrigin(origin);
+                float baseSpacing = probeSystem->GetBaseSpacing();
+                if (ImGui::SliderFloat("Cascade 0 Spacing", &baseSpacing, 0.25f, 8.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+                {
+                    probeSystem->SetBaseSpacing(baseSpacing);
+                }
 
-                const glm::vec3 extent = probeSystem->GetSpacing() * glm::vec3(probeSystem->GetCounts() - glm::ivec3(1));
-                ImGui::Text("Volume covers %.1f x %.1f x %.1f", extent.x, extent.y, extent.z);
+                int tracedPerFrame = static_cast<int>(probeSystem->GetCascadesTracedPerFrame());
+                const int maxTracedPerFrame = static_cast<int>(probeSystem->GetMaxCascadesTracedPerFrame());
+                if (ImGui::SliderInt("Cascades Traced Per Frame", &tracedPerFrame, 1, maxTracedPerFrame))
+                {
+                    probeSystem->SetCascadesTracedPerFrame(static_cast<uint32_t>(tracedPerFrame));
+                }
+
+                ImGui::SliderFloat("Cascade Blend Cells", &m_cascadeBlendCells, 0.5f, 4.0f);
+
+                if (ImGui::Button("Reset Probes")) probeSystem->Invalidate();
+
+                const glm::ivec3 counts = probeSystem->GetCounts();
+                ImGui::Text("%u cascades of %d x %d x %d probes", probeSystem->GetCascadeCount(), counts.x, counts.y, counts.z);
+                for (uint32_t i = 0; i < probeSystem->GetCascadeCount(); ++i)
+                {
+                    const float spacing = probeSystem->GetCascade(i).spacing;
+                    const glm::vec3 extent = spacing * glm::vec3(counts - glm::ivec3(1));
+                    ImGui::Text("  Cascade %u: spacing %.2f, covers %.0f x %.0f x %.0f", i, spacing, extent.x, extent.y, extent.z);
+                }
             }
 
             ImGui::SliderInt("Rays Per Probe", &m_raysPerProbe, 1, static_cast<int>(ProbeSystem::MAX_RAYS_PER_PROBE));
@@ -176,17 +227,16 @@ namespace Wild
 
         passData->probeDataView = (enabled && ddgiSupported) ? GetOrCreateProbeDataView() : INVALID_HEAP_INDEX;
 
-        auto probeSystem = renderer.GetSystems().GetSystem<ProbeSystem>();
+        auto& probeSystem = renderer.GetSystems().GetSystem<ProbeSystem>();
 
-        // if (!probeSystem) WD_FATAL("Probe system doesn't exist");
-        //  Use max probe count instead of current probe
         const glm::ivec3 probeCounts = probeSystem.GetCounts();
+        const uint32_t atlasSlices = static_cast<uint32_t>(probeCounts.y) * probeSystem.GetCascadeCount();
 
         {
             TextureDesc desc;
             desc.width = probeCounts.x * 8;
             desc.height = probeCounts.z * 8;
-            desc.depthOrArray = probeCounts.y;
+            desc.depthOrArray = atlasSlices;
 
             desc.format = DXGI_FORMAT_R16G16B16A16_FLOAT;
             desc.usage = TextureDesc::gpuOnly;
@@ -205,7 +255,7 @@ namespace Wild
             TextureDesc desc;
             desc.width = probeCounts.x * 16;
             desc.height = probeCounts.z * 16;
-            desc.depthOrArray = probeCounts.y;
+            desc.depthOrArray = atlasSlices;
             desc.format = DXGI_FORMAT_R32G32_FLOAT;
             desc.usage = TextureDesc::gpuOnly;
             desc.flag = static_cast<TextureDesc::ViewFlag>(TextureDesc::readWrite | TextureDesc::shaderResource);
@@ -225,7 +275,7 @@ namespace Wild
 
                 // Change to GetSystem instead of TryGetSystem to ensure the probe system exists
                 auto* probeSystem = renderer.GetSystems().TryGetSystem<ProbeSystem>();
-                if (!probeSystem || probeSystem->GetProbeCount() == 0) return;
+                if (!probeSystem || probeSystem->GetTotalProbeCount() == 0 || probeSystem->GetTracedCascades().empty()) return;
 
                 // SampleDDGIIrradiance resolves both probe atlases straight from the descriptor heap
                 if (!engine.GetGfxContext()->GetCapabilities().CheckResourceBindingSupport(ResourceBindingSupport::Tier3))
@@ -290,9 +340,6 @@ namespace Wild
                 Uniform meshInfoBuffer{1, 0, RootParams::RootResourceType::ShaderResourceView};
                 uniforms.emplace_back(meshInfoBuffer);
 
-                Uniform probeBuffer{2, 0, RootParams::RootResourceType::ShaderResourceView};
-                uniforms.emplace_back(probeBuffer);
-
                 Uniform probeIrradianceBuffer{3, 0, RootParams::RootResourceType::ShaderResourceView};
                 uniforms.emplace_back(probeIrradianceBuffer);
 
@@ -333,13 +380,14 @@ namespace Wild
                 list.SetConstantBufferView(0, &traceConstantBuffer);
                 list.GetList()->SetComputeRootShaderResourceView(1, engine.GetAccelerationStructureManager()->GetTLASAddress());
                 list.SetShaderResourceView(2, engine.GetAccelerationStructureManager()->GetMeshIdBuffer().get());
-                list.SetShaderResourceView(3, probeSystem->GetProbeBuffer().get());
-                list.SetShaderResourceView(4, probeSystem->GetProbeIrradianceBuffer().get());
-                list.SetUnorderedAccessView(5, probeSystem->GetProbeRayDataBuffer().get());
-                list.SetBindlessHeap(6);
-                list.SetConstantBufferView(7, lightSystem.GetPointLightBuffer().get());
+                list.SetShaderResourceView(3, probeSystem->GetProbeIrradianceBuffer().get());
+                list.SetUnorderedAccessView(4, probeSystem->GetProbeRayDataBuffer().get());
+                list.SetBindlessHeap(5);
+                list.SetConstantBufferView(6, lightSystem.GetPointLightBuffer().get());
 
-                list.Dispatch(m_raysPerProbe, static_cast<uint32_t>(probeSystem->GetProbeCount()), 1);
+                list.Dispatch(m_raysPerProbe,
+                              probeSystem->GetProbesPerCascade(),
+                              static_cast<uint32_t>(probeSystem->GetTracedCascades().size()));
 
                 list.EndRender();
 
@@ -368,7 +416,7 @@ namespace Wild
                 if (!enabled) return;
 
                 auto* probeSystem = renderer.GetSystems().TryGetSystem<ProbeSystem>();
-                if (!probeSystem || probeSystem->GetProbeCount() == 0) return;
+                if (!probeSystem || probeSystem->GetTotalProbeCount() == 0) return;
 
                 // The shader resolves both textures straight from the descriptor heap
                 if (!engine.GetGfxContext()->GetCapabilities().CheckResourceBindingSupport(ResourceBindingSupport::Tier3))
@@ -432,8 +480,9 @@ namespace Wild
                 list.SetUnorderedAccessView(2, probeSystem->GetProbeIrradianceBuffer().get());
 
                 const glm::ivec3 counts = probeSystem->GetCounts();
-                list.GetList()->Dispatch(
-                    static_cast<uint32_t>(counts.x), static_cast<uint32_t>(counts.z), static_cast<uint32_t>(counts.y));
+                list.GetList()->Dispatch(static_cast<uint32_t>(counts.x),
+                                         static_cast<uint32_t>(counts.z),
+                                         static_cast<uint32_t>(counts.y) * probeSystem->GetCascadeCount());
 
                 list.EndRender();
 
@@ -457,7 +506,7 @@ namespace Wild
                 if (!enabled) return;
 
                 auto* probeSystem = renderer.GetSystems().TryGetSystem<ProbeSystem>();
-                if (!probeSystem || probeSystem->GetProbeCount() == 0) return;
+                if (!probeSystem || probeSystem->GetTotalProbeCount() == 0) return;
 
                 // The shader resolves both textures straight from the descriptor heap
                 if (!engine.GetGfxContext()->GetCapabilities().CheckResourceBindingSupport(ResourceBindingSupport::Tier3))
@@ -521,8 +570,9 @@ namespace Wild
                 list.SetUnorderedAccessView(2, probeSystem->GetProbeIrradianceBuffer().get());
 
                 const glm::ivec3 counts = probeSystem->GetCounts();
-                list.GetList()->Dispatch(
-                    static_cast<uint32_t>(counts.x), static_cast<uint32_t>(counts.z), static_cast<uint32_t>(counts.y));
+                list.GetList()->Dispatch(static_cast<uint32_t>(counts.x),
+                                         static_cast<uint32_t>(counts.z),
+                                         static_cast<uint32_t>(counts.y) * probeSystem->GetCascadeCount());
 
                 list.EndRender();
 

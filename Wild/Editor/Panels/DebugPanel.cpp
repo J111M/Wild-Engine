@@ -3,6 +3,7 @@
 #include "Core/Engine.hpp"
 #include "Renderer/Passes/DDGIPass.hpp"
 #include "Renderer/Passes/ProbeDebugPass.hpp"
+#include "Systems/ProbeSystem.hpp"
 
 #include <imgui.h>
 
@@ -31,6 +32,10 @@ namespace Wild
             ImGui::BeginDisabled(!probePass->drawProbes);
             ImGui::SliderFloat(
                 "Probe Exposure", &probePass->irradianceExposure, 0.1f, 500.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+            ImGui::SliderFloat("Probe Size", &probePass->probeScale, 0.02f, 0.5f);
+
+            const int maxCascade = static_cast<int>(ProbeSystem::MAX_CASCADES) - 1;
+            ImGui::SliderInt("Probe Cascade", &probePass->debugCascade, -1, maxCascade, probePass->debugCascade < 0 ? "All" : "%d");
             ImGui::EndDisabled();
         }
 

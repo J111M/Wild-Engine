@@ -43,12 +43,14 @@ static const uint4 BORDER_OFFSETS[BORDER_TEXELS] =
 void main(CSInput input) {
     DDGIProbeData probeData = GetDDGIProbeData(probeDataView);
 
-    uint3 probeGridCoords = uint3(input.GroupId.x, input.GroupId.z, input.GroupId.y);
+    uint cascade = input.GroupId.z / uint(probeData.probeCounts.y);
+    int3 storageCoord = int3(input.GroupId.x, input.GroupId.z % uint(probeData.probeCounts.y), input.GroupId.y);
+    uint probeIndex = probeData.GetStorageIndex(storageCoord);
 
-    uint probeIndex = probeGridCoords.x + probeGridCoords.y * probeData.probeCounts.x +
-                      probeGridCoords.z * probeData.probeCounts.x * probeData.probeCounts.y;
+    DDGICascadeData cascadeData = probeData.cascades[cascade];
+    int traceSlot = cascadeData.originCell.w;
 
-    uint3 texelLocation = GetProbeTexel(probeGridCoords, PROBE_IRRADIANCE_TEXELS);
+    uint3 texelLocation = GetProbeTexel(probeData.GetAtlasCoord(cascade, storageCoord), PROBE_IRRADIANCE_TEXELS);
     uint3 cornerTexelLocation = texelLocation - uint3(1, 1, 0);
     texelLocation.xy += input.GroupThreadId.xy;
 
@@ -56,61 +58,74 @@ void main(CSInput input) {
     RWTexture2DArray<float4> newIrradiance = DescriptorHandle<RWTexture2DArray<float4>>(irradianceWriteView);
 
     float3 prevRadiance = irradianceHistory[texelLocation].rgb;
-    bool invalidHistory = any(isnan(prevRadiance)) || any(isinf(prevRadiance)) || any(prevRadiance < 0.0f);
-    prevRadiance = invalidHistory ? float3(0, 0, 0) : prevRadiance;
+    float3 result = prevRadiance;
 
-    float3 probeDirection = OctNormalDecode(((input.GroupThreadId.xy + 0.5f) / (float)PROBE_IRRADIANCE_TEXELS) * 2 - 1);
-
-    float weightedSum = 0;
-    float3 result = 0;
-
-    // Rays are traced in batches of at most CACHE_SIZE so a group of PROBE_IRRADIANCE_TEXELS^2 threads can
-    // cooperatively pull them into groupshared memory before every thread reads all of them.
-    uint remainingRays = probeData.raysPerProbe;
-    uint offset = 0;
-
-    while (remainingRays > 0)
+    // Untraced cascades copy their history so the ping-pong pair stays in sync
+    if (traceSlot >= 0)
     {
-        uint numRays = min(CACHE_SIZE, remainingRays);
+        // A slot that wrapped around while scrolling holds another probe's history
+        int3 worldCell = probeData.GetWorldCellFromStorage(storageCoord, cascadeData.newOriginCell.xyz);
+        bool scrolledIn = any(worldCell < cascadeData.originCell.xyz) ||
+                          any(worldCell >= cascadeData.originCell.xyz + probeData.probeCounts.xyz);
 
-        // Wait for the previous batch to be consumed before overwriting the caches.
-        GroupMemoryBarrierWithGroupSync();
+        bool invalidHistory = scrolledIn || any(isnan(prevRadiance)) || any(isinf(prevRadiance)) || any(prevRadiance < 0.0f);
+        prevRadiance = invalidHistory ? float3(0, 0, 0) : prevRadiance;
 
-        if (input.GroupIndex < numRays)
+        uint rayBase = (uint(traceSlot) * probeData.GetProbesPerCascade() + probeIndex) * probeData.GetMaxRaysPerProbe();
+
+        float3 probeDirection = OctNormalDecode(((input.GroupThreadId.xy + 0.5f) / (float)PROBE_IRRADIANCE_TEXELS) * 2 - 1);
+
+        float weightedSum = 0;
+        result = 0;
+
+        // Rays are traced in batches of at most CACHE_SIZE so a group of PROBE_IRRADIANCE_TEXELS^2 threads can
+        // cooperatively pull them into groupshared memory before every thread reads all of them.
+        uint remainingRays = probeData.raysPerProbe;
+        uint offset = 0;
+
+        while (remainingRays > 0)
         {
-            uint rayIndex = offset + input.GroupIndex;
-            
-            float3 rayRadiance = probeRayData[probeIndex * probeData.GetMaxRaysPerProbe() + rayIndex].radiance;
-            bool invalidRay = any(isnan(rayRadiance)) || any(isinf(rayRadiance));
-            SharedRadianceCache[input.GroupIndex] = invalidRay ? float3(0, 0, 0) : max(rayRadiance, float3(0, 0, 0));
-            // Rebuilding the raydirection to be the same as the initial trace rotation
-            SharedDirectionCache[input.GroupIndex] =
-                GetRayDirection(rayIndex, probeData.raysPerProbe, probeData.randomRotation);
+            uint numRays = min(CACHE_SIZE, remainingRays);
+
+            // Wait for the previous batch to be consumed before overwriting the caches.
+            GroupMemoryBarrierWithGroupSync();
+
+            if (input.GroupIndex < numRays)
+            {
+                uint rayIndex = offset + input.GroupIndex;
+
+                float3 rayRadiance = probeRayData[rayBase + rayIndex].radiance;
+                bool invalidRay = any(isnan(rayRadiance)) || any(isinf(rayRadiance));
+                SharedRadianceCache[input.GroupIndex] = invalidRay ? float3(0, 0, 0) : max(rayRadiance, float3(0, 0, 0));
+                // Rebuilding the raydirection to be the same as the initial trace rotation
+                SharedDirectionCache[input.GroupIndex] =
+                    GetRayDirection(rayIndex, probeData.raysPerProbe, probeData.randomRotation);
+            }
+
+            GroupMemoryBarrierWithGroupSync();
+
+            // Accumulating the weight of each cached radiance
+            for (uint i = 0; i < numRays; ++i)
+            {
+                float3 radiance = SharedRadianceCache[i].rgb;
+                float3 direction = SharedDirectionCache[i];
+                float weight = saturate(dot(probeDirection, direction));
+                result += weight * radiance;
+                weightedSum += weight;
+            }
+
+            remainingRays -= numRays;
+            offset += numRays;
         }
 
-        GroupMemoryBarrierWithGroupSync();
+        const float epsilon = 1e-9f * float(probeData.raysPerProbe);
+        result *= 1.0f / max(2.0f * weightedSum, epsilon);
 
-        // Accumulating the weight of each cached radiance
-        for (uint i = 0; i < numRays; ++i)
-        {
-            float3 radiance = SharedRadianceCache[i].rgb;
-            float3 direction = SharedDirectionCache[i];
-            float weight = saturate(dot(probeDirection, direction));
-            result += weight * radiance;
-            weightedSum += weight;
-        }
+        result = pow(max(result, float3(0, 0, 0)), rcp(5.0f));
 
-        remainingRays -= numRays;
-        offset += numRays;
+        const float historyBlendWeight = invalidHistory ? 1.0f : saturate(1.0f - probeData.hysteresis);
+        result = lerp(prevRadiance, result, historyBlendWeight);
     }
-
-    const float epsilon = 1e-9f * float(probeData.raysPerProbe);
-    result *= 1.0f / max(2.0f * weightedSum, epsilon);
-
-    result = pow(max(result, float3(0, 0, 0)), rcp(5.0f));
-
-    const float historyBlendWeight = invalidHistory ? 1.0f : saturate(1.0f - probeData.hysteresis);
-    result = lerp(prevRadiance, result, historyBlendWeight);
 
     newIrradiance[texelLocation] = float4(result, 1);
 

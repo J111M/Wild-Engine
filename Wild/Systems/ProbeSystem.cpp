@@ -1,49 +1,90 @@
 #include "Systems/ProbeSystem.hpp"
 
+#include "Renderer/Resources/Buffer.hpp"
+
+#include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 
 namespace Wild
 {
-    ProbeSystem::ProbeSystem(const glm::vec3& origin, const glm::vec3& spacing, const glm::ivec3& counts)
-        : m_origin(origin), m_spacing(spacing), m_counts(counts)
+    ProbeSystem::ProbeSystem(const glm::ivec3& countsPerCascade, uint32_t cascadeCount, float baseSpacing, uint32_t maxTracedPerFrame)
+        : m_counts(countsPerCascade), m_cascadeCount(std::clamp(cascadeCount, 1u, MAX_CASCADES)), m_baseSpacing(baseSpacing)
     {
-        assert(counts.x > 0 && counts.y > 0 && counts.z > 0);
-        assert(spacing.x > 0.0f && spacing.y > 0.0f && spacing.z > 0.0f);
-        Generate();
+        assert(countsPerCascade.x > 0 && countsPerCascade.y > 0 && countsPerCascade.z > 0);
+        assert(baseSpacing > 0.0f);
 
-        AllocateProbes();
+        m_maxTracedPerFrame = std::clamp(maxTracedPerFrame, 1u, m_cascadeCount);
+        m_tracedPerFrame = m_maxTracedPerFrame;
+
+        Invalidate();
         AllocateProbeGIBuffers();
     }
 
-    void ProbeSystem::SetOrigin(const glm::vec3& origin)
+    void ProbeSystem::Invalidate()
     {
-        m_origin = origin;
-        Generate();
+        for (uint32_t i = 0; i < MAX_CASCADES; ++i)
+        {
+            Cascade& cascade = m_cascades[i];
+            cascade.spacing = m_baseSpacing * static_cast<float>(1u << i);
+            cascade.originCell = glm::ivec3(INVALID_ORIGIN_CELL);
+            cascade.newOriginCell = glm::ivec3(INVALID_ORIGIN_CELL);
+            cascade.traceSlot = -1;
+        }
 
-        if (m_probeStructure) m_probeStructure->UploadToGPU(m_probes.data(), m_probes.size() * sizeof(Probe));
+        m_tracedCascades.clear();
     }
 
-    void ProbeSystem::AllocateProbes()
+    void ProbeSystem::SetBaseSpacing(float spacing)
     {
-        m_probeStructure.reset();
+        if (spacing <= 0.0f || spacing == m_baseSpacing) return;
 
-        // Create structured probe buffer
-        BufferDesc desc{};
-        desc.size = static_cast<uint64_t>(sizeof(Probe)) * m_probes.size();
-        desc.stride = sizeof(Probe);
-        desc.usage = BufferUsage::ShaderRead;
-        desc.access = MemoryAccess::GpuOnly;
-        m_probeStructure = std::make_shared<GPUBuffer>(desc);
-        m_probeStructure->UploadToGPU(m_probes.data(), m_probes.size() * sizeof(Probe));
+        m_baseSpacing = spacing;
+        Invalidate();
+    }
+
+    void ProbeSystem::SetCascadesTracedPerFrame(uint32_t count) { m_tracedPerFrame = std::clamp(count, 1u, m_maxTracedPerFrame); }
+
+    void ProbeSystem::Update(const glm::vec3& cameraPosition)
+    {
+        // Last frame's writes are this frame's history
+        for (uint32_t i = 0; i < m_cascadeCount; ++i)
+        {
+            Cascade& cascade = m_cascades[i];
+            cascade.originCell = cascade.newOriginCell;
+            cascade.traceSlot = -1;
+        }
+
+        // Cascade 0 is traced every frame, the others round robin
+        m_tracedCascades.clear();
+        m_tracedCascades.push_back(0);
+
+        const uint32_t farCascades = m_cascadeCount - 1;
+        const uint32_t farSlots = std::min(m_tracedPerFrame - 1, farCascades);
+        for (uint32_t i = 0; i < farSlots; ++i)
+        {
+            m_tracedCascades.push_back(m_nextRoundRobinCascade);
+            m_nextRoundRobinCascade = (m_nextRoundRobinCascade % farCascades) + 1;
+        }
+
+        // Snapping to whole cells keeps the probes at fixed world positions
+        const glm::ivec3 halfCounts = m_counts / 2;
+        for (uint32_t slot = 0; slot < m_tracedCascades.size(); ++slot)
+        {
+            Cascade& cascade = m_cascades[m_tracedCascades[slot]];
+            const glm::ivec3 cameraCell = glm::ivec3(glm::floor(cameraPosition / cascade.spacing));
+
+            cascade.newOriginCell = cameraCell - halfCounts;
+            cascade.traceSlot = static_cast<int32_t>(slot);
+        }
     }
 
     void ProbeSystem::AllocateProbeGIBuffers()
     {
-        const uint32_t probeCount = GetProbeCount();
-
+        // Laid out as [slot][probe][ray]
         {
-            const uint32_t elementCount = probeCount * MAX_RAYS_PER_PROBE;
+            const uint64_t elementCount = static_cast<uint64_t>(GetProbesPerCascade()) * MAX_RAYS_PER_PROBE * m_maxTracedPerFrame;
 
             BufferDesc desc{};
             desc.size = static_cast<uint64_t>(sizeof(ProbeRayData)) * elementCount;
@@ -57,6 +98,8 @@ namespace Wild
         }
 
         {
+            const uint32_t probeCount = GetTotalProbeCount();
+
             BufferDesc desc{};
             desc.size = static_cast<uint64_t>(sizeof(ProbeIrradiance)) * probeCount;
             desc.stride = sizeof(ProbeIrradiance);
@@ -67,19 +110,5 @@ namespace Wild
             std::vector<ProbeIrradiance> zeroed(probeCount);
             m_probeIrradiance->UploadToGPU(zeroed.data(), zeroed.size() * sizeof(ProbeIrradiance));
         }
-    }
-
-    void ProbeSystem::Generate()
-    {
-        m_probes.clear();
-        m_probes.reserve(GetProbeCount());
-        for (int z = 0; z < m_counts.z; ++z)
-            for (int y = 0; y < m_counts.y; ++y)
-                for (int x = 0; x < m_counts.x; ++x)
-                {
-                    Probe p{};
-                    p.position = glm::vec4(m_origin, 1.0f) + glm::vec4(x, y, z, 1.0f) * glm::vec4(m_spacing, 1.0f);
-                    m_probes.push_back(p);
-                }
     }
 } // namespace Wild

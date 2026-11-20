@@ -9,10 +9,10 @@ namespace Wild
     // Camera matrices come from the scene data buffer
     struct ProbeDebugRootConstants
     {
-        float probeScale = 0.25f;
+        float probeScale = 0.15f;
         uint32_t probeDataView{INVALID_HEAP_INDEX};
         float irradianceExposure{20.0f};
-        float padding{};
+        int32_t debugCascade{-1};
     };
 
     struct ProbeDebugPassData
@@ -33,6 +33,11 @@ namespace Wild
         bool drawProbes = false;
 
         float irradianceExposure = 20.0f;
+
+        float probeScale = 0.15f;
+
+        // -1 draws every cascade
+        int debugCascade = 0;
 
       private:
         ProbeDebugRootConstants m_rc{};

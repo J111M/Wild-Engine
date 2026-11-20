@@ -1,6 +1,7 @@
 import DDGI.RayTracingUtils;
 import DDGI.DDGIProbeData;
 import DDGI.DDGITraceConstants;
+import DDGI.DDGISampling;
 
 struct RayPayload {
     float3 radiance;
@@ -44,7 +45,6 @@ struct MeshInstanceInfo {
 
 StructuredBuffer<MeshInstanceInfo> meshTable : register(t1, space0);
 
-StructuredBuffer<float4> probes : register(t2, space0);
 StructuredBuffer<float4> probeIrradiance : register(t3, space0);
 
 struct ProbeRayData {
@@ -95,8 +95,13 @@ void RayGen() {
 
     uint rayIndex = DispatchRaysIndex().x;
     uint probeIndex = DispatchRaysIndex().y;
+    uint traceSlot = DispatchRaysIndex().z;
 
-    float3 probePosition = probes[probeIndex].xyz;
+    uint cascade = probeData.tracedCascades[traceSlot];
+    DDGICascadeData cascadeData = probeData.cascades[cascade];
+
+    int3 worldCell = probeData.GetWorldCellFromStorage(probeData.GetStorageCoord(probeIndex), cascadeData.newOriginCell.xyz);
+    float3 probePosition = float3(worldCell) * cascadeData.spacing.x;
     float3 randomDirection = GetRayDirection(rayIndex, probeData.raysPerProbe, probeData.randomRotation);
 
     RayDesc ray;
@@ -111,7 +116,7 @@ void RayGen() {
 
     TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
 
-    uint rayDataIndex = probeIndex * probeData.GetMaxRaysPerProbe() + rayIndex;
+    uint rayDataIndex = (traceSlot * probeData.GetProbesPerCascade() + probeIndex) * probeData.GetMaxRaysPerProbe() + rayIndex;
 
     float3 radiance = payload.radiance;
     bool invalidRadiance = any(isnan(radiance)) || any(isinf(radiance));
@@ -213,7 +218,7 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
     }
 
     radiance += DiffuseBRDF(min(albedo, float3(0.9f))) *
-                SampleDDGIIrradiance(probeData, linearSamplerClamp, hitPos, normalWS, WorldRayDirection());
+                SampleDDGIIrradiance(probeData, linearSamplerClamp, hitPos, normalWS, -WorldRayDirection()).rgb;
 
     payload.radiance = radiance;
     payload.hitDistance = RayTCurrent();

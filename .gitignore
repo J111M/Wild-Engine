@@ -53,3 +53,4 @@ spirv/
 # Large local-only assets
 /Assets/Models/Demo_City/
 /Assets/Textures/IBL/
+/Assets/Models/bazaar/

@@ -1,13 +1,16 @@
 #include "Helper/SceneData.slang"
 
+import DDGI.DDGIProbeData;
+
 cbuffer RootConstant : register(b0)
 {
-    float probeScale;
+    float probeScale; // Fraction of the probe spacing
+    uint probeDataView;
+    float irradianceExposure;
+    int debugCascade; // -1 draws every cascade
 };
 
 ConstantBuffer<SceneCameraData> sceneCamera : register(b1);
-
-StructuredBuffer<float4> probePositions : register(t0);
 
 static const uint SEGMENTS = 12;
 static const uint RINGS = 8;
@@ -38,11 +41,21 @@ VSOutput main(uint vertexId: SV_VertexID, uint instanceId: SV_InstanceID)
     float theta = uv.y * PI;
 
     float3 direction = float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi));
-    float3 worldPosition = probePositions[instanceId].xyz + direction * probeScale;
+
+    DDGIProbeData probeData = GetDDGIProbeData(probeDataView);
+    uint probesPerCascade = probeData.GetProbesPerCascade();
+
+    uint cascade = debugCascade >= 0 ? uint(debugCascade) : instanceId / probesPerCascade;
+    uint probeIndex = debugCascade >= 0 ? instanceId : instanceId % probesPerCascade;
+
+    DDGICascadeData cascadeData = probeData.cascades[cascade];
+    int3 worldCell = probeData.GetWorldCellFromStorage(probeData.GetStorageCoord(probeIndex), cascadeData.originCell.xyz);
+    float spacing = cascadeData.spacing.x;
+    float3 worldPosition = float3(worldCell) * spacing + direction * (probeScale * spacing);
 
     VSOutput output;
     output.position = mul(sceneCamera.viewProjection, float4(worldPosition, 1.0f));
     output.normal = direction;
-    output.instanceId = instanceId;
+    output.instanceId = cascade * probesPerCascade + probeIndex;
     return output;
 }

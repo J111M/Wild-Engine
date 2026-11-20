@@ -10,26 +10,40 @@ namespace Wild
 {
     class GPUBuffer;
 
+    struct DDGICascadeData
+    {
+        glm::ivec4 originCell{}; // w = ray buffer slot or -1
+        glm::ivec4 newOriginCell{};
+        glm::vec4 spacing{}; // x = spacing, y = distance update max ray distance
+    };
+    static_assert(sizeof(DDGICascadeData) == 48);
+
     struct DDGIProbeData
     {
         glm::vec4 randomRotation{0.0f, 0.0f, 0.0f, 1.0f}; // quaternion (xyz axis*sin(half), w = cos(half))
 
-        glm::vec4 probeOrigin{};                        // xyz = grid origin, w pad
-        glm::vec4 probeSpacing{1.0f, 1.0f, 1.0f, 0.0f}; // xyz = grid spacing, w pad
-        glm::ivec4 probeCounts{};                       // xyz = probe grid counts, w = maxRaysPerProbe (buffer stride)
+        glm::ivec4 probeCounts{}; // w = max rays per probe
 
         uint32_t raysPerProbe{64};
         float maxRayDistance{1000.0f};
         float intensity{1.0f};
-
         float hysteresis{0.97f};
 
         uint32_t irradianceView{};
         uint32_t distanceView{};
-
         float normalBias{0.1f};
         float viewBias{0.1f};
+
+        uint32_t cascadeCount{};
+        uint32_t tracedCascadeCount{};
+        float cascadeBlendCells{2.0f};
+        uint32_t probeDataPadding{};
+
+        glm::uvec4 tracedCascades{};
+
+        DDGICascadeData cascades[ProbeSystem::MAX_CASCADES]{};
     };
+    static_assert(sizeof(DDGIProbeData) == 96 + 48 * ProbeSystem::MAX_CASCADES);
 
     struct DDGITraceConstants
     {
@@ -54,11 +68,9 @@ namespace Wild
         uint32_t distanceReadView{INVALID_HEAP_INDEX};
         uint32_t distanceWriteView{INVALID_HEAP_INDEX};
 
-        float probeMaxRayDistance{1.0f};
-
         uint32_t probeDataView{INVALID_HEAP_INDEX};
 
-        glm::uvec2 updatePadding{};
+        glm::uvec3 updatePadding{};
     };
 
     // Double buffering so that the read and writing is done in different frames
@@ -125,6 +137,7 @@ namespace Wild
         float m_normalBias = 0.1f;
         float m_viewBias = 0.1f;
         float m_emissiveIntensity = 1.0f;
+        float m_cascadeBlendCells = 2.0f;
 
         bool m_randomRayRotation = true;
         bool m_freezeUpdates = false;

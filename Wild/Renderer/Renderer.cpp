@@ -32,7 +32,7 @@ namespace Wild
         m_resourceCache = std::make_shared<TransientResourceCache>();
         m_sceneData = std::make_unique<SceneDataBuffer>();
 
-        m_systemManager.AddSystem<ProbeSystem>(glm::vec3(-31.0f, 0.0f, -31.0f), glm::vec3(2.0f), glm::ivec3(32, 16, 32));
+        m_systemManager.AddSystem<ProbeSystem>(glm::ivec3(24, 12, 24), 4u, 1.0f, 2u);
         m_systemManager.AddSystem<LightSystem>();
         m_systemManager.AddSystem<FrustumCullingSystem>();
 

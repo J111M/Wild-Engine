@@ -5,7 +5,7 @@ cbuffer RootConstant : register(b0)
     float probeScale;
     uint probeDataView;
     float irradianceExposure;
-    float rootPadding;
+    int debugCascade;
 };
 
 struct VSOutput
@@ -24,8 +24,12 @@ float4 main(VSOutput input) : SV_Target0
 
     DDGIProbeData probeData = GetDDGIProbeData(probeDataView);
 
-    uint3 probeGridCoord = GetProbeGridCoord(input.instanceId, probeData.probeCounts.xyz);
-    float3 uv = GetProbeAtlasUV(probeGridCoord, probeData.probeCounts.xyz, normal, PROBE_IRRADIANCE_TEXELS);
+    uint probesPerCascade = probeData.GetProbesPerCascade();
+    uint cascade = input.instanceId / probesPerCascade;
+    int3 storageCoord = probeData.GetStorageCoord(input.instanceId % probesPerCascade);
+
+    uint3 atlasCoord = probeData.GetAtlasCoord(cascade, storageCoord);
+    float3 uv = GetProbeAtlasUV(atlasCoord, probeData.probeCounts.xyz, normal, PROBE_IRRADIANCE_TEXELS);
 
     // Raw heap slot, the atlas is a Texture2DArray which cannot come through a bindless Texture2D range
     Texture2DArray<float4> irradianceAtlas = DescriptorHandle<Texture2DArray<float4>>(probeData.irradianceView);
